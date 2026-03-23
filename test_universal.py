@@ -1,0 +1,924 @@
+"""
+Универсальный тест форм для сайтов интернет-провайдеров.
+
+Запуск для конкретного сайта:
+    pytest -s --headed --site=mts-home-gpon.ru
+
+Запуск для всех сайтов последовательно:
+    pytest -s --headed  (прогоняет все сайты из SITE_CONFIGS)
+
+Добавить новый сайт — достаточно добавить запись в SITE_CONFIGS.
+"""
+
+import pytest
+from playwright.sync_api import Page, expect
+
+REALLY_SUBMIT = True  # True — реально отправлять заявки
+
+# ---------------------------------------------------------------------------
+# Конфигурация форм (CSS-классы полей)
+# ---------------------------------------------------------------------------
+
+FORM_CONFIGS = {
+    "checkaddress": {
+        "street": ".checkaddress_address_street",
+        "house": ".checkaddress_address_house",
+        "phone": ".checkaddress_address_phone",
+        "submit": ".checkaddress_address_button_send",
+        "no_house": False,
+        "no_suggest": False,
+    },
+    "connection": {
+        "street": ".connection_address_street",
+        "house": ".connection_address_house",
+        "phone": ".connection_address_phone",
+        "submit": ".connection_address_button_send",
+        "no_house": False,
+        "no_suggest": False,
+    },
+    "profit": {
+        "street": ".profit_address_street",
+        "house": ".profit_address_house",
+        "phone": ".profit_address_phone",
+        "submit": ".profit_address_button_send",
+        "no_house": False,
+        "no_suggest": False,
+    },
+    "express-connection": {
+        "street": ".express-connection_address_street",
+        "house": ".express-connection_address_house",
+        "phone": ".express-connection_address_phone",
+        "submit": ".express-connection_address_button_send",
+        "no_house": False,
+        "no_suggest": False,
+    },
+    "business": {
+        "street": ".business_no_address_full_address",
+        "house": None,
+        "phone": ".business_no_address_phone",
+        "submit": ".business_no_address_button_send",
+        "no_house": True,
+        "no_suggest": True,
+    },
+}
+
+# CSS-классы кнопок, открывающих попапы (по типу формы)
+POPUP_BUTTON_CLASSES = {
+    "profit": ".profit_address_button",
+    "express-connection": ".express-connection_address_button",
+    "business": ".business_no_address_button",
+}
+
+# ---------------------------------------------------------------------------
+# Конфигурация сайтов
+# has_checkaddress — есть ли форма "Проверить адрес" на главной
+# has_business     — есть ли страница /business
+# has_city         — есть ли попап смены города и нужно ли его тестировать
+# city_name        — город для теста (None = пропустить тест города)
+# popup_keywords   — тексты кнопок открытия попапов (для connection и др.)
+# ---------------------------------------------------------------------------
+
+SITE_CONFIGS = {
+    "mts-home-gpon.ru": {
+        "base_url": "https://mts-home-gpon.ru/",
+        "has_checkaddress": True,
+        "has_business": True,
+        "city_name": "Москва",
+    },
+    "mts-home.online": {
+        "base_url": "https://mts-home.online/",
+        "has_checkaddress": False,
+        "has_business": True,
+        "city_name": "Москва",
+    },
+    "mts-home-online.ru": {
+        "base_url": "https://mts-home-online.ru/",
+        "has_checkaddress": False,
+        "has_business": True,
+        "city_name": "Москва",
+    },
+    "internet-mts-home.online": {
+        "base_url": "https://internet-mts-home.online/",
+        "has_checkaddress": False,
+        "has_business": False,
+        "city_name": "Москва",
+    },
+    "mts-internet.online": {
+        "base_url": "https://mts-internet.online/",
+        "has_checkaddress": False,
+        "has_business": False,
+        "city_name": "Москва",
+    },
+    "beeline-internet.online": {
+        "base_url": "https://beeline-internet.online/",
+        "has_checkaddress": False,
+        "has_business": True,
+        "city_name": "Москва",
+    },
+    "beeline-ru.online": {
+        "base_url": "https://beeline-ru.online/",
+        "has_checkaddress": False,
+        "has_business": True,
+        "city_name": "Москва",
+    },
+    "online-beeline.ru": {
+        "base_url": "https://online-beeline.ru/",
+        "has_checkaddress": False,
+        "has_business": True,
+        "city_name": "Москва",
+    },
+    "beeline-ru.pro": {
+        "base_url": "https://beeline-ru.pro/",
+        "has_checkaddress": False,
+        "has_business": False,
+        "city_name": "Москва",
+    },
+    "beeline-home.online": {
+        "base_url": "https://beeline-home.online/",
+        "has_checkaddress": False,
+        "has_business": False,
+        "city_name": "Москва",
+    },
+    "beelline-internet.ru": {
+        "base_url": "https://beelline-internet.ru/",
+        "has_checkaddress": False,
+        "has_business": False,
+        "city_name": "Москва",
+    },
+    "rtk-ru.online": {
+        "base_url": "https://rtk-ru.online/",
+        "has_checkaddress": False,
+        "has_business": True,
+        "city_name": "Москва",
+    },
+    "rt-internet.online": {
+        "base_url": "https://rt-internet.online/",
+        "has_checkaddress": False,
+        "has_business": True,
+        "city_name": "Москва",
+    },
+    "rtk-home-internet.ru": {
+        "base_url": "https://rtk-home-internet.ru/",
+        "has_checkaddress": False,
+        "has_business": True,
+        "city_name": "Москва",
+    },
+    "rtk-internet.online": {
+        "base_url": "https://rtk-internet.online/",
+        "has_checkaddress": False,
+        "has_business": True,
+        "city_name": "Москва",
+    },
+    "rtk-home.ru": {
+        "base_url": "http://rtk-home.ru/",
+        "has_checkaddress": False,
+        "has_business": True,
+        "city_name": "Москва",
+    },
+    "dom-provider.online": {
+        "base_url": "https://dom-provider.online/",
+        "has_checkaddress": False,
+        "has_business": False,
+        "city_name": "Москва",
+    },
+    "providerdom.ru": {
+        "base_url": "https://providerdom.ru/",
+        "has_checkaddress": False,
+        "has_business": False,
+        "city_name": "Москва",
+    },
+    "mega-premium.ru": {
+        "base_url": "https://mega-premium.ru/",
+        "has_checkaddress": False,
+        "has_business": False,
+        "city_name": "Москва",
+    },
+    "mega-home-internet.ru": {
+        "base_url": "https://mega-home-internet.ru/",
+        "has_checkaddress": False,
+        "has_business": False,
+        "city_name": "Москва",
+    },
+    "t2-official.ru": {
+        "base_url": "https://t2-official.ru/",
+        "has_checkaddress": False,
+        "has_business": False,
+        "city_name": "Москва",
+    },
+    "ttk-internet.ru": {
+        "base_url": "https://ttk-internet.ru/",
+        "has_checkaddress": False,
+        "has_business": False,
+        "city_name": None,  # нет Москвы в списке городов
+    },
+    "ttk-ru.online": {
+        "base_url": "https://ttk-ru.online/",
+        "has_checkaddress": False,
+        "has_business": False,
+        "city_name": None,  # нет Москвы в списке городов
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Константы
+# ---------------------------------------------------------------------------
+
+SUCCESS_URL_MARKERS = ["/tilda/form1/submitted", "/thanks"]
+
+POPUP_CONTAINER_SELECTORS = [
+    "div#popup",
+    "div.popup",
+    "[id*='popup']:not(script)",
+    "[class*='popup']:not(script)",
+    "[class*='modal']:not(script)",
+    "[class*='fancybox']:not(script)",
+    "[class*='overlay']:not(script)",
+]
+
+POPUP_OPEN_KEYWORDS = [
+    "подключить",
+    "получить консультацию",
+    "оставить заявку",
+    "заказать",
+    "оформить",
+    "узнать подробнее",
+]
+POPUP_SKIP_KEYWORDS = ["проверить адрес", "сменить город"]
+
+SUGGESTION_SELECTORS = [
+    "[role='option']",
+    "[role='listbox'] li",
+    ".suggestions__item",
+    ".suggestion-item",
+    ".autocomplete__item",
+    ".ui-menu-item",
+    "[class*='suggest'] li",
+    "[class*='autocomplete'] li",
+    "[class*='dropdown'] li",
+]
+
+
+# ---------------------------------------------------------------------------
+# pytest: параметр --site
+# ---------------------------------------------------------------------------
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--site",
+        action="store",
+        default=None,
+        help="Домен сайта из SITE_CONFIGS, например: mts-home-gpon.ru",
+    )
+
+
+def pytest_generate_tests(metafunc):
+    """Параметризует фикстуру site_cfg — один прогон на каждый сайт."""
+    if "site_cfg" in metafunc.fixturenames:
+        site_arg = metafunc.config.getoption("--site", default=None)
+        if site_arg:
+            configs = [SITE_CONFIGS[site_arg]]
+            ids = [site_arg]
+        else:
+            configs = list(SITE_CONFIGS.values())
+            ids = list(SITE_CONFIGS.keys())
+        metafunc.parametrize("site_cfg", configs, ids=ids)
+
+
+@pytest.fixture
+def site_cfg(request):
+    return request.param
+
+
+# ---------------------------------------------------------------------------
+# Базовые утилиты
+# ---------------------------------------------------------------------------
+
+
+def iter_visible(locator):
+    for i in range(locator.count()):
+        item = locator.nth(i)
+        try:
+            if item.is_visible():
+                yield item
+        except Exception:
+            pass
+
+
+def close_overlays(page: Page):
+    try:
+        ok = page.get_by_role("button", name="ОК", exact=True)
+        if ok.count() > 0:
+            ok.first.click(timeout=1000, force=True)
+    except Exception:
+        pass
+    for btn in iter_visible(
+        page.locator(
+            "button,[role='button'],.popup__close,.modal__close,.fancybox-close-small"
+        )
+    ):
+        try:
+            aria = (btn.get_attribute("aria-label") or "").lower()
+            title = (btn.get_attribute("title") or "").lower()
+            text = (btn.inner_text() or "").strip().lower()
+            if (
+                "close" in aria
+                or "закры" in aria
+                or "close" in title
+                or "закры" in title
+                or text in {"x", "×", "✕", "закрыть"}
+            ):
+                btn.click(timeout=1000, force=True)
+        except Exception:
+            pass
+    try:
+        page.keyboard.press("Escape")
+    except Exception:
+        pass
+
+
+def close_popup_or_page(page: Page):
+    current = page.url.lower()
+    if any(m in current for m in SUCCESS_URL_MARKERS):
+        return
+    for btn in iter_visible(
+        page.locator(
+            "button,[role='button'],.popup__close,.modal__close,.fancybox-close-small"
+        )
+    ):
+        try:
+            aria = (btn.get_attribute("aria-label") or "").lower()
+            title = (btn.get_attribute("title") or "").lower()
+            text = (btn.inner_text() or "").strip().lower()
+            if (
+                "close" in aria
+                or "закры" in aria
+                or "close" in title
+                or "закры" in title
+                or text in {"x", "×", "✕", "закрыть"}
+            ):
+                btn.click(force=True)
+                page.wait_for_timeout(400)
+                return
+        except Exception:
+            pass
+    try:
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(300)
+    except Exception:
+        pass
+
+
+def safe_goto(page: Page, url: str, retries: int = 3):
+    for attempt in range(1, retries + 1):
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+            page.wait_for_timeout(500)
+            print(f"  [NAV] {url}")
+            return
+        except Exception as e:
+            print(f"  [NAV] Попытка {attempt}/{retries}: {e}")
+            page.wait_for_timeout(1000)
+    print(f"  [NAV] ❌ Не удалось перейти на {url}")
+
+
+def wait_for_success_url(page: Page, timeout_ms: int = 15_000) -> bool:
+    print(f"  [SUBMIT] Ждём подтверждения (до {timeout_ms // 1000}с)...")
+    poll_ms = 300
+    elapsed = 0
+    while elapsed < timeout_ms:
+        if any(m in page.url.lower() for m in SUCCESS_URL_MARKERS):
+            print(f"  [SUBMIT] ✅ {page.url}")
+            return True
+        page.wait_for_timeout(poll_ms)
+        elapsed += poll_ms
+    print(f"  [SUBMIT] ❌ URL: {page.url}")
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Подсказки
+# ---------------------------------------------------------------------------
+
+
+def choose_first_suggestion(page: Page, timeout_ms: int = 1500) -> bool:
+    poll_ms = 150
+    elapsed = 0
+    while elapsed < timeout_ms:
+        for sel in SUGGESTION_SELECTORS:
+            loc = page.locator(sel)
+            for i in range(loc.count()):
+                item = loc.nth(i)
+                try:
+                    if item.is_visible() and (item.inner_text() or "").strip():
+                        print(f"  [SUGGEST] '{item.inner_text().strip()[:50]}'")
+                        item.click(timeout=3000, force=True)
+                        page.wait_for_timeout(300)
+                        return True
+                except Exception:
+                    pass
+        page.wait_for_timeout(poll_ms)
+        elapsed += poll_ms
+
+    print("  [SUGGEST FALLBACK] ArrowDown+Enter")
+    try:
+        page.keyboard.press("ArrowDown")
+        page.wait_for_timeout(200)
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(300)
+        return True
+    except Exception:
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Заполнение формы
+# ---------------------------------------------------------------------------
+
+
+def fill_form(page: Page, container, form_type: str) -> bool:
+    cfg = FORM_CONFIGS[form_type]
+    no_house = cfg.get("no_house", False)
+    no_suggest = cfg.get("no_suggest", False)
+
+    # Адрес / Улица
+    street = container.locator(cfg["street"]).first
+    if street.count() > 0 and street.is_visible():
+        street.scroll_into_view_if_needed()
+        street.click(force=True)
+        street.fill("Ленина")
+        if no_suggest:
+            print("  [FORM] Адрес введён (без подсказки)")
+        else:
+            print("  [FORM] Улица введена, ждём подсказку...")
+            choose_first_suggestion(page)
+    else:
+        print(f"  [FORM] Поле адреса не найдено ({cfg['street']})")
+
+    # Дом
+    if no_house:
+        print("  [FORM] Поле Дом пропущено")
+    else:
+        house_sel = cfg.get("house")
+        if house_sel:
+            house = container.locator(house_sel).first
+            if house.count() > 0:
+                print("  [FORM] Ждём активации поля Дом...")
+                try:
+                    expect(house).to_be_enabled(timeout=8000)
+                    house.scroll_into_view_if_needed()
+                    house.click(force=True)
+                    house.fill("1")
+                    print("  [FORM] Дом введён, ждём подсказку...")
+                    choose_first_suggestion(page, timeout_ms=1500)
+                except Exception:
+                    print("  [FORM] Поле Дом не активировалось — продолжаем")
+
+    # Телефон (обязательное)
+    phone = container.locator(cfg["phone"]).first
+    if phone.count() == 0 or not phone.is_visible():
+        print(f"  [FORM] ❌ Телефон не найден ({cfg['phone']})")
+        return False
+
+    phone.scroll_into_view_if_needed()
+    phone.click(force=True)
+    phone.press_sequentially("1111111111", delay=50)
+    print("  [FORM] Телефон введён")
+
+    for cb in iter_visible(container.locator("input[type='checkbox']")):
+        try:
+            if not cb.is_checked():
+                cb.check(force=True)
+        except Exception:
+            pass
+
+    return True
+
+
+def find_submit(container, form_type: str):
+    cfg = FORM_CONFIGS[form_type]
+    submit = container.locator(cfg["submit"]).first
+    try:
+        if submit.count() > 0 and submit.is_visible() and submit.is_enabled():
+            print(f"  [SUBMIT] Найдена '{cfg['submit']}'")
+            return submit
+    except Exception:
+        pass
+    print(f"  [SUBMIT] ❌ Не найдена '{cfg['submit']}'")
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Ожидание попапа
+# ---------------------------------------------------------------------------
+
+
+def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000, form_hint=None):
+    form_types_to_check = (
+        [(form_hint, FORM_CONFIGS[form_hint])]
+        if form_hint and form_hint in FORM_CONFIGS
+        else list(FORM_CONFIGS.items())
+    )
+    poll_ms = 300
+    elapsed = 0
+
+    while elapsed < timeout_ms:
+        for popup_sel in POPUP_CONTAINER_SELECTORS:
+            for form_type, cfg in form_types_to_check:
+                containers = page.locator(popup_sel)
+                for i in range(containers.count()):
+                    container = containers.nth(i)
+                    try:
+                        if not container.is_visible():
+                            continue
+                        phone = container.locator(cfg["phone"]).first
+                        if phone.count() > 0 and phone.is_visible():
+                            print(f"  [POPUP] sel='{popup_sel}' type='{form_type}'")
+                            return form_type, container
+                    except Exception:
+                        pass
+
+        for form_type, cfg in form_types_to_check:
+            phone_fields = page.locator(cfg["phone"])
+            for i in range(phone_fields.count()):
+                phone = phone_fields.nth(i)
+                try:
+                    if not phone.is_visible():
+                        continue
+                    parent = phone.locator(
+                        "xpath=ancestor::div[contains(@class,'popup') or "
+                        "contains(@class,'modal') or contains(@id,'popup')]"
+                    ).last
+                    if parent.count() > 0 and parent.is_visible():
+                        print(f"  [POPUP] ancestor type='{form_type}'")
+                        return form_type, parent
+                    form_parent = phone.locator("xpath=ancestor::form").last
+                    if form_parent.count() > 0 and form_parent.is_visible():
+                        print(f"  [POPUP] form-ancestor type='{form_type}'")
+                        return form_type, form_parent
+                except Exception:
+                    pass
+
+        page.wait_for_timeout(poll_ms)
+        elapsed += poll_ms
+
+    print(f"  [POPUP] ❌ Попап не появился за {timeout_ms // 1000}с")
+    return None, None
+
+
+# ---------------------------------------------------------------------------
+# Сбор кнопок
+# ---------------------------------------------------------------------------
+
+
+def collect_popup_buttons(page: Page) -> list:
+    """Все кнопки попапов: по ключевым словам + по CSS-классам из POPUP_BUTTON_CLASSES."""
+    all_btns = page.locator("button")
+    total = all_btns.count()
+    result = []
+    seen_idx = set()
+
+    print(f"\n[COLLECT] Кнопок на странице: {total}")
+
+    # По ключевым словам (connection и др.)
+    for i in range(total):
+        btn = all_btns.nth(i)
+        try:
+            if not btn.is_visible() or not btn.is_enabled():
+                continue
+            text = (btn.inner_text() or "").strip().lower()
+            if not any(kw in text for kw in POPUP_OPEN_KEYWORDS):
+                continue
+            if any(kw in text for kw in POPUP_SKIP_KEYWORDS):
+                continue
+            seen_idx.add(i)
+            result.append({"index": i, "text": text, "form_hint": None, "css": None})
+            print(f"  [COLLECT] #{len(result)} index={i} '{text}'")
+        except Exception:
+            pass
+
+    # По CSS-классам (profit, express-connection)
+    for form_hint, css_class in POPUP_BUTTON_CLASSES.items():
+        if form_hint == "business":
+            continue  # бизнес собирается отдельно
+        btns = page.locator(css_class)
+        for i in range(btns.count()):
+            btn = btns.nth(i)
+            try:
+                if not btn.is_visible() or not btn.is_enabled():
+                    continue
+                global_idx = btn.evaluate(
+                    "el => Array.from(document.querySelectorAll('button')).indexOf(el)"
+                )
+                if global_idx in seen_idx:
+                    continue
+                seen_idx.add(global_idx)
+                text = (btn.inner_text() or "").strip().lower()
+                result.append(
+                    {
+                        "index": global_idx,
+                        "text": text,
+                        "form_hint": form_hint,
+                        "css": css_class,
+                    }
+                )
+                print(
+                    f"  [COLLECT] #{len(result)} index={global_idx} "
+                    f"'{text}' ({form_hint})"
+                )
+            except Exception:
+                pass
+
+    print(f"[COLLECT] Итого: {len(result)}\n")
+    return result
+
+
+def collect_business_buttons(page: Page) -> list:
+    btns = page.locator(POPUP_BUTTON_CLASSES["business"])
+    total = btns.count()
+    result = []
+    print(f"\n[BUSINESS COLLECT] Элементов: {total}")
+    for i in range(total):
+        btn = btns.nth(i)
+        try:
+            if not btn.is_visible() or not btn.is_enabled():
+                continue
+            text = (btn.inner_text() or "").strip().lower()
+            tag = btn.evaluate("el => el.tagName.toLowerCase()")
+            result.append({"nth": i, "text": text, "tag": tag})
+            print(f"  [BUSINESS COLLECT] #{len(result)} nth={i} <{tag}> '{text}'")
+        except Exception:
+            pass
+    print(f"[BUSINESS COLLECT] Итого: {len(result)}\n")
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Универсальный цикл попапов
+# ---------------------------------------------------------------------------
+
+
+def _run_popup_cycle(
+    page: Page, buttons: list, base_url: str, btn_locator_fn, label: str = "POPUP"
+) -> tuple[int, int]:
+    success = 0
+    failed = 0
+
+    for num, entry in enumerate(buttons, 1):
+        text = entry.get("text", "")
+        form_hint = entry.get("form_hint")
+        sep = "=" * 55
+        print(
+            f"\n{sep}\n[{label} {num}/{len(buttons)}] '{text}' hint={form_hint}\n{sep}"
+        )
+
+        safe_goto(page, base_url)
+
+        try:
+            btn = btn_locator_fn(page, entry)
+            btn.scroll_into_view_if_needed()
+            btn.click(force=True)
+            page.wait_for_timeout(500)
+        except Exception as e:
+            print(f"  [{label}] ❌ Клик не удался: {e}")
+            failed += 1
+            continue
+
+        form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
+        if form_type is None:
+            print(f"  [{label}] ❌ Попап не распознан")
+            failed += 1
+            continue
+
+        if not fill_form(page, container, form_type):
+            print(f"  [{label}] ❌ Форма не заполнена")
+            failed += 1
+            continue
+
+        submit = find_submit(container, form_type)
+        if submit is None:
+            print(f"  [{label}] ❌ Кнопка отправки не найдена")
+            failed += 1
+            continue
+
+        submit.scroll_into_view_if_needed()
+
+        if REALLY_SUBMIT:
+            submit.click(force=True)
+            ok = wait_for_success_url(page, timeout_ms=15_000)
+            if ok:
+                print(f"  [{label}] ✅ Заявка принята")
+                success += 1
+            else:
+                print(f"  [{label}] ⚠️  Подтверждение не получено")
+                failed += 1
+        else:
+            print(f"  [{label}] ✅ Форма готова (REALLY_SUBMIT=False)")
+            close_popup_or_page(page)
+            success += 1
+
+    sep = "=" * 55
+    print(
+        f"\n{sep}\n[{label} RESULT] ✅ {success}  ❌ {failed}  Всего: {len(buttons)}\n{sep}\n"
+    )
+    return success, failed
+
+
+def process_all_popups(page: Page, base_url: str) -> tuple[int, int]:
+    buttons = collect_popup_buttons(page)
+    if not buttons:
+        print("[POPUP] Кнопки не найдены — пропускаем")
+        return 0, 0
+
+    def locate(page, entry):
+        css = entry.get("css")
+        if css:
+            return page.locator(css).first
+        return page.locator("button").nth(entry["index"])
+
+    return _run_popup_cycle(page, buttons, base_url, locate, label="POPUP")
+
+
+def process_business_popups(page: Page, base_url: str) -> tuple[int, int]:
+    buttons = collect_business_buttons(page)
+    if not buttons:
+        print("[BUSINESS] Кнопки не найдены — пропускаем")
+        return 0, 0
+
+    def locate(page, entry):
+        return page.locator(POPUP_BUTTON_CLASSES["business"]).nth(entry["nth"])
+
+    return _run_popup_cycle(page, buttons, base_url, locate, label="BUSINESS")
+
+
+# ---------------------------------------------------------------------------
+# Выбор города
+# ---------------------------------------------------------------------------
+
+
+def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str, str]:
+    """
+    Открывает попап выбора города через кнопку в шапке,
+    кликает на нужный город, возвращает (city_base_url, city_business_url).
+    """
+    sep = "=" * 55
+    print(f"\n{sep}\n[CITY] Выбор города '{city_name}'\n{sep}")
+
+    safe_goto(page, base_url)
+    close_overlays(page)
+
+    city_btn = page.locator("a.header__city.city").first
+    assert city_btn.count() > 0, "Кнопка выбора города (a.header__city.city) не найдена"
+    city_btn.click(force=True)
+    page.wait_for_timeout(600)
+
+    city_links = page.locator(".region_item.region_link")
+    city_links.first.wait_for(state="attached", timeout=10_000)
+
+    # Поле поиска — фильтруем если есть
+    for sel in [
+        "input[placeholder*='оиск']",
+        "input[placeholder*='ород']",
+        "input[type='search']",
+        "input[type='text']",
+    ]:
+        inp = page.locator(sel).first
+        try:
+            if inp.count() > 0 and inp.is_visible():
+                inp.click(force=True)
+                inp.fill(city_name)
+                page.wait_for_timeout(400)
+                print(f"  [CITY] Введено '{city_name}'")
+                break
+        except Exception:
+            pass
+
+    link = page.locator(".region_item.region_link").filter(has_text=city_name).first
+    assert link.count() > 0, f"Город '{city_name}' не найден в списке"
+
+    old_url = page.url
+    link.click(force=True)
+    print(f"  [CITY] Клик по '{city_name}'")
+
+    city_base_url = None
+    for _ in range(50):
+        page.wait_for_timeout(300)
+        if page.url != old_url:
+            page.wait_for_load_state("domcontentloaded")
+            city_base_url = page.url.rstrip("/")
+            break
+
+    assert city_base_url, f"Переход не произошёл. URL: {page.url}"
+    print(f"  [CITY] ✅ {city_base_url}")
+
+    return city_base_url, city_base_url + "/business"
+
+
+# ---------------------------------------------------------------------------
+# Единый сценарий для одного сайта
+# ---------------------------------------------------------------------------
+
+
+def run_site_scenario(page: Page, cfg: dict):
+    """
+    Полный сценарий для сайта:
+    1. Форма checkaddress (если есть)
+    2. Все попапы главной
+    3. Попапы /business (если есть)
+    4. Сценарий города (если задан city_name):
+       4a. Попапы главной города
+       4b. Попапы /business города (если has_business)
+    """
+    base_url = cfg["base_url"]
+    sep = "=" * 55
+    site_label = base_url.replace("https://", "").replace("http://", "").strip("/")
+
+    print(f"\n{'#'*55}\n# САЙТ: {site_label}\n{'#'*55}")
+
+    # ── 1. Форма checkaddress ─────────────────────────────────────────────
+    if cfg.get("has_checkaddress"):
+        print(f"\n{sep}\n[{site_label}] Шаг 1: форма checkaddress\n{sep}")
+        safe_goto(page, base_url)
+        close_overlays(page)
+
+        fcfg = FORM_CONFIGS["checkaddress"]
+        container = (
+            page.locator("section, form, div")
+            .filter(has=page.locator(fcfg["phone"]))
+            .first
+        )
+
+        if container.count() > 0:
+            filled = fill_form(page, container, "checkaddress")
+            submit = find_submit(container, "checkaddress") if filled else None
+            if submit:
+                submit.scroll_into_view_if_needed()
+                print(f"  ✅ checkaddress готова")
+                if REALLY_SUBMIT:
+                    submit.click(force=True)
+                    ok = wait_for_success_url(page, timeout_ms=15_000)
+                    if ok:
+                        safe_goto(page, base_url)
+        else:
+            print("  ⚠️  Форма checkaddress не найдена на странице")
+    else:
+        print(
+            f"\n[{site_label}] Шаг 1: checkaddress — пропущен (has_checkaddress=False)"
+        )
+
+    # ── 2. Попапы главной ─────────────────────────────────────────────────
+    print(f"\n{sep}\n[{site_label}] Шаг 2: попапы главной\n{sep}")
+    safe_goto(page, base_url)
+    close_overlays(page)
+    s, f = process_all_popups(page, base_url)
+    assert f == 0, f"[{site_label}] Попапы главной: {f} ошибок, {s} успешно"
+
+    # ── 3. Попапы /business ───────────────────────────────────────────────
+    if cfg.get("has_business"):
+        business_url = base_url.rstrip("/") + "/business"
+        print(f"\n{sep}\n[{site_label}] Шаг 3: попапы /business\n{sep}")
+        safe_goto(page, business_url)
+        close_overlays(page)
+        s, f = process_business_popups(page, business_url)
+        assert f == 0, f"[{site_label}] Бизнес: {f} ошибок, {s} успешно"
+    else:
+        print(f"\n[{site_label}] Шаг 3: /business — пропущен (has_business=False)")
+
+    # ── 4. Сценарий города ────────────────────────────────────────────────
+    city_name = cfg.get("city_name")
+    if city_name:
+        print(f"\n{sep}\n[{site_label}] Шаг 4: город '{city_name}'\n{sep}")
+        city_base, city_biz = run_city_scenario(page, base_url, city_name)
+
+        # 4a. Попапы главной города
+        safe_goto(page, city_base)
+        close_overlays(page)
+        s, f = process_all_popups(page, city_base)
+        assert f == 0, f"[{site_label}] Попапы города: {f} ошибок"
+
+        # 4b. Попапы /business города
+        if cfg.get("has_business"):
+            safe_goto(page, city_biz)
+            close_overlays(page)
+            s, f = process_business_popups(page, city_biz)
+            assert f == 0, f"[{site_label}] Бизнес города: {f} ошибок"
+    else:
+        print(f"\n[{site_label}] Шаг 4: город — пропущен (city_name=None)")
+
+    print(f"\n{'#'*55}\n# ✅ ГОТОВО: {site_label}\n{'#'*55}\n")
+
+
+# ---------------------------------------------------------------------------
+# Тест
+# ---------------------------------------------------------------------------
+
+
+def test_site(page: Page, site_cfg: dict):
+    """
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    """
+    run_site_scenario(page, site_cfg)
