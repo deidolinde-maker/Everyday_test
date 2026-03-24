@@ -27,7 +27,7 @@ jobs:
           python-version: '3.12'
 
       - name: Установка Python-зависимостей
-        run: pip install pytest pytest-playwright allure-pytest
+        run: pip install pytest playwright pytest-playwright allure-pytest
 
       - name: Установка браузера Chromium
         run: |
