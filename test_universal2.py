@@ -13,6 +13,7 @@
 
 import pytest
 from playwright.sync_api import Page, expect
+import allure
 
 REALLY_SUBMIT = True # True — реально отправлять заявки
 
@@ -1007,4 +1008,8 @@ def test_site(page: Page, site_cfg: dict):
     Запуск для всех сайтов:
         pytest -s --headed
     """
-    run_site_scenario(page, site_cfg)
+    allure.dynamic.title(f"Сайт: {site_cfg['base_url']}")
+    allure.dynamic.label("suite", "Формы провайдеров")
+
+    with allure.step("Запуск сценария"):
+        run_site_scenario(page, site_cfg)
