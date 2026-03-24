@@ -1,7 +1,6 @@
 name: Playwright Tests
 
 on:
-  # Запуск вручную через GitHub UI с выбором сайта
   workflow_dispatch:
     inputs:
       site:
@@ -9,11 +8,9 @@ on:
         required: false
         default: ''
 
-  # Запуск автоматически по расписанию (каждый день в 9:00 UTC)
   schedule:
     - cron: '0 9 * * *'
 
-  # Запуск при каждом пуше в main
   push:
     branches: [main]
 
@@ -31,9 +28,11 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Установка зависимостей
+      - name: Установка зависимостей из requirements.txt
+        run: pip install -r requirements.txt
+
+      - name: Установка браузера Chromium
         run: |
-          pip install pytest pytest-playwright allure-pytest
           playwright install chromium
           playwright install-deps chromium
 
@@ -48,7 +47,7 @@ jobs:
         continue-on-error: true
 
       - name: Запуск тестов (все сайты)
-        if: ${{ github.event.inputs.site == '' }}
+        if: ${{ github.event.inputs.site == '' || github.event_name != 'workflow_dispatch' }}
         run: |
           pytest test_universal2.py \
             --alluredir=allure-results \
