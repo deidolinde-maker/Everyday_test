@@ -7,10 +7,8 @@ on:
         description: 'Домен сайта (оставьте пустым для всех)'
         required: false
         default: ''
-
   schedule:
     - cron: '0 9 * * *'
-
   push:
     branches: [main]
 
@@ -28,8 +26,8 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Установка зависимостей из requirements.txt
-        run: pip install -r requirements.txt
+      - name: Установка Python-зависимостей
+        run: pip install pytest pytest-playwright allure-pytest
 
       - name: Установка браузера Chromium
         run: |
@@ -37,7 +35,7 @@ jobs:
           playwright install-deps chromium
 
       - name: Запуск тестов (один сайт)
-        if: ${{ github.event.inputs.site != '' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.site != '' }}
         run: |
           pytest test_universal2.py \
             --site=${{ github.event.inputs.site }} \
@@ -47,7 +45,7 @@ jobs:
         continue-on-error: true
 
       - name: Запуск тестов (все сайты)
-        if: ${{ github.event.inputs.site == '' || github.event_name != 'workflow_dispatch' }}
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.site == '' }}
         run: |
           pytest test_universal2.py \
             --alluredir=allure-results \
