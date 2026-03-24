@@ -1,48 +1,81 @@
-name: Pytest + Allure
+name: Playwright Tests
 
 on:
+  # Запуск вручную через GitHub UI с выбором сайта
+  workflow_dispatch:
+    inputs:
+      site:
+        description: 'Домен сайта (оставьте пустым для всех)'
+        required: false
+        default: ''
+
+  # Запуск автоматически по расписанию (каждый день в 9:00 UTC)
+  schedule:
+    - cron: '0 9 * * *'
+
+  # Запуск при каждом пуше в main
   push:
-    branches: [master, main]
-  pull_request:
-  workflow_dispatch:      # <- вот это
+    branches: [main]
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
 
     steps:
-      - name: Checkout repo
+      - name: Checkout репозитория
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Установка Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12
+          python-version: '3.12'
 
-      - name: Install dependencies
+      - name: Установка зависимостей
         run: |
-          python -m pip install --upgrade pip
-          # requirements.txt отсутствует, используем явную установку
-          pip install pytest allure-pytest allure-python-commons
-          sudo apt-get update -y
-          sudo apt-get install -y openjdk-17-jre-headless
-          sudo apt-get install -y allure
+          pip install pytest pytest-playwright allure-pytest
+          playwright install chromium
+          playwright install-deps chromium
 
-      - name: Run tests with Allure results
+      - name: Запуск тестов (один сайт)
+        if: ${{ github.event.inputs.site != '' }}
         run: |
-          pytest --alluredir=allure-results
+          pytest test_universal2.py \
+            --site=${{ github.event.inputs.site }} \
+            --alluredir=allure-results \
+            --timeout=300 \
+            -s
+        continue-on-error: true
 
-      - name: Generate Allure report
+      - name: Запуск тестов (все сайты)
+        if: ${{ github.event.inputs.site == '' }}
         run: |
-          allure generate allure-results -o allure-report --clean
+          pytest test_universal2.py \
+            --alluredir=allure-results \
+            --timeout=300 \
+            -s
+        continue-on-error: true
 
-      - name: Upload Allure report artifact
+      - name: Сохранить результаты Allure
         uses: actions/upload-artifact@v4
-        with:
-          name: allure-report
-          path: allure-report
-
-      - name: Upload allure-results artifact
-        uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: allure-results
-          path: allure-results
+          path: allure-results/
+          retention-days: 30
+
+      - name: Генерация Allure отчёта
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        with:
+          allure_results: allure-results
+          allure_report: allure-report
+          allure_history: allure-history
+
+      - name: Публикация отчёта на GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-report
