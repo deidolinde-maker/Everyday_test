@@ -16,7 +16,7 @@ import pytest
 from playwright.sync_api import Page, expect
 import allure
 
-REALLY_SUBMIT = False # True — реально отправлять заявки
+REALLY_SUBMIT = True # True — реально отправлять заявки
 
 # ---------------------------------------------------------------------------
 # Конфигурация форм (CSS-классы полей)
