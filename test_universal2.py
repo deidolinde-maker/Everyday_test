@@ -1,4 +1,3 @@
-
 """
 Универсальный тест форм для сайтов интернет-провайдеров.
 
@@ -7,6 +6,8 @@
 
 Запуск для всех сайтов последовательно:
     pytest -s --headed  (прогоняет все сайты из SITE_CONFIGS)
+    pytest test_universal2.py --alluredir=allure-results -s - все сайты с аллюр
+    pytest test_universal2.py --site=mts-home-gpon.ru --alluredir=allure-results -s - конкретный сайт с аллюр
 
 Добавить новый сайт — достаточно добавить запись в SITE_CONFIGS.
 """
@@ -15,7 +16,7 @@ import pytest
 from playwright.sync_api import Page, expect
 import allure
 
-REALLY_SUBMIT = True # True — реально отправлять заявки
+REALLY_SUBMIT = False # True — реально отправлять заявки
 
 # ---------------------------------------------------------------------------
 # Конфигурация форм (CSS-классы полей)
@@ -754,6 +755,9 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
         print(f"\n{sep}\n[{label} {num}/{len(buttons)}] '{text}' hint={form_hint}\n{sep}")
 
         safe_goto(page, base_url)
+        # Закрываем cookie-баннер перед каждым попапом —
+        # он появляется повторно после возврата с /thanks
+        accept_cookie_banner(page)
 
         try:
             btn = btn_locator_fn(page, entry)
@@ -789,6 +793,12 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
             ok = wait_for_success_url(page, timeout_ms=15_000)
             if ok:
                 print(f"  [{label}] ✅ Заявка принята")
+                # Ждём завершения редиректов перед следующим safe_goto
+                try:
+                    page.wait_for_load_state("domcontentloaded", timeout=5000)
+                except Exception:
+                    pass
+                page.wait_for_timeout(500)
                 success += 1
             else:
                 print(f"  [{label}] ⚠️  Подтверждение не получено")
