@@ -70,7 +70,7 @@ def collect_failed_results(results_dir: Path) -> list[dict]:
 def build_message(failed: list[dict]) -> str:
     first = failed[0]
 
-    lines = ["❌ Упали UI тесты"]
+    lines = ["❌ Упал ежедневный автотест,проверь!"]
 
     if first["site"]:
         lines.append(f"Сайт: {first['site']}")
