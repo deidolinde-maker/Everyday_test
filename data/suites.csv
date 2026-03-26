@@ -5,158 +5,158 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","250584","Сайт: http://rtk-home.ru/","","Thu Mar 26 06:41:57 UTC 2026","passed","Thu Mar 26 06:46:08 UTC 2026","","Формы провайдеров","",""
+    ","28428","Сайт: https://t2-official.ru/","","Thu Mar 26 10:19:10 UTC 2026","passed","Thu Mar 26 10:19:38 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","29862","Сайт: https://t2-official.ru/","","Thu Mar 26 06:52:04 UTC 2026","passed","Thu Mar 26 06:52:34 UTC 2026","","Формы провайдеров","",""
+    ","117275","Сайт: https://beelline-internet.ru/","","Thu Mar 26 10:12:50 UTC 2026","failed","Thu Mar 26 10:14:48 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","279708","Сайт: https://mts-home-gpon.ru/","","Thu Mar 26 06:04:00 UTC 2026","passed","Thu Mar 26 06:08:40 UTC 2026","","Формы провайдеров","",""
+    ","284307","Сайт: https://mts-home-gpon.ru/","","Thu Mar 26 09:48:53 UTC 2026","passed","Thu Mar 26 09:53:37 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","117011","Сайт: https://beelline-internet.ru/","","Thu Mar 26 06:27:06 UTC 2026","failed","Thu Mar 26 06:29:03 UTC 2026","","Формы провайдеров","",""
+    ","167130","Сайт: https://beeline-ru.online/","","Thu Mar 26 10:03:55 UTC 2026","failed","Thu Mar 26 10:06:42 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","97031","Сайт: https://providerdom.ru/","","Thu Mar 26 06:47:38 UTC 2026","passed","Thu Mar 26 06:49:15 UTC 2026","","Формы провайдеров","",""
+    ","29781","Сайт: https://rtk-internet.online/","","Thu Mar 26 10:16:17 UTC 2026","passed","Thu Mar 26 10:16:47 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","183331","Сайт: https://rtk-ru.online/","","Thu Mar 26 06:29:04 UTC 2026","passed","Thu Mar 26 06:32:07 UTC 2026","","Формы провайдеров","",""
+    ","118764","Сайт: https://beeline-home.online/","","Thu Mar 26 10:10:51 UTC 2026","failed","Thu Mar 26 10:12:50 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","114680","Сайт: https://rt-internet.online/","","Thu Mar 26 06:32:07 UTC 2026","broken","Thu Mar 26 06:34:02 UTC 2026","","Формы провайдеров","",""
+    ","82008","Сайт: https://mega-premium.ru/","","Thu Mar 26 10:17:38 UTC 2026","passed","Thu Mar 26 10:19:00 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","106331","Сайт: https://mts-internet.online/","","Thu Mar 26 06:14:37 UTC 2026","broken","Thu Mar 26 06:16:23 UTC 2026","","Формы провайдеров","",""
+    ","10130","Сайт: https://providerdom.ru/","","Thu Mar 26 10:17:27 UTC 2026","passed","Thu Mar 26 10:17:37 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","50998","Сайт: https://ttk-ru.online/","","Thu Mar 26 06:53:35 UTC 2026","passed","Thu Mar 26 06:54:26 UTC 2026","","Формы провайдеров","",""
+    ","120171","Сайт: https://mts-internet.online/","","Thu Mar 26 09:59:37 UTC 2026","failed","Thu Mar 26 10:01:37 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","131105","Сайт: https://mts-home-online.ru/","","Thu Mar 26 06:10:23 UTC 2026","passed","Thu Mar 26 06:12:34 UTC 2026","","Формы провайдеров","",""
+    ","30076","Сайт: http://rtk-home.ru/","","Thu Mar 26 10:16:47 UTC 2026","passed","Thu Mar 26 10:17:17 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","82729","Сайт: https://mega-premium.ru/","","Thu Mar 26 06:49:15 UTC 2026","passed","Thu Mar 26 06:50:37 UTC 2026","","Формы провайдеров","",""
+    ","112825","Сайт: https://mts-home-online.ru/","","Thu Mar 26 09:55:19 UTC 2026","passed","Thu Mar 26 09:57:11 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","218608","Сайт: https://rtk-home-internet.ru/","","Thu Mar 26 06:34:02 UTC 2026","passed","Thu Mar 26 06:37:41 UTC 2026","","Формы провайдеров","",""
+    ","29786","Сайт: https://rt-internet.online/","","Thu Mar 26 10:15:18 UTC 2026","passed","Thu Mar 26 10:15:47 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","102316","Сайт: https://mts-home.online/","","Thu Mar 26 06:08:40 UTC 2026","broken","Thu Mar 26 06:10:23 UTC 2026","","Формы провайдеров","",""
+    ","29721","Сайт: https://rtk-ru.online/","","Thu Mar 26 10:14:48 UTC 2026","passed","Thu Mar 26 10:15:18 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","117126","Сайт: https://beeline-ru.pro/","","Thu Mar 26 06:23:12 UTC 2026","failed","Thu Mar 26 06:25:09 UTC 2026","","Формы провайдеров","",""
+    ","130528","Сайт: https://online-beeline.ru/","","Thu Mar 26 10:06:42 UTC 2026","failed","Thu Mar 26 10:08:53 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","146303","Сайт: https://beeline-internet.online/","","Thu Mar 26 06:16:24 UTC 2026","failed","Thu Mar 26 06:18:50 UTC 2026","","Формы провайдеров","",""
+    ","136906","Сайт: https://beeline-internet.online/","","Thu Mar 26 10:01:37 UTC 2026","failed","Thu Mar 26 10:03:54 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","86189","Сайт: https://mega-home-internet.ru/","","Thu Mar 26 06:50:37 UTC 2026","passed","Thu Mar 26 06:52:04 UTC 2026","","Формы провайдеров","",""
+    ","10087","Сайт: https://dom-provider.online/","","Thu Mar 26 10:17:17 UTC 2026","passed","Thu Mar 26 10:17:27 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","103327","Сайт: https://online-beeline.ru/","","Thu Mar 26 06:21:28 UTC 2026","failed","Thu Mar 26 06:23:11 UTC 2026","","Формы провайдеров","",""
+    ","10147","Сайт: https://mega-home-internet.ru/","","Thu Mar 26 10:19:00 UTC 2026","passed","Thu Mar 26 10:19:10 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","156562","Сайт: https://beeline-ru.online/","","Thu Mar 26 06:18:51 UTC 2026","failed","Thu Mar 26 06:21:27 UTC 2026","","Формы провайдеров","",""
+    ","117701","Сайт: https://beeline-ru.pro/","","Thu Mar 26 10:08:53 UTC 2026","failed","Thu Mar 26 10:10:51 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","89762","Сайт: https://dom-provider.online/","","Thu Mar 26 06:46:08 UTC 2026","passed","Thu Mar 26 06:47:38 UTC 2026","","Формы провайдеров","",""
+    ","101009","Сайт: https://mts-home.online/","","Thu Mar 26 09:53:37 UTC 2026","broken","Thu Mar 26 09:55:18 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","116531","Сайт: https://beeline-home.online/","","Thu Mar 26 06:25:09 UTC 2026","failed","Thu Mar 26 06:27:06 UTC 2026","","Формы провайдеров","",""
+    ","10078","Сайт: https://ttk-ru.online/","","Thu Mar 26 10:19:48 UTC 2026","passed","Thu Mar 26 10:19:58 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","122001","Сайт: https://internet-mts-home.online/","","Thu Mar 26 06:12:34 UTC 2026","broken","Thu Mar 26 06:14:36 UTC 2026","","Формы провайдеров","",""
+    ","144718","Сайт: https://internet-mts-home.online/","","Thu Mar 26 09:57:11 UTC 2026","failed","Thu Mar 26 09:59:36 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","60882","Сайт: https://ttk-internet.ru/","","Thu Mar 26 06:52:34 UTC 2026","passed","Thu Mar 26 06:53:35 UTC 2026","","Формы провайдеров","",""
+    ","29735","Сайт: https://rtk-home-internet.ru/","","Thu Mar 26 10:15:48 UTC 2026","passed","Thu Mar 26 10:16:17 UTC 2026","","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","256142","Сайт: https://rtk-internet.online/","","Thu Mar 26 06:37:41 UTC 2026","passed","Thu Mar 26 06:41:57 UTC 2026","","Формы провайдеров","",""
+    ","10143","Сайт: https://ttk-internet.ru/","","Thu Mar 26 10:19:38 UTC 2026","passed","Thu Mar 26 10:19:48 UTC 2026","","Формы провайдеров","",""
