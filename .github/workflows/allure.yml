@@ -41,6 +41,7 @@ jobs:
         run: python -c "from playwright.sync_api import Page; print('playwright OK')"
 
       - name: Запуск тестов (один сайт)
+        id: run_tests_single
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.site != '' }}
         run: |
           python -m pytest test_universal2.py \
@@ -51,6 +52,7 @@ jobs:
         continue-on-error: true
 
       - name: Запуск тестов (все сайты)
+        id: run_tests_all
         if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.site == '' }}
         run: |
           python -m pytest test_universal2.py \
@@ -82,3 +84,24 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-report
+
+      - name: Собрать сообщение для Telegram из Allure
+        if: ${{ always() && (steps.run_tests_single.outcome == 'failure' || steps.run_tests_all.outcome == 'failure') }}
+        run: python scripts/notify_from_allure.py
+        env:
+          ALLURE_RESULTS_DIR: allure-results
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ALLURE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          SITE_HINT: ${{ github.event.inputs.site }}
+
+      - name: Проверить, нужно ли слать алерт
+        if: always()
+        id: telegram_check
+        run: echo "should_send=$(cat telegram_should_send.txt)" >> $GITHUB_OUTPUT
+
+      - name: Отправить Telegram alert
+        if: ${{ always() && steps.telegram_check.outputs.should_send == '1' }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "text@telegram_message.txt"
