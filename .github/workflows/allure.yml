@@ -87,7 +87,7 @@ jobs:
 
       - name: Собрать сообщение для Telegram из Allure
         if: ${{ always() && (steps.run_tests_single.outcome == 'failure' || steps.run_tests_all.outcome == 'failure') }}
-        run: python scripts/notify_from_allure.py
+        run: python notify_from_allure.py
         env:
           ALLURE_RESULTS_DIR: allure-results
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
