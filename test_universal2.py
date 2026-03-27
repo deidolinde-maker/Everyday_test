@@ -454,7 +454,7 @@ def accept_cookie_banner(page: Page):
             elems = page.locator(sel)
             for i in range(min(elems.count(), 30)):
                 el = elems.nth(i)
-                if not el.is_visible():
+                if not el.is_visible(timeout=500):
                     continue
                 text = (el.inner_text() or "").strip().lower()
                 if text in {"ok", "ок", "принять", "accept", "agree"}:
@@ -523,6 +523,18 @@ def close_popup_or_page(page: Page):
 
 
 def safe_goto(page: Page, url: str, retries: int = 3):
+    # Если застряли на странице благодарности — даём браузеру завершить редирект
+    try:
+        if any(m in page.url.lower() for m in SUCCESS_URL_MARKERS):
+            page.wait_for_timeout(2000)
+    except Exception:
+        pass
+    try:
+        page.wait_for_load_state("domcontentloaded", timeout=5000)
+    except Exception:
+        pass
+    page.wait_for_timeout(300)
+
     for attempt in range(1, retries + 1):
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=30_000)
@@ -531,7 +543,7 @@ def safe_goto(page: Page, url: str, retries: int = 3):
             return
         except Exception as e:
             print(f"  [NAV] Попытка {attempt}/{retries}: {e}")
-            page.wait_for_timeout(1000)
+            page.wait_for_timeout(1500)
     print(f"  [NAV] ❌ Не удалось перейти на {url}")
 
 
