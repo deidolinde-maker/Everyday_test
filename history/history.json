@@ -1,1 +1,1 @@
-{}
+{"b655fc4c25627d3a470e574d4b205117":{"statistic":{"failed":1,"broken":0,"skipped":0,"passed":0,"unknown":0,"total":1},"items":[{"uid":"4582130c4adf5395","reportUrl":"https://deidolinde-maker.github.io/Everyday_test/26/#testresult/4582130c4adf5395","status":"failed","statusDetails":"AssertionError: [beeline-internet.online] Попапы главной: 2 ошибок, 11 успешно\nassert 2 == 0","time":{"start":1774615311488,"stop":1774615489261,"duration":177773}}]}}
