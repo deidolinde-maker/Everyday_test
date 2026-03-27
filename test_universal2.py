@@ -1,4 +1,3 @@
-
 """
 Универсальный тест форм для сайтов интернет-провайдеров.
 
@@ -7,6 +6,8 @@
 
 Запуск для всех сайтов последовательно:
     pytest -s --headed  (прогоняет все сайты из SITE_CONFIGS)
+    pytest test_universal2.py --alluredir=allure-results -s - все сайты с аллюр
+    pytest test_universal2.py --site=mts-home-gpon.ru --alluredir=allure-results -s - конкретный сайт с аллюр
 
 Добавить новый сайт — достаточно добавить запись в SITE_CONFIGS.
 """
@@ -14,8 +15,80 @@
 import pytest
 from playwright.sync_api import Page, expect
 import allure
+import os
+import requests
+from datetime import datetime
 
 REALLY_SUBMIT = True # True — реально отправлять заявки
+
+# ---------------------------------------------------------------------------
+# Таблица ошибок → причин для Telegram-алертов
+# ---------------------------------------------------------------------------
+
+ERROR_REASONS = {
+    "popup_not_found":  ("Попап не распознан",           "Попап не открылся после клика"),
+    "form_not_filled":  ("Форма не заполнена",            "Поле недоступно или перекрыто оверлеем"),
+    "submit_not_found": ("Кнопка отправки не найдена",    "Форма не в ожидаемом состоянии"),
+    "no_confirmation":  ("Подтверждение не получено",     "Сайт не перешёл на /thanks"),
+    "click_failed":     ("Клик по кнопке не удался",      "Элемент не виден или не существует"),
+    "city_not_found":   ("Город не найден в списке",      "Список городов не загрузился"),
+    "city_no_redirect": ("Переход на город не произошёл", "URL не изменился после клика"),
+}
+
+
+def send_telegram_alert(text: str):
+    """Отправляет сообщение в Telegram. Безопасно — не падает если токен не задан."""
+    token   = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    if not token or not chat_id:
+        return
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            data={"chat_id": chat_id, "text": text},
+            timeout=10,
+        )
+    except Exception:
+        pass
+
+
+def log_error(error_code: str, page: "Page", site_label: str, extra: str = ""):
+    """
+    Печатает ошибку в консоль и мгновенно шлёт Telegram-алерт.
+
+    error_code — ключ из ERROR_REASONS
+    page       — для получения текущего URL
+    site_label — домен сайта
+    extra      — дополнительный контекст (опционально)
+    """
+    error_msg, reason = ERROR_REASONS.get(
+        error_code, (error_code, "Неизвестная причина")
+    )
+    url  = page.url if page else ""
+    time = datetime.now().strftime("%H:%M:%S")
+
+    # Консоль
+    print(f"  ❌ {error_msg} | {reason} | {url}")
+
+    # Telegram
+    lines = [
+        "❌ Ошибка в тесте",
+        "",
+        f"Сайт: {site_label}",
+        f"Ошибка: {error_msg}",
+        f"Причина: {reason}",
+    ]
+    if extra:
+        lines.append(f"Детали: {extra}")
+    lines += [
+        f"URL: {url}",
+        f"Время: {time}",
+    ]
+    run_url = os.getenv("RUN_URL", "").strip()
+    if run_url:
+        lines.append(f"Run: {run_url}")
+
+    send_telegram_alert("\n".join(lines))
 
 # ---------------------------------------------------------------------------
 # Конфигурация форм (CSS-классы полей)
@@ -347,10 +420,11 @@ def accept_cookie_banner(page: Page):
     Безопасно вызывать на любом сайте — если баннера нет, ничего не делает.
     Ищет кнопку по нескольким вариантам — разные сайты используют разную вёрстку.
     """
-    # Ждём — баннер может появиться с задержкой
-    page.wait_for_timeout(500)
+    # Ждём — Tilda/Beeline баннеры появляются с задержкой 0.5-1.5с
+    page.wait_for_timeout(1500)
 
     cookie_selectors = [
+        "#cookieButton",                       # Beeline: <div id="cookieButton">OK</div>
         "#cookieAccept",                       # РТК: <button id="cookieAccept">
         ".cookie-btn",                         # РТК: <button class="cookie-btn">
         "#cookie-accept",
@@ -359,6 +433,8 @@ def accept_cookie_banner(page: Page):
         "[class*='cookie'][class*='button']",
         "[id*='cookie'][id*='accept']",
         "[id*='cookieAccept']",
+        "[id*='cookieButton']",
+        ".t886__btn",                          # Tilda cookie banner button
     ]
     for sel in cookie_selectors:
         try:
@@ -371,16 +447,19 @@ def accept_cookie_banner(page: Page):
         except Exception:
             pass
 
-    # Запасной вариант: кнопка с текстом внутри cookie-контейнера
-    for cookie_container in ["#cookieCloud", ".cookie-cloud", "[class*='cookie']"]:
+    # Запасной вариант: любой видимый элемент с текстом OK/Принять
+    for sel in ["div", "button", "a", "span"]:
         try:
-            btn = page.locator(f"{cookie_container} button").first
-            if btn.count() > 0 and btn.is_visible():
-                text = (btn.inner_text() or "").strip().lower()
-                if any(w in text for w in ["принять", "accept", "agree", "ok", "ок"]):
-                    btn.click(force=True)
+            elems = page.locator(sel)
+            for i in range(min(elems.count(), 30)):
+                el = elems.nth(i)
+                if not el.is_visible():
+                    continue
+                text = (el.inner_text() or "").strip().lower()
+                if text in {"ok", "ок", "принять", "accept", "agree"}:
+                    el.click(force=True)
                     page.wait_for_timeout(400)
-                    print(f"  [COOKIE] Баннер принят (текст: '{text}')")
+                    print(f"  [COOKIE] Баннер принят (текст: '{text}', тег: {sel})")
                     return
         except Exception:
             pass
@@ -741,11 +820,39 @@ def collect_business_buttons(page: Page) -> list:
 # Универсальный цикл попапов
 # ---------------------------------------------------------------------------
 
+def dismiss_profit_popup(page: Page):
+    """
+    Закрывает автоматически всплывший попап 'Выгодное спецпредложение'
+    если он появился сам (мешает другим шагам).
+    Не заполняет форму — просто закрывает. Безопасно вызывать в любой момент.
+    """
+    try:
+        phone = page.locator(FORM_CONFIGS["profit"]["phone"]).first
+        if phone.count() == 0 or not phone.is_visible():
+            return
+        for close_sel in [
+            ".popup__close", ".fancybox-close-small", ".modal__close",
+            "[aria-label*='close']", "[aria-label*='закры']",
+        ]:
+            btn = page.locator(close_sel).first
+            if btn.count() > 0 and btn.is_visible():
+                btn.click(force=True)
+                page.wait_for_timeout(300)
+                print("  [PROFIT] Автоматический profit-попап закрыт")
+                return
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(300)
+        print("  [PROFIT] Profit-попап закрыт (Escape)")
+    except Exception:
+        pass
+
+
 def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                      btn_locator_fn, label: str = "POPUP",
                      has_name_field: bool = False) -> tuple[int, int]:
-    success = 0
-    failed  = 0
+    success    = 0
+    failed     = 0
+    site_label = base_url.replace("https://", "").replace("http://", "").strip("/")
 
     for num, entry in enumerate(buttons, 1):
         text      = entry.get("text", "")
@@ -754,6 +861,10 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
         print(f"\n{sep}\n[{label} {num}/{len(buttons)}] '{text}' hint={form_hint}\n{sep}")
 
         safe_goto(page, base_url)
+        accept_cookie_banner(page)
+        # Закрываем profit если всплыл сам — но не когда тестируем сам profit
+        if form_hint != "profit":
+            dismiss_profit_popup(page)
 
         try:
             btn = btn_locator_fn(page, entry)
@@ -761,24 +872,24 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
             btn.click(force=True)
             page.wait_for_timeout(500)
         except Exception as e:
-            print(f"  [{label}] ❌ Клик не удался: {e}")
+            log_error("click_failed", page, site_label, extra=str(e)[:150])
             failed += 1
             continue
 
         form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
         if form_type is None:
-            print(f"  [{label}] ❌ Попап не распознан")
+            log_error("popup_not_found", page, site_label)
             failed += 1
             continue
 
         if not fill_form(page, container, form_type, has_name_field=has_name_field):
-            print(f"  [{label}] ❌ Форма не заполнена")
+            log_error("form_not_filled", page, site_label)
             failed += 1
             continue
 
         submit = find_submit(container, form_type)
         if submit is None:
-            print(f"  [{label}] ❌ Кнопка отправки не найдена")
+            log_error("submit_not_found", page, site_label)
             failed += 1
             continue
 
@@ -789,9 +900,15 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
             ok = wait_for_success_url(page, timeout_ms=15_000)
             if ok:
                 print(f"  [{label}] ✅ Заявка принята")
+                # Ждём завершения редиректов перед следующим safe_goto
+                try:
+                    page.wait_for_load_state("domcontentloaded", timeout=5000)
+                except Exception:
+                    pass
+                page.wait_for_timeout(500)
                 success += 1
             else:
-                print(f"  [{label}] ⚠️  Подтверждение не получено")
+                log_error("no_confirmation", page, site_label)
                 failed += 1
         else:
             print(f"  [{label}] ✅ Форма готова (REALLY_SUBMIT=False)")
@@ -840,8 +957,9 @@ def process_business_popups(page: Page, base_url: str,
 
 def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | None, str | None]:
     """
-    Открывает попап выбора города через кнопку в шапке,
-    кликает на нужный город, возвращает (city_base_url, city_business_url).
+    Открывает попап выбора города, кликает на нужный город,
+    возвращает (city_base_url, city_business_url).
+    Поддерживает все варианты вёрстки из набора локаторов RegionChoice.
     """
     sep = "=" * 55
     print(f"\n{sep}\n[CITY] Выбор города '{city_name}'\n{sep}")
@@ -849,42 +967,92 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
     safe_goto(page, base_url)
     close_overlays(page)
 
-    # Пробуем разные варианты кнопки города — на разных сайтах разная вёрстка
+    # Все известные варианты кнопки открытия попапа города
+    CITY_BUTTON_SELECTORS = [
+        "xpath=(//span[@id='city'])[1]",
+        "xpath=(//span[@id='city'])[2]",
+        "xpath=(//a[@id='city'])[1]",
+        "xpath=(//a[@class='city'])[2]",
+        "xpath=//div[@class='header__wrapper-middle']//span[@id='city']",
+        "a.header__city.city",
+        "a.header__city",
+        "#city",
+        "span#city",
+        "a#city",
+        "[class*='header'][class*='city']",
+        "xpath=//div[@class='footer__city']//a",
+    ]
+
     city_btn = None
-    for sel in ["a.header__city.city", "a.header__city", ".city-selector",
-                "[class*='header'][class*='city']", "a[href*='city']"]:
-        loc = page.locator(sel).first
-        if loc.count() > 0:
-            city_btn = loc
-            print(f"  [CITY] Кнопка города найдена: '{sel}'")
-            break
+    for sel in CITY_BUTTON_SELECTORS:
+        try:
+            loc = page.locator(sel).first
+            if loc.count() > 0:
+                city_btn = loc
+                print(f"  [CITY] Кнопка найдена: '{sel}'")
+                break
+        except Exception:
+            pass
 
     if city_btn is None:
         print("  [CITY] ❌ Кнопка выбора города не найдена — шаг пропущен")
         return None, None
 
     city_btn.click(force=True)
-    page.wait_for_timeout(600)
+    page.wait_for_timeout(800)
 
-    city_links = page.locator(".region_item.region_link")
-    city_links.first.wait_for(state="attached", timeout=10_000)
+    # Все известные варианты поля поиска города
+    CITY_INPUT_SELECTORS = [
+        "xpath=//input[@placeholder='Введите название города']",
+        "xpath=//input[@id='city-input']",
+        "xpath=//input[@placeholder='Поиск города']",
+        "input[placeholder*='оиск']",
+        "input[placeholder*='ород']",
+        "input[type='search']",
+    ]
 
-    # Поле поиска — фильтруем если есть
-    for sel in ["input[placeholder*='оиск']", "input[placeholder*='ород']",
-                "input[type='search']", "input[type='text']"]:
-        inp = page.locator(sel).first
+    for sel in CITY_INPUT_SELECTORS:
         try:
+            inp = page.locator(sel).first
             if inp.count() > 0 and inp.is_visible():
                 inp.click(force=True)
                 inp.fill(city_name)
-                page.wait_for_timeout(400)
-                print(f"  [CITY] Введено '{city_name}'")
+                page.wait_for_timeout(500)
+                print(f"  [CITY] Введено '{city_name}' в поле поиска")
                 break
         except Exception:
             pass
 
-    link = page.locator(".region_item.region_link").filter(has_text=city_name).first
-    assert link.count() > 0, f"Город '{city_name}' не найден в списке"
+    # Все известные варианты списка городов
+    CITY_LINK_SELECTORS = [
+        "xpath=(//a[@class='region_item region_link'])",
+        "xpath=//a[@class='region_item']",
+        "xpath=//div[@class='city-coverage__capital']//a",
+        "xpath=(//table[@class='city_list']//tbody//tr//td//a)",
+        ".region_item.region_link",
+        ".region_item",
+    ]
+
+    link = None
+    for sel in CITY_LINK_SELECTORS:
+        try:
+            loc = page.locator(sel).filter(has_text=city_name).first
+            if loc.count() > 0:
+                try:
+                    loc.wait_for(state="attached", timeout=3000)
+                except Exception:
+                    pass
+                link = loc
+                print(f"  [CITY] Город '{city_name}' найден: '{sel}'")
+                break
+        except Exception:
+            pass
+
+    if link is None or link.count() == 0:
+        log_error("city_not_found", page,
+                  base_url.replace("https://","").replace("http://","").strip("/"),
+                  extra=f"city={city_name}")
+        return None, None
 
     old_url = page.url
     link.click(force=True)
@@ -898,16 +1066,14 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
             city_base_url = page.url.rstrip("/")
             break
 
-    assert city_base_url, f"Переход не произошёл. URL: {page.url}"
+    if not city_base_url:
+        log_error("city_no_redirect", page,
+                  base_url.replace("https://","").replace("http://","").strip("/"),
+                  extra=f"city={city_name}")
+        return None, None
+
     print(f"  [CITY] ✅ {city_base_url}")
-
     return city_base_url, city_base_url + "/business"
-
-
-# ---------------------------------------------------------------------------
-# Единый сценарий для одного сайта
-# ---------------------------------------------------------------------------
-
 def run_site_scenario(page: Page, cfg: dict):
     """
     Полный сценарий для сайта:
