@@ -17,6 +17,7 @@ from playwright.sync_api import Page, expect
 import allure
 import os
 import requests
+import threading
 from datetime import datetime
 
 REALLY_SUBMIT = True # True — реально отправлять заявки
@@ -37,19 +38,26 @@ ERROR_REASONS = {
 
 
 def send_telegram_alert(text: str):
-    """Отправляет сообщение в Telegram. Безопасно — не падает если токен не задан."""
+    """
+    Отправляет сообщение в Telegram в фоновом потоке.
+    Тест не ждёт ответа — алерт уходит мгновенно не блокируя прогон.
+    """
     token   = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
     if not token or not chat_id:
         return
-    try:
-        requests.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            data={"chat_id": chat_id, "text": text},
-            timeout=10,
-        )
-    except Exception:
-        pass
+
+    def _send():
+        try:
+            requests.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                data={"chat_id": chat_id, "text": text},
+                timeout=10,
+            )
+        except Exception:
+            pass
+
+    threading.Thread(target=_send, daemon=True).start()
 
 
 def log_error(error_code: str, page: "Page", site_label: str, extra: str = ""):
@@ -522,6 +530,19 @@ def close_popup_or_page(page: Page):
 
 
 def safe_goto(page: Page, url: str, retries: int = 3):
+    # Если застряли на странице благодарности — даём браузеру время завершить редирект
+    try:
+        if any(m in page.url.lower() for m in SUCCESS_URL_MARKERS):
+            page.wait_for_timeout(2000)
+    except Exception:
+        pass
+    # Ждём завершения любой текущей навигации перед переходом
+    try:
+        page.wait_for_load_state("domcontentloaded", timeout=5000)
+    except Exception:
+        pass
+    page.wait_for_timeout(300)
+
     for attempt in range(1, retries + 1):
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=30_000)
@@ -530,7 +551,7 @@ def safe_goto(page: Page, url: str, retries: int = 3):
             return
         except Exception as e:
             print(f"  [NAV] Попытка {attempt}/{retries}: {e}")
-            page.wait_for_timeout(1000)
+            page.wait_for_timeout(1500)
     print(f"  [NAV] ❌ Не удалось перейти на {url}")
 
 
@@ -1173,9 +1194,6 @@ def test_site(page: Page, site_cfg: dict):
     """
     allure.dynamic.title(f"Сайт: {site_cfg['base_url']}")
     allure.dynamic.label("suite", "Формы провайдеров")
-
-    with allure.step("Запуск сценария"):
-        run_site_scenario(page, site_cfg)
 
     with allure.step("Запуск сценария"):
         run_site_scenario(page, site_cfg)
