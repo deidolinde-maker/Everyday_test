@@ -1,3 +1,4 @@
+
 """
 Универсальный тест форм для сайтов интернет-провайдеров.
 
@@ -17,7 +18,6 @@ from playwright.sync_api import Page, expect
 import allure
 import os
 import requests
-import threading
 from datetime import datetime
 
 REALLY_SUBMIT = True # True — реально отправлять заявки
@@ -38,26 +38,19 @@ ERROR_REASONS = {
 
 
 def send_telegram_alert(text: str):
-    """
-    Отправляет сообщение в Telegram в фоновом потоке.
-    Тест не ждёт ответа — алерт уходит мгновенно не блокируя прогон.
-    """
+    """Отправляет сообщение в Telegram. Безопасно — не падает если токен не задан."""
     token   = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
     if not token or not chat_id:
         return
-
-    def _send():
-        try:
-            requests.post(
-                f"https://api.telegram.org/bot{token}/sendMessage",
-                data={"chat_id": chat_id, "text": text},
-                timeout=10,
-            )
-        except Exception:
-            pass
-
-    threading.Thread(target=_send, daemon=True).start()
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            data={"chat_id": chat_id, "text": text},
+            timeout=10,
+        )
+    except Exception:
+        pass
 
 
 def log_error(error_code: str, page: "Page", site_label: str, extra: str = ""):
@@ -380,7 +373,7 @@ def iter_visible(locator):
     for i in range(locator.count()):
         item = locator.nth(i)
         try:
-            if item.is_visible(timeout=500):
+            if item.is_visible():
                 yield item
         except Exception:
             pass
@@ -400,7 +393,7 @@ def dismiss_region_popup(page: Page):
     # Вариант 1: есть кнопка "Да" — кликаем её
     try:
         yes_btn = page.locator("#yesButton").first
-        if yes_btn.count() > 0 and yes_btn.is_visible(timeout=500):
+        if yes_btn.count() > 0 and yes_btn.is_visible():
             yes_btn.click(force=True)
             page.wait_for_timeout(400)
             print("  [REGION] Попап региона закрыт (кнопка 'Да')")
@@ -413,7 +406,7 @@ def dismiss_region_popup(page: Page):
         close_btn = page.locator(
             ".popup-select-region__content-wrapper .popup__close"
         ).first
-        if close_btn.count() > 0 and close_btn.is_visible(timeout=500):
+        if close_btn.count() > 0 and close_btn.is_visible():
             close_btn.click(force=True)
             page.wait_for_timeout(400)
             print("  [REGION] Попап региона закрыт (кнопка .popup__close)")
@@ -428,8 +421,8 @@ def accept_cookie_banner(page: Page):
     Безопасно вызывать на любом сайте — если баннера нет, ничего не делает.
     Ищет кнопку по нескольким вариантам — разные сайты используют разную вёрстку.
     """
-    # Ждём — Tilda/Beeline баннеры появляются с задержкой до 0.5с
-    page.wait_for_timeout(500)
+    # Ждём — Tilda/Beeline баннеры появляются с задержкой 0.5-1.5с
+    page.wait_for_timeout(1500)
 
     cookie_selectors = [
         "#cookieButton",                       # Beeline: <div id="cookieButton">OK</div>
@@ -447,7 +440,7 @@ def accept_cookie_banner(page: Page):
     for sel in cookie_selectors:
         try:
             btn = page.locator(sel).first
-            if btn.count() > 0 and btn.is_visible(timeout=500):
+            if btn.count() > 0 and btn.is_visible():
                 btn.click(force=True)
                 page.wait_for_timeout(400)
                 print(f"  [COOKIE] Баннер принят ({sel})")
@@ -461,7 +454,7 @@ def accept_cookie_banner(page: Page):
             elems = page.locator(sel)
             for i in range(min(elems.count(), 30)):
                 el = elems.nth(i)
-                if not el.is_visible(timeout=500):
+                if not el.is_visible():
                     continue
                 text = (el.inner_text() or "").strip().lower()
                 if text in {"ok", "ок", "принять", "accept", "agree"}:
@@ -530,19 +523,6 @@ def close_popup_or_page(page: Page):
 
 
 def safe_goto(page: Page, url: str, retries: int = 3):
-    # Если застряли на странице благодарности — даём браузеру время завершить редирект
-    try:
-        if any(m in page.url.lower() for m in SUCCESS_URL_MARKERS):
-            page.wait_for_timeout(2000)
-    except Exception:
-        pass
-    # Ждём завершения любой текущей навигации перед переходом
-    try:
-        page.wait_for_load_state("domcontentloaded", timeout=5000)
-    except Exception:
-        pass
-    page.wait_for_timeout(300)
-
     for attempt in range(1, retries + 1):
         try:
             page.goto(url, wait_until="domcontentloaded", timeout=30_000)
@@ -551,7 +531,7 @@ def safe_goto(page: Page, url: str, retries: int = 3):
             return
         except Exception as e:
             print(f"  [NAV] Попытка {attempt}/{retries}: {e}")
-            page.wait_for_timeout(1500)
+            page.wait_for_timeout(1000)
     print(f"  [NAV] ❌ Не удалось перейти на {url}")
 
 
@@ -582,7 +562,7 @@ def choose_first_suggestion(page: Page, timeout_ms: int = 1500) -> bool:
             for i in range(loc.count()):
                 item = loc.nth(i)
                 try:
-                    if item.is_visible(timeout=500) and (item.inner_text() or "").strip():
+                    if item.is_visible() and (item.inner_text() or "").strip():
                         print(f"  [SUGGEST] '{item.inner_text().strip()[:50]}'")
                         item.click(timeout=3000, force=True)
                         page.wait_for_timeout(300)
@@ -615,7 +595,7 @@ def fill_form(page: Page, container, form_type: str,
 
     # Адрес / Улица
     street = container.locator(cfg["street"]).first
-    if street.count() > 0 and street.is_visible(timeout=500):
+    if street.count() > 0 and street.is_visible():
         street.scroll_into_view_if_needed()
         street.click(force=True)
         street.fill("Ленина")
@@ -654,7 +634,7 @@ def fill_form(page: Page, container, form_type: str,
                     'input[placeholder*="мя"]', 'input[placeholder*="ame"]']:
             candidate = container.locator(sel).first
             try:
-                if candidate.count() > 0 and candidate.is_visible(timeout=500):
+                if candidate.count() > 0 and candidate.is_visible():
                     name_inp = candidate
                     break
             except Exception:
@@ -669,7 +649,7 @@ def fill_form(page: Page, container, form_type: str,
 
     # Телефон (обязательное)
     phone = container.locator(cfg["phone"]).first
-    if phone.count() == 0 or not phone.is_visible(timeout=500):
+    if phone.count() == 0 or not phone.is_visible():
         print(f"  [FORM] ❌ Телефон не найден ({cfg['phone']})")
         return False
 
@@ -680,7 +660,7 @@ def fill_form(page: Page, container, form_type: str,
 
     for cb in iter_visible(container.locator("input[type='checkbox']")):
         try:
-            if not cb.is_checked(timeout=500):
+            if not cb.is_checked():
                 cb.check(force=True)
         except Exception:
             pass
@@ -692,7 +672,7 @@ def find_submit(container, form_type: str):
     cfg    = FORM_CONFIGS[form_type]
     submit = container.locator(cfg["submit"]).first
     try:
-        if submit.count() > 0 and submit.is_visible(timeout=500) and submit.is_enabled(timeout=500):
+        if submit.count() > 0 and submit.is_visible() and submit.is_enabled():
             print(f"  [SUBMIT] Найдена '{cfg['submit']}'")
             return submit
     except Exception:
@@ -722,10 +702,10 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
                 for i in range(containers.count()):
                     container = containers.nth(i)
                     try:
-                        if not container.is_visible(timeout=500):
+                        if not container.is_visible():
                             continue
                         phone = container.locator(cfg["phone"]).first
-                        if phone.count() > 0 and phone.is_visible(timeout=500):
+                        if phone.count() > 0 and phone.is_visible():
                             print(f"  [POPUP] sel='{popup_sel}' type='{form_type}'")
                             return form_type, container
                     except Exception:
@@ -736,17 +716,17 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
             for i in range(phone_fields.count()):
                 phone = phone_fields.nth(i)
                 try:
-                    if not phone.is_visible(timeout=500):
+                    if not phone.is_visible():
                         continue
                     parent = phone.locator(
                         "xpath=ancestor::div[contains(@class,'popup') or "
                         "contains(@class,'modal') or contains(@id,'popup')]"
                     ).last
-                    if parent.count() > 0 and parent.is_visible(timeout=500):
+                    if parent.count() > 0 and parent.is_visible():
                         print(f"  [POPUP] ancestor type='{form_type}'")
                         return form_type, parent
                     form_parent = phone.locator("xpath=ancestor::form").last
-                    if form_parent.count() > 0 and form_parent.is_visible(timeout=500):
+                    if form_parent.count() > 0 and form_parent.is_visible():
                         print(f"  [POPUP] form-ancestor type='{form_type}'")
                         return form_type, form_parent
                 except Exception:
@@ -776,7 +756,7 @@ def collect_popup_buttons(page: Page) -> list:
     for i in range(total):
         btn = all_btns.nth(i)
         try:
-            if not btn.is_visible(timeout=500) or not btn.is_enabled(timeout=500):
+            if not btn.is_visible() or not btn.is_enabled():
                 continue
             text = (btn.inner_text() or "").strip().lower()
             if not any(kw in text for kw in POPUP_OPEN_KEYWORDS):
@@ -797,7 +777,7 @@ def collect_popup_buttons(page: Page) -> list:
         for i in range(btns.count()):
             btn = btns.nth(i)
             try:
-                if not btn.is_visible(timeout=500) or not btn.is_enabled(timeout=500):
+                if not btn.is_visible() or not btn.is_enabled():
                     continue
                 global_idx = btn.evaluate(
                     "el => Array.from(document.querySelectorAll('button')).indexOf(el)"
@@ -825,7 +805,7 @@ def collect_business_buttons(page: Page) -> list:
     for i in range(total):
         btn = btns.nth(i)
         try:
-            if not btn.is_visible(timeout=500) or not btn.is_enabled(timeout=500):
+            if not btn.is_visible() or not btn.is_enabled():
                 continue
             text = (btn.inner_text() or "").strip().lower()
             tag  = btn.evaluate("el => el.tagName.toLowerCase()")
@@ -849,14 +829,14 @@ def dismiss_profit_popup(page: Page):
     """
     try:
         phone = page.locator(FORM_CONFIGS["profit"]["phone"]).first
-        if phone.count() == 0 or not phone.is_visible(timeout=500):
+        if phone.count() == 0 or not phone.is_visible():
             return
         for close_sel in [
             ".popup__close", ".fancybox-close-small", ".modal__close",
             "[aria-label*='close']", "[aria-label*='закры']",
         ]:
             btn = page.locator(close_sel).first
-            if btn.count() > 0 and btn.is_visible(timeout=500):
+            if btn.count() > 0 and btn.is_visible():
                 btn.click(force=True)
                 page.wait_for_timeout(300)
                 print("  [PROFIT] Автоматический profit-попап закрыт")
@@ -883,6 +863,9 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
 
         safe_goto(page, base_url)
         accept_cookie_banner(page)
+        # Закрываем profit если всплыл сам — но не когда тестируем сам profit
+        if form_hint != "profit":
+            dismiss_profit_popup(page)
 
         try:
             btn = btn_locator_fn(page, entry)
@@ -1032,7 +1015,7 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
     for sel in CITY_INPUT_SELECTORS:
         try:
             inp = page.locator(sel).first
-            if inp.count() > 0 and inp.is_visible(timeout=500):
+            if inp.count() > 0 and inp.is_visible():
                 inp.click(force=True)
                 inp.fill(city_name)
                 page.wait_for_timeout(500)
