@@ -1,3 +1,5 @@
+name: Playwright Tests
+
 on:
   workflow_dispatch:
     inputs:
@@ -84,7 +86,7 @@ jobs:
           publish_dir: allure-report
 
       - name: Собрать сообщение для Telegram из Allure
-        if: ${{ always() && (steps.run_tests_single.outcome == 'failure' || steps.run_tests_all.outcome == 'failure') }}
+        if: always()
         run: python notify_from_allure.py
         env:
           ALLURE_RESULTS_DIR: allure-results
