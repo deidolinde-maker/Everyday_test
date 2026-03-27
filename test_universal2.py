@@ -19,7 +19,7 @@ import os
 import requests
 from datetime import datetime
 
-REALLY_SUBMIT = True # True — реально отправлять заявки
+REALLY_SUBMIT = False # True — реально отправлять заявки
 
 # ---------------------------------------------------------------------------
 # Таблица ошибок → причин для Telegram-алертов
@@ -420,8 +420,8 @@ def accept_cookie_banner(page: Page):
     Безопасно вызывать на любом сайте — если баннера нет, ничего не делает.
     Ищет кнопку по нескольким вариантам — разные сайты используют разную вёрстку.
     """
-    # Ждём — Tilda/Beeline баннеры появляются с задержкой 0.5-1.5с
-    page.wait_for_timeout(1500)
+    # Ждём — Tilda/Beeline баннеры появляются с задержкой до 0.5с
+    page.wait_for_timeout(500)
 
     cookie_selectors = [
         "#cookieButton",                       # Beeline: <div id="cookieButton">OK</div>
@@ -862,9 +862,6 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
 
         safe_goto(page, base_url)
         accept_cookie_banner(page)
-        # Закрываем profit если всплыл сам — но не когда тестируем сам profit
-        if form_hint != "profit":
-            dismiss_profit_popup(page)
 
         try:
             btn = btn_locator_fn(page, entry)
@@ -1176,6 +1173,9 @@ def test_site(page: Page, site_cfg: dict):
     """
     allure.dynamic.title(f"Сайт: {site_cfg['base_url']}")
     allure.dynamic.label("suite", "Формы провайдеров")
+
+    with allure.step("Запуск сценария"):
+        run_site_scenario(page, site_cfg)
 
     with allure.step("Запуск сценария"):
         run_site_scenario(page, site_cfg)
