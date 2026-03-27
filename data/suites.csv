@@ -5,4 +5,4 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","177773","Сайт: https://beeline-internet.online/","","Fri Mar 27 12:41:51 UTC 2026","failed","Fri Mar 27 12:44:49 UTC 2026","","Формы провайдеров","",""
+    ","125756","Сайт: https://mts-home.online/","","Fri Mar 27 12:47:37 UTC 2026","failed","Fri Mar 27 12:49:42 UTC 2026","","Формы провайдеров","",""
