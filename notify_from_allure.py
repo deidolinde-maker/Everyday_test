@@ -44,7 +44,13 @@ def collect_results(results_dir: Path) -> tuple[int, int, list[dict]]:
 
 
 def build_summary(passed: int, failed: int, failed_list: list[dict]) -> str:
-    lines = ["📊 Прогон завершён", ""]
+    # Заголовок зависит от результата
+    if failed == 0:
+        header = "✅ Прогон завершён успешно"
+    else:
+        header = "❌ Прогон завершён с ошибками"
+
+    lines = [header, ""]
 
     if SITE_HINT:
         lines.append(f"Сайт: {SITE_HINT}")
@@ -56,7 +62,7 @@ def build_summary(passed: int, failed: int, failed_list: list[dict]) -> str:
     if failed_list:
         lines.append("")
         lines.append("Упавшие тесты:")
-        for item in failed_list[:5]:   # не больше 5 чтобы не спамить
+        for item in failed_list[:5]:
             lines.append(f"  • {item['name']}")
         if len(failed_list) > 5:
             lines.append(f"  ... и ещё {len(failed_list) - 5}")
@@ -73,22 +79,13 @@ def build_summary(passed: int, failed: int, failed_list: list[dict]) -> str:
 def main() -> int:
     passed, failed, failed_list = collect_results(RESULTS_DIR)
 
-    if failed == 0:
-        OUT_FLAG_FILE.write_text("0", encoding="utf-8")
-        OUT_MESSAGE_FILE.write_text("", encoding="utf-8")
-        print(f"All passed: {passed}")
-        return 0
-
     message = build_summary(passed, failed, failed_list)
+
+    # Всегда шлём — и при успехе и при падении
     OUT_FLAG_FILE.write_text("1", encoding="utf-8")
     OUT_MESSAGE_FILE.write_text(message, encoding="utf-8")
     print(message)
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-
 
 
 if __name__ == "__main__":
