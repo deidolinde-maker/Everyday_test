@@ -372,7 +372,7 @@ def iter_visible(locator):
     for i in range(locator.count()):
         item = locator.nth(i)
         try:
-            if item.is_visible():
+            if item.is_visible(timeout=500):
                 yield item
         except Exception:
             pass
@@ -392,7 +392,7 @@ def dismiss_region_popup(page: Page):
     # Вариант 1: есть кнопка "Да" — кликаем её
     try:
         yes_btn = page.locator("#yesButton").first
-        if yes_btn.count() > 0 and yes_btn.is_visible():
+        if yes_btn.count() > 0 and yes_btn.is_visible(timeout=500):
             yes_btn.click(force=True)
             page.wait_for_timeout(400)
             print("  [REGION] Попап региона закрыт (кнопка 'Да')")
@@ -405,7 +405,7 @@ def dismiss_region_popup(page: Page):
         close_btn = page.locator(
             ".popup-select-region__content-wrapper .popup__close"
         ).first
-        if close_btn.count() > 0 and close_btn.is_visible():
+        if close_btn.count() > 0 and close_btn.is_visible(timeout=500):
             close_btn.click(force=True)
             page.wait_for_timeout(400)
             print("  [REGION] Попап региона закрыт (кнопка .popup__close)")
@@ -439,7 +439,7 @@ def accept_cookie_banner(page: Page):
     for sel in cookie_selectors:
         try:
             btn = page.locator(sel).first
-            if btn.count() > 0 and btn.is_visible():
+            if btn.count() > 0 and btn.is_visible(timeout=500):
                 btn.click(force=True)
                 page.wait_for_timeout(400)
                 print(f"  [COOKIE] Баннер принят ({sel})")
@@ -453,7 +453,7 @@ def accept_cookie_banner(page: Page):
             elems = page.locator(sel)
             for i in range(min(elems.count(), 30)):
                 el = elems.nth(i)
-                if not el.is_visible():
+                if not el.is_visible(timeout=500):
                     continue
                 text = (el.inner_text() or "").strip().lower()
                 if text in {"ok", "ок", "принять", "accept", "agree"}:
@@ -561,7 +561,7 @@ def choose_first_suggestion(page: Page, timeout_ms: int = 1500) -> bool:
             for i in range(loc.count()):
                 item = loc.nth(i)
                 try:
-                    if item.is_visible() and (item.inner_text() or "").strip():
+                    if item.is_visible(timeout=500) and (item.inner_text() or "").strip():
                         print(f"  [SUGGEST] '{item.inner_text().strip()[:50]}'")
                         item.click(timeout=3000, force=True)
                         page.wait_for_timeout(300)
@@ -594,7 +594,7 @@ def fill_form(page: Page, container, form_type: str,
 
     # Адрес / Улица
     street = container.locator(cfg["street"]).first
-    if street.count() > 0 and street.is_visible():
+    if street.count() > 0 and street.is_visible(timeout=500):
         street.scroll_into_view_if_needed()
         street.click(force=True)
         street.fill("Ленина")
@@ -633,7 +633,7 @@ def fill_form(page: Page, container, form_type: str,
                     'input[placeholder*="мя"]', 'input[placeholder*="ame"]']:
             candidate = container.locator(sel).first
             try:
-                if candidate.count() > 0 and candidate.is_visible():
+                if candidate.count() > 0 and candidate.is_visible(timeout=500):
                     name_inp = candidate
                     break
             except Exception:
@@ -648,7 +648,7 @@ def fill_form(page: Page, container, form_type: str,
 
     # Телефон (обязательное)
     phone = container.locator(cfg["phone"]).first
-    if phone.count() == 0 or not phone.is_visible():
+    if phone.count() == 0 or not phone.is_visible(timeout=500):
         print(f"  [FORM] ❌ Телефон не найден ({cfg['phone']})")
         return False
 
@@ -659,7 +659,7 @@ def fill_form(page: Page, container, form_type: str,
 
     for cb in iter_visible(container.locator("input[type='checkbox']")):
         try:
-            if not cb.is_checked():
+            if not cb.is_checked(timeout=500):
                 cb.check(force=True)
         except Exception:
             pass
@@ -671,7 +671,7 @@ def find_submit(container, form_type: str):
     cfg    = FORM_CONFIGS[form_type]
     submit = container.locator(cfg["submit"]).first
     try:
-        if submit.count() > 0 and submit.is_visible() and submit.is_enabled():
+        if submit.count() > 0 and submit.is_visible(timeout=500) and submit.is_enabled(timeout=500):
             print(f"  [SUBMIT] Найдена '{cfg['submit']}'")
             return submit
     except Exception:
@@ -701,10 +701,10 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
                 for i in range(containers.count()):
                     container = containers.nth(i)
                     try:
-                        if not container.is_visible():
+                        if not container.is_visible(timeout=500):
                             continue
                         phone = container.locator(cfg["phone"]).first
-                        if phone.count() > 0 and phone.is_visible():
+                        if phone.count() > 0 and phone.is_visible(timeout=500):
                             print(f"  [POPUP] sel='{popup_sel}' type='{form_type}'")
                             return form_type, container
                     except Exception:
@@ -715,17 +715,17 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
             for i in range(phone_fields.count()):
                 phone = phone_fields.nth(i)
                 try:
-                    if not phone.is_visible():
+                    if not phone.is_visible(timeout=500):
                         continue
                     parent = phone.locator(
                         "xpath=ancestor::div[contains(@class,'popup') or "
                         "contains(@class,'modal') or contains(@id,'popup')]"
                     ).last
-                    if parent.count() > 0 and parent.is_visible():
+                    if parent.count() > 0 and parent.is_visible(timeout=500):
                         print(f"  [POPUP] ancestor type='{form_type}'")
                         return form_type, parent
                     form_parent = phone.locator("xpath=ancestor::form").last
-                    if form_parent.count() > 0 and form_parent.is_visible():
+                    if form_parent.count() > 0 and form_parent.is_visible(timeout=500):
                         print(f"  [POPUP] form-ancestor type='{form_type}'")
                         return form_type, form_parent
                 except Exception:
@@ -755,7 +755,7 @@ def collect_popup_buttons(page: Page) -> list:
     for i in range(total):
         btn = all_btns.nth(i)
         try:
-            if not btn.is_visible() or not btn.is_enabled():
+            if not btn.is_visible(timeout=500) or not btn.is_enabled(timeout=500):
                 continue
             text = (btn.inner_text() or "").strip().lower()
             if not any(kw in text for kw in POPUP_OPEN_KEYWORDS):
@@ -776,7 +776,7 @@ def collect_popup_buttons(page: Page) -> list:
         for i in range(btns.count()):
             btn = btns.nth(i)
             try:
-                if not btn.is_visible() or not btn.is_enabled():
+                if not btn.is_visible(timeout=500) or not btn.is_enabled(timeout=500):
                     continue
                 global_idx = btn.evaluate(
                     "el => Array.from(document.querySelectorAll('button')).indexOf(el)"
@@ -804,7 +804,7 @@ def collect_business_buttons(page: Page) -> list:
     for i in range(total):
         btn = btns.nth(i)
         try:
-            if not btn.is_visible() or not btn.is_enabled():
+            if not btn.is_visible(timeout=500) or not btn.is_enabled(timeout=500):
                 continue
             text = (btn.inner_text() or "").strip().lower()
             tag  = btn.evaluate("el => el.tagName.toLowerCase()")
@@ -828,14 +828,14 @@ def dismiss_profit_popup(page: Page):
     """
     try:
         phone = page.locator(FORM_CONFIGS["profit"]["phone"]).first
-        if phone.count() == 0 or not phone.is_visible():
+        if phone.count() == 0 or not phone.is_visible(timeout=500):
             return
         for close_sel in [
             ".popup__close", ".fancybox-close-small", ".modal__close",
             "[aria-label*='close']", "[aria-label*='закры']",
         ]:
             btn = page.locator(close_sel).first
-            if btn.count() > 0 and btn.is_visible():
+            if btn.count() > 0 and btn.is_visible(timeout=500):
                 btn.click(force=True)
                 page.wait_for_timeout(300)
                 print("  [PROFIT] Автоматический profit-попап закрыт")
@@ -1011,7 +1011,7 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
     for sel in CITY_INPUT_SELECTORS:
         try:
             inp = page.locator(sel).first
-            if inp.count() > 0 and inp.is_visible():
+            if inp.count() > 0 and inp.is_visible(timeout=500):
                 inp.click(force=True)
                 inp.fill(city_name)
                 page.wait_for_timeout(500)
