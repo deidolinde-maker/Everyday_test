@@ -5,4 +5,4 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","125756","Сайт: https://mts-home.online/","","Fri Mar 27 12:47:37 UTC 2026","failed","Fri Mar 27 12:49:42 UTC 2026","","Формы провайдеров","",""
+    ","175468","Сайт: https://mts-home-gpon.ru/","","Fri Mar 27 13:00:33 UTC 2026","failed","Fri Mar 27 13:03:29 UTC 2026","","Формы провайдеров","",""
