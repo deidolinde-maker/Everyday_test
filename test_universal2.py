@@ -19,7 +19,7 @@ import os
 import requests
 from datetime import datetime
 
-REALLY_SUBMIT = False # True — реально отправлять заявки
+REALLY_SUBMIT = True # True — реально отправлять заявки
 
 # ---------------------------------------------------------------------------
 # Таблица ошибок → причин для Telegram-алертов
