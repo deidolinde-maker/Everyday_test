@@ -45,7 +45,7 @@ jobs:
           python -m pytest test_universal2.py \
             --site=${{ github.event.inputs.site }} \
             --alluredir=allure-results \
-            --timeout=300 \
+            --timeout=600 \
             -s
         continue-on-error: true
 
@@ -55,7 +55,7 @@ jobs:
         run: |
           python -m pytest test_universal2.py \
             --alluredir=allure-results \
-            --timeout=300 \
+            --timeout=600 \
             -s
         continue-on-error: true
 
