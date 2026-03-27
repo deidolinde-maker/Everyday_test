@@ -1,8 +1,0 @@
-"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","298070","Сайт: https://online-beeline.ru/","","Fri Mar 27 12:15:26 UTC 2026","failed","Fri Mar 27 12:20:24 UTC 2026","","Формы провайдеров","",""
