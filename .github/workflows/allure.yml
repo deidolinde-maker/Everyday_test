@@ -1,48 +1,120 @@
-name: Pytest + Allure
+name: Playwright Tests
 
 on:
+  # Запуск вручную через GitHub UI с выбором сайта
+  workflow_dispatch:
+    inputs:
+      site:
+        description: 'Домен сайта (оставьте пустым для всех)'
+        required: false
+        default: ''
+
+  # Запуск автоматически по расписанию (каждый день в 9:00 UTC)
+  schedule:
+    - cron: '0 9 * * *'
+
+  # Запуск при каждом пуше в main/master
   push:
-    branches: [master, main]
-  pull_request:
-  workflow_dispatch:      # <- вот это
+    branches: [main, master]
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
 
     steps:
-      - name: Checkout repo
+      - name: Checkout репозитория
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Установка Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.12
+          python-version: '3.12'
 
-      - name: Install dependencies
+      - name: Установка Python-зависимостей
         run: |
           python -m pip install --upgrade pip
-          # requirements.txt отсутствует, используем явную установку
-          pip install pytest allure-pytest allure-python-commons
-          sudo apt-get update -y
-          sudo apt-get install -y openjdk-17-jre-headless
-          sudo apt-get install -y allure
+          python -m pip install pytest playwright pytest-playwright allure-pytest pytest-timeout requests
+          python -m pip show playwright
 
-      - name: Run tests with Allure results
+      - name: Установка браузера Chromium
         run: |
-          pytest --alluredir=allure-results
+          python -m playwright install chromium
+          python -m playwright install-deps chromium
 
-      - name: Generate Allure report
+      - name: Проверка импорта playwright
+        run: python -c "from playwright.sync_api import Page; print('playwright OK')"
+
+      - name: Запуск тестов (один сайт)
+        id: run_tests_single
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.site != '' }}
         run: |
-          allure generate allure-results -o allure-report --clean
+          python -m pytest test_universal2.py \
+            --site=${{ github.event.inputs.site }} \
+            --alluredir=allure-results \
+            --timeout=600 \
+            -s
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        continue-on-error: true
 
-      - name: Upload Allure report artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-report
-          path: allure-report
+      - name: Запуск тестов (все сайты)
+        id: run_tests_all
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.site == '' }}
+        run: |
+          python -m pytest test_universal2.py \
+            --alluredir=allure-results \
+            --timeout=600 \
+            -s
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        continue-on-error: true
 
-      - name: Upload allure-results artifact
+      - name: Сохранить результаты Allure
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: allure-results
-          path: allure-results
+          path: allure-results/
+          retention-days: 30
+
+      - name: Генерация Allure отчёта
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        with:
+          allure_results: allure-results
+          allure_report: allure-report
+          allure_history: allure-history
+
+      - name: Публикация отчёта на GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-report
+
+      - name: Собрать сообщение для Telegram из Allure
+        if: always()
+        run: python notify_from_allure.py
+        env:
+          ALLURE_RESULTS_DIR: allure-results
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ALLURE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          SITE_HINT: ${{ github.event.inputs.site }}
+
+      - name: Проверить, нужно ли слать алерт
+        if: always()
+        id: telegram_check
+        run: echo "should_send=$(cat telegram_should_send.txt)" >> $GITHUB_OUTPUT
+
+      - name: Отправить Telegram alert
+        if: ${{ always() && steps.telegram_check.outputs.should_send == '1' }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "text@telegram_message.txt"
