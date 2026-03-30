@@ -1,1 +1,1 @@
-{"cfa89f5b3b0a5fa8d4f4422df1959a31":{"statistic":{"failed":1,"broken":0,"skipped":0,"passed":0,"unknown":0,"total":1},"items":[{"uid":"33cb3ad90e5d3d5f","reportUrl":"https://deidolinde-maker.github.io/Everyday_test/35/#testresult/33cb3ad90e5d3d5f","status":"failed","statusDetails":"AssertionError: [mts-home.online] Попапы главной: 1 ошибок, 10 успешно\nassert 1 == 0","time":{"start":1774859992752,"stop":1774860155630,"duration":162878}}]}}
+{}
