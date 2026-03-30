@@ -36,20 +36,58 @@ ERROR_REASONS = {
 }
 
 
-def send_telegram_alert(text: str):
-    """Отправляет сообщение в Telegram. Безопасно — не падает если токен не задан."""
+def send_telegram_alert(text: str, alert_type: str = "tech") -> bool:
+    """Отправляет сообщение в Telegram и логирует результат отправки."""
     token   = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
     if not token or not chat_id:
-        return
+        print(f"[TELEGRAM][{alert_type}] Пропуск отправки: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID не заданы")
+        return False
+    print(f"[TELEGRAM][{alert_type}] Попытка отправки")
     try:
-        requests.post(
+        resp = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
             data={"chat_id": chat_id, "text": text},
             timeout=10,
         )
-    except Exception:
-        pass
+        if resp.ok:
+            print(f"[TELEGRAM][{alert_type}] Успешно отправлено (status={resp.status_code})")
+            return True
+        body = (resp.text or "").strip().replace("\n", " ")
+        print(f"[TELEGRAM][{alert_type}] Ошибка отправки (status={resp.status_code}): {body[:180]}")
+        return False
+    except Exception as e:
+        print(f"[TELEGRAM][{alert_type}] Исключение при отправке: {e}")
+        return False
+
+
+def mark_step_not_applicable(site_label: str, step_no: str, step_name: str, reason: str):
+    text = f"[{site_label}] Шаг {step_no}: {step_name} — неприменим ({reason})"
+    print(f"  ℹ️ {text}")
+    allure.attach(
+        text,
+        name=f"Шаг {step_no}: {step_name} — пропуск",
+        attachment_type=allure.attachment_type.TEXT,
+    )
+
+
+def send_step_alert(site_label: str, step_no: str, step_name: str, reason: str, page: "Page" = None):
+    url = page.url if page else ""
+    time_now = datetime.now().strftime("%H:%M:%S")
+    run_url = os.getenv("RUN_URL", "").strip()
+
+    lines = [
+        f"❌ [{site_label}] Шаг {step_no}: {step_name} — failed",
+        f"Статус: failed",
+        f"Причина: {reason}",
+        f"URL: {url}",
+        f"Время: {time_now}",
+    ]
+    if run_url:
+        lines.append(f"Run: {run_url}")
+
+    print(f"[STEP-ALERT] [{site_label}] Шаг {step_no}: {step_name} | {reason} | {url}")
+    send_telegram_alert("\n".join(lines), alert_type="step")
 
 
 def log_error(error_code: str, page: "Page", site_label: str, extra: str = ""):
@@ -88,7 +126,7 @@ def log_error(error_code: str, page: "Page", site_label: str, extra: str = ""):
     if run_url:
         lines.append(f"Run: {run_url}")
 
-    send_telegram_alert("\n".join(lines))
+    send_telegram_alert("\n".join(lines), alert_type="tech")
 
 # ---------------------------------------------------------------------------
 # Конфигурация форм (CSS-классы полей)
@@ -1100,76 +1138,116 @@ def run_site_scenario(page: Page, cfg: dict):
     has_name_field = cfg.get("has_name_field", False)
     sep            = "=" * 55
     site_label     = base_url.replace("https://", "").replace("http://", "").strip("/")
+    city_name      = cfg.get("city_name")
+    city_base      = None
+    city_biz       = None
 
     print(f"\n{'#'*55}\n# САЙТ: {site_label}\n{'#'*55}")
 
     # ── 1. Форма checkaddress ─────────────────────────────────────────────
-    if cfg.get("has_checkaddress"):
-        print(f"\n{sep}\n[{site_label}] Шаг 1: форма checkaddress\n{sep}")
-        safe_goto(page, base_url)
-        close_overlays(page)
+    with allure.step("Шаг 1: форма checkaddress"):
+        if cfg.get("has_checkaddress"):
+            print(f"\n{sep}\n[{site_label}] Шаг 1: форма checkaddress\n{sep}")
+            safe_goto(page, base_url)
+            close_overlays(page)
 
-        fcfg      = FORM_CONFIGS["checkaddress"]
-        container = page.locator("section, form, div").filter(
-            has=page.locator(fcfg["phone"])
-        ).first
+            step_reason = None
+            fcfg      = FORM_CONFIGS["checkaddress"]
+            container = page.locator("section, form, div").filter(
+                has=page.locator(fcfg["phone"])
+            ).first
 
-        if container.count() > 0:
-            filled = fill_form(page, container, "checkaddress")
-            submit = find_submit(container, "checkaddress") if filled else None
-            if submit:
-                submit.scroll_into_view_if_needed()
-                print(f"  ✅ checkaddress готова")
-                if REALLY_SUBMIT:
-                    submit.click(force=True)
-                    ok = wait_for_success_url(page, timeout_ms=15_000)
-                    if ok:
-                        safe_goto(page, base_url)
+            if container.count() > 0:
+                filled = fill_form(page, container, "checkaddress")
+                submit = find_submit(container, "checkaddress") if filled else None
+                if submit:
+                    submit.scroll_into_view_if_needed()
+                    print(f"  ✅ checkaddress готова")
+                    if REALLY_SUBMIT:
+                        submit.click(force=True)
+                        ok = wait_for_success_url(page, timeout_ms=15_000)
+                        if ok:
+                            safe_goto(page, base_url)
+                        else:
+                            step_reason = "подтверждение отправки не получено"
+                elif not filled:
+                    step_reason = "форма checkaddress не заполнена"
+                else:
+                    step_reason = "кнопка отправки checkaddress не найдена"
+            else:
+                print("  ⚠️  Форма checkaddress не найдена на странице")
+                step_reason = "форма checkaddress не найдена на странице"
+
+            if step_reason:
+                send_step_alert(site_label, "1", "форма checkaddress", step_reason, page)
         else:
-            print("  ⚠️  Форма checkaddress не найдена на странице")
-    else:
-        print(f"\n[{site_label}] Шаг 1: checkaddress — пропущен (has_checkaddress=False)")
+            mark_step_not_applicable(site_label, "1", "форма checkaddress", "has_checkaddress=False")
 
     # ── 2. Попапы главной ─────────────────────────────────────────────────
-    print(f"\n{sep}\n[{site_label}] Шаг 2: попапы главной\n{sep}")
-    safe_goto(page, base_url)
-    close_overlays(page)
-    s, f = process_all_popups(page, base_url, has_name_field=has_name_field)
-    assert f == 0, f"[{site_label}] Попапы главной: {f} ошибок, {s} успешно"
+    with allure.step("Шаг 2: попапы главной"):
+        print(f"\n{sep}\n[{site_label}] Шаг 2: попапы главной\n{sep}")
+        safe_goto(page, base_url)
+        close_overlays(page)
+        s, f = process_all_popups(page, base_url, has_name_field=has_name_field)
+        if f > 0:
+            send_step_alert(site_label, "2", "попапы главной", f"{f} ошибок, {s} успешно", page)
+        assert f == 0, f"[{site_label}] Попапы главной: {f} ошибок, {s} успешно"
 
     # ── 3. Попапы /business ───────────────────────────────────────────────
-    if cfg.get("has_business"):
-        business_url = base_url.rstrip("/") + "/business"
-        print(f"\n{sep}\n[{site_label}] Шаг 3: попапы /business\n{sep}")
-        safe_goto(page, business_url)
-        close_overlays(page)
-        s, f = process_business_popups(page, business_url, has_name_field=has_name_field)
-        assert f == 0, f"[{site_label}] Бизнес: {f} ошибок, {s} успешно"
-    else:
-        print(f"\n[{site_label}] Шаг 3: /business — пропущен (has_business=False)")
+    with allure.step("Шаг 3: попапы /business"):
+        if cfg.get("has_business"):
+            business_url = base_url.rstrip("/") + "/business"
+            print(f"\n{sep}\n[{site_label}] Шаг 3: попапы /business\n{sep}")
+            safe_goto(page, business_url)
+            close_overlays(page)
+            s, f = process_business_popups(page, business_url, has_name_field=has_name_field)
+            if f > 0:
+                send_step_alert(site_label, "3", "попапы /business", f"{f} ошибок, {s} успешно", page)
+            assert f == 0, f"[{site_label}] Бизнес: {f} ошибок, {s} успешно"
+        else:
+            mark_step_not_applicable(site_label, "3", "попапы /business", "has_business=False")
 
     # ── 4. Сценарий города ────────────────────────────────────────────────
-    city_name = cfg.get("city_name")
-    if city_name:
-        print(f"\n{sep}\n[{site_label}] Шаг 4: город '{city_name}'\n{sep}")
-        city_base, city_biz = run_city_scenario(page, base_url, city_name)
-        if city_base is None:
-            print(f"  [{site_label}] Шаг 4: город — пропущен (кнопка не найдена)")
+    with allure.step("Шаг 4: выбор города"):
+        if city_name:
+            print(f"\n{sep}\n[{site_label}] Шаг 4: город '{city_name}'\n{sep}")
+            city_base, city_biz = run_city_scenario(page, base_url, city_name)
+            if city_base is None:
+                reason = f"город '{city_name}' не выбран или не произошёл редирект"
+                send_step_alert(site_label, "4", "выбор города", reason, page)
+                assert city_base is not None, f"[{site_label}] Шаг 4: {reason}"
         else:
-            # 4a. Попапы главной города
+            mark_step_not_applicable(site_label, "4", "выбор города", "city_name=None")
+
+    # ── 4a. Попапы главной города ─────────────────────────────────────────
+    with allure.step("Шаг 4a: попапы главной города"):
+        if city_name is None:
+            mark_step_not_applicable(site_label, "4a", "попапы главной города", "city_name=None")
+        elif city_base is None:
+            mark_step_not_applicable(site_label, "4a", "попапы главной города", "городской сценарий недоступен по условию")
+        else:
             safe_goto(page, city_base)
             close_overlays(page)
             s, f = process_all_popups(page, city_base, has_name_field=has_name_field)
+            if f > 0:
+                send_step_alert(site_label, "4a", "попапы главной города", f"{f} ошибок, {s} успешно", page)
             assert f == 0, f"[{site_label}] Попапы города: {f} ошибок"
 
-            # 4b. Попапы /business города
-            if cfg.get("has_business"):
-                safe_goto(page, city_biz)
-                close_overlays(page)
-                s, f = process_business_popups(page, city_biz, has_name_field=has_name_field)
-                assert f == 0, f"[{site_label}] Бизнес города: {f} ошибок"
-    else:
-        print(f"\n[{site_label}] Шаг 4: город — пропущен (city_name=None)")
+    # ── 4b. Попапы /business города ───────────────────────────────────────
+    with allure.step("Шаг 4b: попапы /business города"):
+        if city_name is None:
+            mark_step_not_applicable(site_label, "4b", "попапы /business города", "city_name=None")
+        elif not cfg.get("has_business"):
+            mark_step_not_applicable(site_label, "4b", "попапы /business города", "has_business=False")
+        elif city_biz is None:
+            mark_step_not_applicable(site_label, "4b", "попапы /business города", "городской сценарий недоступен по условию")
+        else:
+            safe_goto(page, city_biz)
+            close_overlays(page)
+            s, f = process_business_popups(page, city_biz, has_name_field=has_name_field)
+            if f > 0:
+                send_step_alert(site_label, "4b", "попапы /business города", f"{f} ошибок, {s} успешно", page)
+            assert f == 0, f"[{site_label}] Бизнес города: {f} ошибок"
 
     print(f"\n{'#'*55}\n# ✅ ГОТОВО: {site_label}\n{'#'*55}\n")
 
@@ -1188,6 +1266,4 @@ def test_site(page: Page, site_cfg: dict):
     """
     allure.dynamic.title(f"Сайт: {site_cfg['base_url']}")
     allure.dynamic.label("suite", "Формы провайдеров")
-
-    with allure.step("Запуск сценария"):
-        run_site_scenario(page, site_cfg)
+    run_site_scenario(page, site_cfg)
