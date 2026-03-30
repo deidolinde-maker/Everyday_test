@@ -20,7 +20,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
 
     steps:
       - name: Checkout репозитория
@@ -31,19 +31,28 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Установка зависимостей
+      - name: Установка Python-зависимостей
         run: |
-          pip install pytest pytest-playwright allure-pytest
-          playwright install chromium
-          playwright install-deps chromium
+          python -m pip install --upgrade pip
+          python -m pip install pytest playwright pytest-playwright allure-pytest pytest-timeout requests
+          python -m pip show playwright
+
+      - name: Установка браузера Chromium
+        run: |
+          python -m playwright install chromium
+          python -m playwright install-deps chromium
+
+      - name: Проверка импорта playwright
+        run: python -c "from playwright.sync_api import Page; print('playwright OK')"
 
       - name: Запуск тестов (один сайт)
-        if: ${{ github.event.inputs.site != '' }}
+        id: run_tests_single
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.site != '' }}
         run: |
-          pytest test_universal2.py \
+          python -m pytest test_universal2.py \
             --site=${{ github.event.inputs.site }} \
             --alluredir=allure-results \
-            --timeout=300 \
+            --timeout=600 \
             -s
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -52,11 +61,12 @@ jobs:
         continue-on-error: true
 
       - name: Запуск тестов (все сайты)
-        if: ${{ github.event.inputs.site == '' }}
+        id: run_tests_all
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.site == '' }}
         run: |
-          pytest test_universal2.py \
+          python -m pytest test_universal2.py \
             --alluredir=allure-results \
-            --timeout=300 \
+            --timeout=600 \
             -s
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -87,3 +97,24 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-report
+
+      - name: Собрать сообщение для Telegram из Allure
+        if: always()
+        run: python notify_from_allure.py
+        env:
+          ALLURE_RESULTS_DIR: allure-results
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ALLURE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          SITE_HINT: ${{ github.event.inputs.site }}
+
+      - name: Проверить, нужно ли слать алерт
+        if: always()
+        id: telegram_check
+        run: echo "should_send=$(cat telegram_should_send.txt)" >> $GITHUB_OUTPUT
+
+      - name: Отправить Telegram alert
+        if: ${{ always() && steps.telegram_check.outputs.should_send == '1' }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "text@telegram_message.txt"
