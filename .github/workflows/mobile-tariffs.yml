@@ -1,0 +1,93 @@
+name: Mobile Tariffs Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      landing_filter:
+        description: "Опционально: фильтр pytest -k (например: MTS mts-home.online)"
+        required: false
+        default: ""
+
+  workflow_run:
+    workflows: ["Playwright Tests"]
+    types: [completed]
+
+jobs:
+  mobile_tariffs:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout репозитория
+        uses: actions/checkout@v4
+
+      - name: Установка Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Установка зависимостей
+        working-directory: mobile_tariffs_tests
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Установка браузера Chromium
+        run: |
+          python -m playwright install chromium
+          python -m playwright install-deps chromium
+
+      - name: Запуск mobile tariffs тестов
+        id: run_tests
+        continue-on-error: true
+        working-directory: mobile_tariffs_tests
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -n "${{ github.event.inputs.landing_filter }}" ]; then
+            python -m pytest -k "${{ github.event.inputs.landing_filter }}"
+          else
+            python -m pytest
+          fi
+
+      - name: Сохранить результаты Allure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-mobile-tariffs
+          path: mobile_tariffs_tests/allure-results/
+          retention-days: 30
+
+      - name: Генерация Allure отчёта
+        if: always()
+        uses: simple-elf/allure-report-action@master
+        with:
+          allure_results: mobile_tariffs_tests/allure-results
+          allure_report: mobile_tariffs_tests/allure-report
+          allure_history: mobile_tariffs_tests/allure-history
+
+      - name: Сохранить Allure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-mobile-tariffs
+          path: mobile_tariffs_tests/allure-report/
+          retention-days: 30
+
+      - name: Отправить итоговый Telegram summary
+        if: always()
+        working-directory: mobile_tariffs_tests
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ALLURE_RESULTS_DIR: allure-results
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ALLURE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python notify_from_allure_mobile.py
+
+      - name: Завалить job если есть падения тестов
+        if: ${{ steps.run_tests.outcome != 'success' }}
+        run: exit 1
