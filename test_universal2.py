@@ -1,4 +1,3 @@
-
 """
 Универсальный тест форм для сайтов интернет-провайдеров.
 
@@ -1189,6 +1188,10 @@ def test_site(page: Page, site_cfg: dict):
     """
     allure.dynamic.title(f"Сайт: {site_cfg['base_url']}")
     allure.dynamic.label("suite", "Формы провайдеров")
+
+    with allure.step("Запуск сценария"):
+        run_site_scenario(page, site_cfg)
+
 
     with allure.step("Запуск сценария"):
         run_site_scenario(page, site_cfg)
