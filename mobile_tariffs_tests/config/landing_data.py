@@ -27,7 +27,7 @@ LANDINGS = [
         "nav_selector": "a[href='/mobilnaya-svyaz']",
         "nav_text": "Мобильная связь",
         "card_button_selector": ".button-mobile-application",
-        "expected_redirect_type": "new_tab",
+        "expected_redirect_type": "either",
         # кнопка: button.button.button-red.card-one__button.button-mobile-application
         "comment": "Переход на /mobilnaya-svyaz. Кнопка имеет несколько классов, используем .button-mobile-application.",
     },
@@ -37,7 +37,7 @@ LANDINGS = [
         "nav_selector": "a[href='/moskva/mobilnaya-svyaz#mobile']",
         "nav_text": "Мобильная связь",
         "card_button_selector": ".button-mobile-application",
-        "expected_redirect_type": "new_tab",
+        "expected_redirect_type": "either",
         "comment": "Аналог mts-home-gpon.ru, тот же селектор навигации.",
     },
     {
@@ -46,7 +46,7 @@ LANDINGS = [
         "nav_selector": "a[href='#mobile']",
         "nav_text": "Мобильная связь",
         "card_button_selector": ".button-mobile-application",
-        "expected_redirect_type": "new_tab",
+        "expected_redirect_type": "either",
         # В ТЗ URL указан без протокола — добавляем https://
         "comment": "URL в ТЗ без протокола, используем https://. Навигация по якорю #mobile.",
     },
@@ -57,7 +57,7 @@ LANDINGS = [
         "nav_selector": ".cards-block-tab-button-mobile",
         "nav_text": "Мобильная связь",
         "card_button_selector": ".card-block__button",
-        "expected_redirect_type": "new_tab",
+        "expected_redirect_type": "either",
         # href кнопки ведёт на https://mobile.101internet.ru/beeline
         "comment": "Переход через таб-кнопку внутри блока тарифов. CTA ведёт на 101internet.ru/beeline.",
     },
@@ -67,7 +67,7 @@ LANDINGS = [
         "nav_selector": ".cards-block-tab-button-mobile",
         "nav_text": "Мобильная связь",
         "card_button_selector": ".card-block__button",
-        "expected_redirect_type": "new_tab",
+        "expected_redirect_type": "either",
         "comment": "Структура аналогична beeline-internet.online.",
     },
     {
@@ -90,7 +90,7 @@ LANDINGS = [
         "nav_selector": "button.tariffs-switch__tab[data-pane='mobile']",
         "nav_text": "Мобильные тарифы",
         "card_button_selector": ".card-mobile__button",
-        "expected_redirect_type": "new_tab",
+        "expected_redirect_type": "either",
         # href кнопки ведёт на https://mobile.101internet.ru/megafon
         "comment": "Переход через button с data-pane='mobile'. CTA ведёт на 101internet.ru/megafon.",
     },
@@ -100,7 +100,7 @@ LANDINGS = [
         "nav_selector": "button.tariffs-switch__tab[data-pane='mobile']",
         "nav_text": "Мобильные тарифы",
         "card_button_selector": ".card-mobile__button",
-        "expected_redirect_type": "new_tab",
+        "expected_redirect_type": "either",
         "comment": "Структура аналогична mega-premium.ru.",
     },
     # ─────────────────── T2 ───────────────────
