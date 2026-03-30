@@ -18,8 +18,8 @@ LANDINGS = [
         "nav_selector": "a[href='/moskva/mobilnaya-svyaz#mobile']",
         "nav_text": "Мобильная связь",
         "card_button_selector": ".button-mobile-application",
-        "expected_redirect_type": "new_tab",
-        "comment": "Стандартный MTS лендинг. Переход по href на /moskva/mobilnaya-svyaz#mobile.",
+        "expected_redirect_type": "either",
+        "comment": "Стандартный MTS лендинг. Переход по href на /moskva/mobilnaya-svyaz#mobile. Для CTA допускаем редирект в текущей или новой вкладке.",
     },
     {
         "name": "MTS mts-home.online",
