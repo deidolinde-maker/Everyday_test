@@ -1191,7 +1191,3 @@ def test_site(page: Page, site_cfg: dict):
 
     with allure.step("Запуск сценария"):
         run_site_scenario(page, site_cfg)
-
-
-    with allure.step("Запуск сценария"):
-        run_site_scenario(page, site_cfg)
