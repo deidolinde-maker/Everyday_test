@@ -115,4 +115,14 @@ LANDINGS = [
         # Кнопка ведёт на домен t2.ru с UTM-параметрами
         "comment": "Навигация через .click-mobile-trigger. CTA ведёт на t2.ru с UTM-параметрами.",
     },
+      {
+        "name": "Тестовая страница",
+        "url": "https://mts-home-online.ru/testovaya-forms",
+        "nav_selector": "a[href='/mobilnaya-svyaz']",
+        "nav_text": "Мобильная связь",
+        "card_button_selector": ".button-mobile-application",
+        "expected_redirect_type": "either",
+        # кнопка: button.button.button-red.card-one__button.button-mobile-application
+        "comment": "Переход на /mobilnaya-svyaz. Кнопка имеет несколько классов, используем .button-mobile-application.",
+    },
 ]
