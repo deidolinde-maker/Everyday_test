@@ -116,7 +116,7 @@ LANDINGS = [
         "comment": "Навигация через .click-mobile-trigger. CTA ведёт на t2.ru с UTM-параметрами.",
     },
       {
-        "name": "Тестовая страница",
+        "name": "Test",
         "url": "https://mts-home-online.ru/testovaya-forms",
         "nav_selector": "a[href='/mobilnaya-svyaz']",
         "nav_text": "Мобильная связь",
