@@ -1,1 +1,0 @@
-[dom-provider.online] Шаг 4a: попапы главной города — неприменим (city_name=None)
