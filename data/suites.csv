@@ -5,46 +5,4 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","425016","Сайт: https://beeline-ru.online/","","Wed Apr 01 07:39:26 UTC 2026","failed","Wed Apr 01 07:46:31 UTC 2026","","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","488877","Сайт: https://mts-home-gpon.ru/","","Wed Apr 01 07:09:30 UTC 2026","passed","Wed Apr 01 07:17:39 UTC 2026","","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","187070","Сайт: https://mts-home-online.ru/","","Wed Apr 01 07:23:29 UTC 2026","passed","Wed Apr 01 07:26:36 UTC 2026","","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","194006","Сайт: https://internet-mts-home.online/","","Wed Apr 01 07:26:36 UTC 2026","broken","Wed Apr 01 07:29:50 UTC 2026","","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","161645","Сайт: https://mts-internet.online/","","Wed Apr 01 07:29:51 UTC 2026","broken","Wed Apr 01 07:32:32 UTC 2026","","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","349881","Сайт: https://mts-home.online/","","Wed Apr 01 07:17:39 UTC 2026","passed","Wed Apr 01 07:23:29 UTC 2026","","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","412991","Сайт: https://beeline-internet.online/","","Wed Apr 01 07:32:33 UTC 2026","passed","Wed Apr 01 07:39:26 UTC 2026","","Формы провайдеров","",""
+    ","407580","Сайт: https://beeline-ru.online/","","Wed Apr 01 09:12:32 UTC 2026","passed","Wed Apr 01 09:19:19 UTC 2026","","Формы провайдеров","",""
