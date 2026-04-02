@@ -1,0 +1,1 @@
+[mega-premium.ru] Шаг 4b: попапы /business города — неприменим (city_name=None)
