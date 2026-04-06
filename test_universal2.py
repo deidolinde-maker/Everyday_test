@@ -348,6 +348,8 @@ SITE_CONFIGS = {
 # ---------------------------------------------------------------------------
 
 SUCCESS_URL_MARKERS = ["/tilda/form1/submitted", "/thanks"]
+SUBMIT_CONFIRM_TIMEOUT_MS = 25_000
+SUBMIT_CONFIRM_GRACE_MS = 2_000
 
 POPUP_CONTAINER_SELECTORS = [
     "div#popup", "div.popup",
@@ -584,16 +586,38 @@ def safe_goto(page: Page, url: str, retries: int = 3):
     print(f"  [NAV] ❌ Не удалось перейти на {url}")
 
 
-def wait_for_success_url(page: Page, timeout_ms: int = 15_000) -> bool:
+def _is_success_url(url: str) -> bool:
+    return any(m in (url or "").lower() for m in SUCCESS_URL_MARKERS)
+
+
+def wait_for_success_url(page: Page, timeout_ms: int = SUBMIT_CONFIRM_TIMEOUT_MS) -> bool:
     print(f"  [SUBMIT] Ждём подтверждения (до {timeout_ms // 1000}с)...")
     poll_ms = 300
     elapsed = 0
+
     while elapsed < timeout_ms:
-        if any(m in page.url.lower() for m in SUCCESS_URL_MARKERS):
-            print(f"  [SUBMIT] ✅ {page.url}")
+        current_url = page.url
+        if _is_success_url(current_url):
+            print(f"  [SUBMIT] ✅ {current_url}")
             return True
         page.wait_for_timeout(poll_ms)
         elapsed += poll_ms
+
+    # Грейс-период: часть сайтов делает поздний redirect после сабмита
+    page.wait_for_timeout(SUBMIT_CONFIRM_GRACE_MS)
+    if _is_success_url(page.url):
+        print(f"  [SUBMIT] ✅ {page.url} (grace)")
+        return True
+
+    # Редкий кейс: подтверждение открылось в новой вкладке
+    for p in page.context.pages:
+        try:
+            if _is_success_url(p.url):
+                print(f"  [SUBMIT] ✅ в новой вкладке: {p.url}")
+                return True
+        except Exception:
+            pass
+
     print(f"  [SUBMIT] ❌ URL: {page.url}")
     return False
 
@@ -728,6 +752,44 @@ def find_submit(container, form_type: str):
         pass
     print(f"  [SUBMIT] ❌ Не найдена '{cfg['submit']}'")
     return None
+
+
+def submit_with_confirmation(
+    page: Page,
+    container,
+    form_type: str,
+    timeout_ms: int = SUBMIT_CONFIRM_TIMEOUT_MS,
+    attempts: int = 2,
+) -> bool:
+    """
+    Пытается отправить форму и дождаться подтверждения.
+    Делает повторную попытку submit при редких флаках no_confirmation.
+    """
+    last_submit = find_submit(container, form_type)
+    if last_submit is None:
+        return False
+
+    for attempt in range(1, attempts + 1):
+        try:
+            last_submit.scroll_into_view_if_needed()
+            last_submit.click(force=True)
+        except Exception:
+            # Форма могла перерендериться — пробуем найти submit снова
+            last_submit = find_submit(container, form_type)
+            if last_submit is None:
+                return False
+            last_submit.scroll_into_view_if_needed()
+            last_submit.click(force=True)
+
+        ok = wait_for_success_url(page, timeout_ms=timeout_ms)
+        if ok:
+            return True
+
+        if attempt < attempts:
+            print(f"  [SUBMIT] Повторная попытка {attempt + 1}/{attempts}")
+            page.wait_for_timeout(1200)
+
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -946,8 +1008,10 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
         submit.scroll_into_view_if_needed()
 
         if REALLY_SUBMIT:
-            submit.click(force=True)
-            ok = wait_for_success_url(page, timeout_ms=15_000)
+            ok = submit_with_confirmation(
+                page, container, form_type,
+                timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS, attempts=2
+            )
             if ok:
                 print(f"  [{label}] ✅ Заявка принята")
                 # Ждём завершения редиректов перед следующим safe_goto
@@ -1034,21 +1098,51 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
     ]
 
     city_btn = None
+    city_btn_sel = None
+    city_btn_idx = None
     for sel in CITY_BUTTON_SELECTORS:
         try:
-            loc = page.locator(sel).first
-            if loc.count() > 0:
-                city_btn = loc
-                print(f"  [CITY] Кнопка найдена: '{sel}'")
+            loc = page.locator(sel)
+            for i in range(loc.count()):
+                candidate = loc.nth(i)
+                try:
+                    if candidate.is_visible():
+                        city_btn = candidate
+                        city_btn_sel = sel
+                        city_btn_idx = i
+                        print(f"  [CITY] Кнопка найдена (visible): '{sel}' idx={i}")
+                        break
+                except Exception:
+                    pass
+            if city_btn is not None:
                 break
         except Exception:
             pass
 
-    if city_btn is None:
+    if city_btn is None or city_btn_sel is None or city_btn_idx is None:
         print("  [CITY] ❌ Кнопка выбора города не найдена — шаг пропущен")
         return None, None
 
-    city_btn.click(force=True)
+    city_btn_clicked = False
+    for attempt in range(1, 4):
+        try:
+            city_btn = page.locator(city_btn_sel).nth(city_btn_idx)
+            city_btn.scroll_into_view_if_needed()
+            city_btn.click(timeout=4000, force=True)
+            city_btn_clicked = True
+            break
+        except Exception as e:
+            print(f"  [CITY] Попытка клика {attempt}/3 не удалась: {e}")
+            page.wait_for_timeout(500)
+
+    if not city_btn_clicked:
+        log_error(
+            "click_failed", page,
+            base_url.replace("https://", "").replace("http://", "").strip("/"),
+            extra=f"city button click failed sel={city_btn_sel}"
+        )
+        return None, None
+
     page.wait_for_timeout(800)
 
     # Все известные варианты поля поиска города
@@ -1061,15 +1155,25 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
         "input[type='search']",
     ]
 
+    city_input_filled = False
     for sel in CITY_INPUT_SELECTORS:
+        if city_input_filled:
+            break
         try:
-            inp = page.locator(sel).first
-            if inp.count() > 0 and inp.is_visible():
-                inp.click(force=True)
-                inp.fill(city_name)
-                page.wait_for_timeout(500)
-                print(f"  [CITY] Введено '{city_name}' в поле поиска")
-                break
+            inputs = page.locator(sel)
+            for i in range(inputs.count()):
+                inp = inputs.nth(i)
+                try:
+                    if not inp.is_visible():
+                        continue
+                    inp.click(force=True)
+                    inp.fill(city_name)
+                    page.wait_for_timeout(500)
+                    print(f"  [CITY] Введено '{city_name}' в поле поиска ({sel}, idx={i})")
+                    city_input_filled = True
+                    break
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -1085,16 +1189,24 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
 
     link = None
     for sel in CITY_LINK_SELECTORS:
+        if link is not None:
+            break
         try:
-            loc = page.locator(sel).filter(has_text=city_name).first
-            if loc.count() > 0:
+            locs = page.locator(sel).filter(has_text=city_name)
+            for i in range(locs.count()):
+                candidate = locs.nth(i)
                 try:
-                    loc.wait_for(state="attached", timeout=3000)
+                    candidate.wait_for(state="attached", timeout=3000)
                 except Exception:
                     pass
-                link = loc
-                print(f"  [CITY] Город '{city_name}' найден: '{sel}'")
-                break
+                try:
+                    if not candidate.is_visible():
+                        continue
+                    link = candidate
+                    print(f"  [CITY] Город '{city_name}' найден: '{sel}' idx={i}")
+                    break
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -1105,7 +1217,23 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
         return None, None
 
     old_url = page.url
-    link.click(force=True)
+    city_link_clicked = False
+    for attempt in range(1, 4):
+        try:
+            link.scroll_into_view_if_needed()
+            link.click(timeout=4000, force=True)
+            city_link_clicked = True
+            break
+        except Exception as e:
+            print(f"  [CITY] Клик по городу, попытка {attempt}/3: {e}")
+            page.wait_for_timeout(500)
+
+    if not city_link_clicked:
+        log_error("click_failed", page,
+                  base_url.replace("https://","").replace("http://","").strip("/"),
+                  extra=f"city link click failed city={city_name}")
+        return None, None
+
     print(f"  [CITY] Клик по '{city_name}'")
 
     city_base_url = None
@@ -1164,8 +1292,10 @@ def run_site_scenario(page: Page, cfg: dict):
                     submit.scroll_into_view_if_needed()
                     print(f"  ✅ checkaddress готова")
                     if REALLY_SUBMIT:
-                        submit.click(force=True)
-                        ok = wait_for_success_url(page, timeout_ms=15_000)
+                        ok = submit_with_confirmation(
+                            page, container, "checkaddress",
+                            timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS, attempts=2
+                        )
                         if ok:
                             safe_goto(page, base_url)
                         else:
