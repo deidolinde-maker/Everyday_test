@@ -1,1 +1,0 @@
-[t2-official.ru] Шаг 3: попапы /business — неприменим (has_business=False)
