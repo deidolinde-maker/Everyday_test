@@ -90,6 +90,46 @@ def send_step_alert(site_label: str, step_no: str, step_name: str, reason: str, 
     send_telegram_alert("\n".join(lines), alert_type="step")
 
 
+class SiteUnavailableError(RuntimeError):
+    """Сайт недоступен/не отвечает — текущий сайт нужно пропустить."""
+
+
+def send_critical_alert(site_label: str, step_no: str, step_name: str, reason: str, page: "Page" = None):
+    url = page.url if page else ""
+    time_now = datetime.now().strftime("%H:%M:%S")
+    run_url = os.getenv("RUN_URL", "").strip()
+
+    lines = [
+        f"[CRITICAL] [{site_label}] Шаг {step_no}: {step_name}",
+        "Статус: critical",
+        f"Причина: {reason}",
+        f"URL: {url}",
+        f"Время: {time_now}",
+    ]
+    if run_url:
+        lines.append(f"Run: {run_url}")
+
+    text = "\n".join(lines)
+    print(f"[CRITICAL] [{site_label}] Шаг {step_no}: {step_name} | {reason} | {url}")
+    allure.attach(
+        text,
+        name=f"CRITICAL: Шаг {step_no} {step_name}",
+        attachment_type=allure.attachment_type.TEXT,
+    )
+    send_telegram_alert(text, alert_type="critical")
+
+
+def skip_site_due_unavailability(
+    site_label: str,
+    step_no: str,
+    step_name: str,
+    reason: str,
+    page: "Page" = None,
+):
+    send_critical_alert(site_label, step_no, step_name, reason, page)
+    pytest.skip(f"[{site_label}] {step_name}: {reason}")
+
+
 def log_error(error_code: str, page: "Page", site_label: str, extra: str = ""):
     """
     Печатает ошибку в консоль и мгновенно шлёт Telegram-алерт.
@@ -561,7 +601,7 @@ def close_popup_or_page(page: Page):
         pass
 
 
-def safe_goto(page: Page, url: str, retries: int = 3):
+def safe_goto(page: Page, url: str, retries: int = 2, goto_timeout_ms: int = 20_000) -> bool:
     # Если застряли на странице благодарности — даём браузеру завершить редирект
     try:
         if any(m in page.url.lower() for m in SUCCESS_URL_MARKERS):
@@ -576,14 +616,15 @@ def safe_goto(page: Page, url: str, retries: int = 3):
 
     for attempt in range(1, retries + 1):
         try:
-            page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+            page.goto(url, wait_until="domcontentloaded", timeout=goto_timeout_ms)
             page.wait_for_timeout(500)
             print(f"  [NAV] {url}")
-            return
+            return True
         except Exception as e:
             print(f"  [NAV] Попытка {attempt}/{retries}: {e}")
             page.wait_for_timeout(1500)
     print(f"  [NAV] ❌ Не удалось перейти на {url}")
+    return False
 
 
 def _is_success_url(url: str) -> bool:
@@ -972,7 +1013,10 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
         sep       = "=" * 55
         print(f"\n{sep}\n[{label} {num}/{len(buttons)}] '{text}' hint={form_hint}\n{sep}")
 
-        safe_goto(page, base_url)
+        if not safe_goto(page, base_url):
+            raise SiteUnavailableError(
+                f"{label}: сайт недоступен на этапе {num}/{len(buttons)} ({base_url})"
+            )
         accept_cookie_banner(page)
         # Закрываем profit если всплыл сам — но не когда тестируем сам profit
         if form_hint != "profit":
@@ -1078,7 +1122,8 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
     sep = "=" * 55
     print(f"\n{sep}\n[CITY] Выбор города '{city_name}'\n{sep}")
 
-    safe_goto(page, base_url)
+    if not safe_goto(page, base_url):
+        raise SiteUnavailableError(f"CITY: не удалось открыть {base_url}")
     close_overlays(page)
 
     # Все известные варианты кнопки открытия попапа города
@@ -1276,7 +1321,11 @@ def run_site_scenario(page: Page, cfg: dict):
     with allure.step("Шаг 1: форма checkaddress"):
         if cfg.get("has_checkaddress"):
             print(f"\n{sep}\n[{site_label}] Шаг 1: форма checkaddress\n{sep}")
-            safe_goto(page, base_url)
+            if not safe_goto(page, base_url):
+                skip_site_due_unavailability(
+                    site_label, "1", "форма checkaddress",
+                    f"не удалось открыть {base_url}", page
+                )
             close_overlays(page)
 
             step_reason = None
@@ -1316,9 +1365,16 @@ def run_site_scenario(page: Page, cfg: dict):
     # ── 2. Попапы главной ─────────────────────────────────────────────────
     with allure.step("Шаг 2: попапы главной"):
         print(f"\n{sep}\n[{site_label}] Шаг 2: попапы главной\n{sep}")
-        safe_goto(page, base_url)
+        if not safe_goto(page, base_url):
+            skip_site_due_unavailability(
+                site_label, "2", "попапы главной",
+                f"не удалось открыть {base_url}", page
+            )
         close_overlays(page)
-        s, f = process_all_popups(page, base_url, has_name_field=has_name_field)
+        try:
+            s, f = process_all_popups(page, base_url, has_name_field=has_name_field)
+        except SiteUnavailableError as e:
+            skip_site_due_unavailability(site_label, "2", "попапы главной", str(e), page)
         if f > 0:
             send_step_alert(site_label, "2", "попапы главной", f"{f} ошибок, {s} успешно", page)
         assert f == 0, f"[{site_label}] Попапы главной: {f} ошибок, {s} успешно"
@@ -1328,9 +1384,16 @@ def run_site_scenario(page: Page, cfg: dict):
         if cfg.get("has_business"):
             business_url = base_url.rstrip("/") + "/business"
             print(f"\n{sep}\n[{site_label}] Шаг 3: попапы /business\n{sep}")
-            safe_goto(page, business_url)
+            if not safe_goto(page, business_url):
+                skip_site_due_unavailability(
+                    site_label, "3", "попапы /business",
+                    f"не удалось открыть {business_url}", page
+                )
             close_overlays(page)
-            s, f = process_business_popups(page, business_url, has_name_field=has_name_field)
+            try:
+                s, f = process_business_popups(page, business_url, has_name_field=has_name_field)
+            except SiteUnavailableError as e:
+                skip_site_due_unavailability(site_label, "3", "попапы /business", str(e), page)
             if f > 0:
                 send_step_alert(site_label, "3", "попапы /business", f"{f} ошибок, {s} успешно", page)
             assert f == 0, f"[{site_label}] Бизнес: {f} ошибок, {s} успешно"
@@ -1341,7 +1404,10 @@ def run_site_scenario(page: Page, cfg: dict):
     with allure.step("Шаг 4: выбор города"):
         if city_name:
             print(f"\n{sep}\n[{site_label}] Шаг 4: город '{city_name}'\n{sep}")
-            city_base, city_biz = run_city_scenario(page, base_url, city_name)
+            try:
+                city_base, city_biz = run_city_scenario(page, base_url, city_name)
+            except SiteUnavailableError as e:
+                skip_site_due_unavailability(site_label, "4", "выбор города", str(e), page)
             if city_base is None:
                 reason = f"город '{city_name}' не выбран или не произошёл редирект"
                 send_step_alert(site_label, "4", "выбор города", reason, page)
@@ -1356,9 +1422,16 @@ def run_site_scenario(page: Page, cfg: dict):
         elif city_base is None:
             mark_step_not_applicable(site_label, "4a", "попапы главной города", "городской сценарий недоступен по условию")
         else:
-            safe_goto(page, city_base)
+            if not safe_goto(page, city_base):
+                skip_site_due_unavailability(
+                    site_label, "4a", "попапы главной города",
+                    f"не удалось открыть {city_base}", page
+                )
             close_overlays(page)
-            s, f = process_all_popups(page, city_base, has_name_field=has_name_field)
+            try:
+                s, f = process_all_popups(page, city_base, has_name_field=has_name_field)
+            except SiteUnavailableError as e:
+                skip_site_due_unavailability(site_label, "4a", "попапы главной города", str(e), page)
             if f > 0:
                 send_step_alert(site_label, "4a", "попапы главной города", f"{f} ошибок, {s} успешно", page)
             assert f == 0, f"[{site_label}] Попапы города: {f} ошибок"
@@ -1372,9 +1445,16 @@ def run_site_scenario(page: Page, cfg: dict):
         elif city_biz is None:
             mark_step_not_applicable(site_label, "4b", "попапы /business города", "городской сценарий недоступен по условию")
         else:
-            safe_goto(page, city_biz)
+            if not safe_goto(page, city_biz):
+                skip_site_due_unavailability(
+                    site_label, "4b", "попапы /business города",
+                    f"не удалось открыть {city_biz}", page
+                )
             close_overlays(page)
-            s, f = process_business_popups(page, city_biz, has_name_field=has_name_field)
+            try:
+                s, f = process_business_popups(page, city_biz, has_name_field=has_name_field)
+            except SiteUnavailableError as e:
+                skip_site_due_unavailability(site_label, "4b", "попапы /business города", str(e), page)
             if f > 0:
                 send_step_alert(site_label, "4b", "попапы /business города", f"{f} ошибок, {s} успешно", page)
             assert f == 0, f"[{site_label}] Бизнес города: {f} ошибок"
