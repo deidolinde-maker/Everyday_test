@@ -228,7 +228,7 @@ SITE_CONFIGS = {
        # "has_business":     True,
         #"city_name":        "Москва",
        # "has_region_popup": True,
-    },
+  #  },
     #"beeline-ru.online": {
      #   "base_url":        "https://beeline-ru.online/",
       #  "has_checkaddress": False,
@@ -249,7 +249,7 @@ SITE_CONFIGS = {
     #    "has_business":     False,
     #    "city_name":        "Москва",
     #    "has_region_popup": True,
-    },
+#    },
   #  "beeline-home.online": {
   #      "base_url":        "https://beeline-home.online/",
    #     "has_checkaddress": False,
