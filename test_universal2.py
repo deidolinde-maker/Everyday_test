@@ -192,12 +192,12 @@ POPUP_BUTTON_CLASSES = {
 # ---------------------------------------------------------------------------
 
 SITE_CONFIGS = {
-    "mts-home-gpon.ru": {
-        "base_url":        "https://mts-home-gpon.ru/",
-        "has_checkaddress": True,
-        "has_business":     True,
-        "city_name":        "Москва",
-    },
+  #  "mts-home-gpon.ru": {
+  #     "base_url":        "https://mts-home-gpon.ru/",
+   #     "has_checkaddress": True,
+   #     "has_business":     True,
+    #    "city_name":        "Москва",
+    #},
     "mts-home.online": {
         "base_url":        "https://mts-home.online/",
         "has_checkaddress": False,
