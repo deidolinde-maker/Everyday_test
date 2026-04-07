@@ -17,6 +17,7 @@ from playwright.sync_api import Page, expect
 import allure
 import os
 import requests
+import time
 from datetime import datetime
 
 REALLY_SUBMIT = True # True — реально отправлять заявки
@@ -26,6 +27,7 @@ REALLY_SUBMIT = True # True — реально отправлять заявки
 # ---------------------------------------------------------------------------
 
 ERROR_REASONS = {
+    "navigation_failed": ("Навигация на сайт не удалась", "Сайт не открылся в пределах таймаута"),
     "popup_not_found":  ("Попап не распознан",           "Попап не открылся после клика"),
     "form_not_filled":  ("Форма не заполнена",            "Поле недоступно или перекрыто оверлеем"),
     "submit_not_found": ("Кнопка отправки не найдена",    "Форма не в ожидаемом состоянии"),
@@ -128,6 +130,25 @@ def skip_site_due_unavailability(
 ):
     send_critical_alert(site_label, step_no, step_name, reason, page)
     pytest.skip(f"[{site_label}] {step_name}: {reason}")
+
+
+def goto_or_handle_step(
+    page: "Page",
+    url: str,
+    site_label: str,
+    step_no: str,
+    step_name: str,
+):
+    ok, is_critical, nav_reason = safe_goto(page, url)
+    if ok:
+        return
+
+    reason = f"не удалось открыть {url} | {nav_reason}"
+    if is_critical:
+        skip_site_due_unavailability(site_label, step_no, step_name, reason, page)
+
+    send_step_alert(site_label, step_no, step_name, reason, page)
+    pytest.fail(f"[{site_label}] Шаг {step_no}: {step_name} | {reason}")
 
 
 def log_error(error_code: str, page: "Page", site_label: str, extra: str = ""):
@@ -388,6 +409,9 @@ SITE_CONFIGS = {
 # ---------------------------------------------------------------------------
 
 SUCCESS_URL_MARKERS = ["/tilda/form1/submitted", "/thanks"]
+SITE_UNAVAILABLE_THRESHOLD_MS = 60_000
+NAV_GOTO_TIMEOUT_MS = 20_000
+NAV_RETRIES = 3
 SUBMIT_CONFIRM_TIMEOUT_MS = 25_000
 SUBMIT_CONFIRM_GRACE_MS = 2_000
 
@@ -601,7 +625,13 @@ def close_popup_or_page(page: Page):
         pass
 
 
-def safe_goto(page: Page, url: str, retries: int = 2, goto_timeout_ms: int = 20_000) -> bool:
+def safe_goto(
+    page: Page,
+    url: str,
+    retries: int = NAV_RETRIES,
+    goto_timeout_ms: int = NAV_GOTO_TIMEOUT_MS,
+    outage_threshold_ms: int = SITE_UNAVAILABLE_THRESHOLD_MS,
+) -> tuple[bool, bool, str]:
     # Если застряли на странице благодарности — даём браузеру завершить редирект
     try:
         if any(m in page.url.lower() for m in SUCCESS_URL_MARKERS):
@@ -614,17 +644,47 @@ def safe_goto(page: Page, url: str, retries: int = 2, goto_timeout_ms: int = 20_
         pass
     page.wait_for_timeout(300)
 
+    started_at = time.monotonic()
+    last_error = ""
+
     for attempt in range(1, retries + 1):
         try:
-            page.goto(url, wait_until="domcontentloaded", timeout=goto_timeout_ms)
+            response = page.goto(url, wait_until="domcontentloaded", timeout=goto_timeout_ms)
             page.wait_for_timeout(500)
+
+            status = None
+            try:
+                status = response.status if response else None
+            except Exception:
+                status = None
+
+            if status is not None and status >= 400:
+                reason = f"HTTP {status}"
+                print(f"  [NAV] ❌ {url} ({reason})")
+                return False, True, reason
+
+            current_url = (page.url or "").lower()
+            if current_url.startswith("chrome-error://") or "about:neterror" in current_url:
+                last_error = f"browser net error ({current_url})"
+                print(f"  [NAV] Попытка {attempt}/{retries}: {last_error}")
+                page.wait_for_timeout(1500)
+                continue
+
             print(f"  [NAV] {url}")
-            return True
+            return True, False, ""
         except Exception as e:
-            print(f"  [NAV] Попытка {attempt}/{retries}: {e}")
+            last_error = str(e).replace("\n", " ")[:220]
+            print(f"  [NAV] Попытка {attempt}/{retries}: {last_error}")
             page.wait_for_timeout(1500)
-    print(f"  [NAV] ❌ Не удалось перейти на {url}")
-    return False
+
+    elapsed_ms = int((time.monotonic() - started_at) * 1000)
+    is_critical = elapsed_ms >= outage_threshold_ms
+    if is_critical:
+        reason = f"timeout {elapsed_ms // 1000}с (>={outage_threshold_ms // 1000}с), last_error={last_error or 'n/a'}"
+    else:
+        reason = f"nav_failed {elapsed_ms // 1000}с, last_error={last_error or 'n/a'}"
+    print(f"  [NAV] ❌ Не удалось перейти на {url} | {reason}")
+    return False, is_critical, reason
 
 
 def _is_success_url(url: str) -> bool:
@@ -1013,10 +1073,15 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
         sep       = "=" * 55
         print(f"\n{sep}\n[{label} {num}/{len(buttons)}] '{text}' hint={form_hint}\n{sep}")
 
-        if not safe_goto(page, base_url):
-            raise SiteUnavailableError(
-                f"{label}: сайт недоступен на этапе {num}/{len(buttons)} ({base_url})"
-            )
+        nav_ok, nav_critical, nav_reason = safe_goto(page, base_url)
+        if not nav_ok:
+            if nav_critical:
+                raise SiteUnavailableError(
+                    f"{label}: сайт недоступен на этапе {num}/{len(buttons)} ({base_url}) | {nav_reason}"
+                )
+            log_error("navigation_failed", page, site_label, extra=nav_reason[:180])
+            failed += 1
+            continue
         accept_cookie_banner(page)
         # Закрываем profit если всплыл сам — но не когда тестируем сам profit
         if form_hint != "profit":
@@ -1122,8 +1187,14 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
     sep = "=" * 55
     print(f"\n{sep}\n[CITY] Выбор города '{city_name}'\n{sep}")
 
-    if not safe_goto(page, base_url):
-        raise SiteUnavailableError(f"CITY: не удалось открыть {base_url}")
+    nav_ok, nav_critical, nav_reason = safe_goto(page, base_url)
+    if not nav_ok:
+        if nav_critical:
+            raise SiteUnavailableError(f"CITY: не удалось открыть {base_url} | {nav_reason}")
+        log_error("navigation_failed", page,
+                  base_url.replace("https://", "").replace("http://", "").strip("/"),
+                  extra=nav_reason[:180])
+        return None, None
     close_overlays(page)
 
     # Все известные варианты кнопки открытия попапа города
@@ -1321,11 +1392,7 @@ def run_site_scenario(page: Page, cfg: dict):
     with allure.step("Шаг 1: форма checkaddress"):
         if cfg.get("has_checkaddress"):
             print(f"\n{sep}\n[{site_label}] Шаг 1: форма checkaddress\n{sep}")
-            if not safe_goto(page, base_url):
-                skip_site_due_unavailability(
-                    site_label, "1", "форма checkaddress",
-                    f"не удалось открыть {base_url}", page
-                )
+            goto_or_handle_step(page, base_url, site_label, "1", "форма checkaddress")
             close_overlays(page)
 
             step_reason = None
@@ -1365,11 +1432,7 @@ def run_site_scenario(page: Page, cfg: dict):
     # ── 2. Попапы главной ─────────────────────────────────────────────────
     with allure.step("Шаг 2: попапы главной"):
         print(f"\n{sep}\n[{site_label}] Шаг 2: попапы главной\n{sep}")
-        if not safe_goto(page, base_url):
-            skip_site_due_unavailability(
-                site_label, "2", "попапы главной",
-                f"не удалось открыть {base_url}", page
-            )
+        goto_or_handle_step(page, base_url, site_label, "2", "попапы главной")
         close_overlays(page)
         try:
             s, f = process_all_popups(page, base_url, has_name_field=has_name_field)
@@ -1384,11 +1447,7 @@ def run_site_scenario(page: Page, cfg: dict):
         if cfg.get("has_business"):
             business_url = base_url.rstrip("/") + "/business"
             print(f"\n{sep}\n[{site_label}] Шаг 3: попапы /business\n{sep}")
-            if not safe_goto(page, business_url):
-                skip_site_due_unavailability(
-                    site_label, "3", "попапы /business",
-                    f"не удалось открыть {business_url}", page
-                )
+            goto_or_handle_step(page, business_url, site_label, "3", "попапы /business")
             close_overlays(page)
             try:
                 s, f = process_business_popups(page, business_url, has_name_field=has_name_field)
@@ -1422,11 +1481,7 @@ def run_site_scenario(page: Page, cfg: dict):
         elif city_base is None:
             mark_step_not_applicable(site_label, "4a", "попапы главной города", "городской сценарий недоступен по условию")
         else:
-            if not safe_goto(page, city_base):
-                skip_site_due_unavailability(
-                    site_label, "4a", "попапы главной города",
-                    f"не удалось открыть {city_base}", page
-                )
+            goto_or_handle_step(page, city_base, site_label, "4a", "попапы главной города")
             close_overlays(page)
             try:
                 s, f = process_all_popups(page, city_base, has_name_field=has_name_field)
@@ -1445,11 +1500,7 @@ def run_site_scenario(page: Page, cfg: dict):
         elif city_biz is None:
             mark_step_not_applicable(site_label, "4b", "попапы /business города", "городской сценарий недоступен по условию")
         else:
-            if not safe_goto(page, city_biz):
-                skip_site_due_unavailability(
-                    site_label, "4b", "попапы /business города",
-                    f"не удалось открыть {city_biz}", page
-                )
+            goto_or_handle_step(page, city_biz, site_label, "4b", "попапы /business города")
             close_overlays(page)
             try:
                 s, f = process_business_popups(page, city_biz, has_name_field=has_name_field)
