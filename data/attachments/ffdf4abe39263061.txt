@@ -1,0 +1,6 @@
+[CRITICAL] [rt-internet.online] Шаг 3: попапы /business
+Статус: critical
+Причина: не удалось открыть https://rt-internet.online/business | HTTP 404
+URL: https://rt-internet.online/business
+Время: 07:37:44
+Run: https://github.com/deidolinde-maker/Everyday_test/actions/runs/24175745886

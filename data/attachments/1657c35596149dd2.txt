@@ -1,0 +1,6 @@
+[CRITICAL] [rtk-home-internet.ru] Шаг 3: попапы /business
+Статус: critical
+Причина: не удалось открыть https://rtk-home-internet.ru/business | HTTP 404
+URL: https://rtk-home-internet.ru/business
+Время: 07:40:51
+Run: https://github.com/deidolinde-maker/Everyday_test/actions/runs/24175745886

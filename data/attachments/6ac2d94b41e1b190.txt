@@ -1,0 +1,1 @@
+[t2-official.ru] Шаг 4: выбор города — неприменим (city_name=None)
