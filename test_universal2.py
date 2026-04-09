@@ -335,14 +335,14 @@ SITE_CONFIGS = {
     "rt-internet.online": {
         "base_url":        "https://rt-internet.online/",
         "has_checkaddress": False,
-        "has_business":     True,
+        "has_business":     False,
         "city_name":        "Москва",
         "has_name_field": True,
     },
     "rtk-home-internet.ru": {
         "base_url":        "https://rtk-home-internet.ru/",
         "has_checkaddress": False,
-        "has_business":     True,
+        "has_business":     False,
         "city_name":        "Москва",
         "has_name_field": True,
     },
