@@ -1,0 +1,8 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","288747","Сайт: https://rtk-ru.online/","","Thu Apr 09 10:56:41 UTC 2026","passed","Thu Apr 09 11:01:29 UTC 2026","","Формы провайдеров","",""
