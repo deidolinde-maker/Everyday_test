@@ -1,1 +1,0 @@
-[mts-internet.online] Шаг 3: попапы /business — неприменим (has_business=False)
