@@ -1,6 +1,0 @@
-[CRITICAL] [beeline-ru.online] Шаг 2: попапы главной
-Статус: critical
-Причина: не удалось открыть https://beeline-ru.online/ | timeout 64с (>=60с), last_error=Page.goto: Timeout 20000ms exceeded. Call log:   - navigating to "https://beeline-ru.online/", waiting until "domcontentloaded" 
-URL: chrome-error://chromewebdata/
-Время: 07:30:05
-Run: https://github.com/deidolinde-maker/Everyday_test/actions/runs/24230585532
