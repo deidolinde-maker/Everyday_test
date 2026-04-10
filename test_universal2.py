@@ -499,13 +499,33 @@ def dismiss_region_popup(page: Page):
     # Ждём чуть — попап появляется с небольшой задержкой после загрузки
     page.wait_for_timeout(600)
 
-    # Вариант 1: есть кнопка "Да" — кликаем её
+    # Вариант 1: явные кнопки управления регионом (Да/Нет/Выбрать город)
+    region_action_buttons = [
+        ("#yesButton", "кнопка 'Да'"),
+        ("#noButton", "кнопка 'Нет'"),
+        (".popup-select-region__button.city", "кнопка выбора города (.popup-select-region__button.city)"),
+        ("button.region-search__button", "кнопка выбора города (.region-search__button)"),
+        (".region-search__button.button.button-red", "кнопка выбора города (red)"),
+        (".region-search__button.button.button-green", "кнопка выбора города (green)"),
+    ]
+    for sel, label in region_action_buttons:
+        try:
+            btn = page.locator(sel).first
+            if btn.count() > 0 and btn.is_visible():
+                btn.click(force=True)
+                page.wait_for_timeout(400)
+                print(f"  [REGION] Попап региона обработан ({label})")
+                return
+        except Exception:
+            pass
+
+    # Вариант 1b: текстовая кнопка "Выбрать город"
     try:
-        yes_btn = page.locator("#yesButton").first
-        if yes_btn.count() > 0 and yes_btn.is_visible():
-            yes_btn.click(force=True)
+        choose_btn = page.get_by_role("button", name="Выбрать город").first
+        if choose_btn.count() > 0 and choose_btn.is_visible():
+            choose_btn.click(force=True)
             page.wait_for_timeout(400)
-            print("  [REGION] Попап региона закрыт (кнопка 'Да')")
+            print("  [REGION] Попап региона обработан (кнопка 'Выбрать город')")
             return
     except Exception:
         pass
@@ -1207,9 +1227,18 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
     CITY_BUTTON_SELECTORS = [
         "xpath=(//span[@id='city'])[1]",
         "xpath=(//span[@id='city'])[2]",
+        "xpath=(//span[@id='city'])[3]",
         "xpath=(//a[@id='city'])[1]",
+        "xpath=(//a[@id='city'])[2]",
+        "xpath=(//a[@id='city'])[3]",
         "xpath=(//a[@class='city'])[2]",
         "xpath=//div[@class='header__wrapper-middle']//span[@id='city']",
+        "xpath=(//button[@id='noButton'])[1]",
+        "xpath=(//button[contains(@class,'popup-select-region__button') and contains(@class,'city')])[1]",
+        ".region-search__button.button.button-red",
+        ".region-search__button.button.button-green",
+        "button.region-search__button",
+        "button:has-text('Выбрать город')",
         "a.header__city.city",
         "a.header__city",
         "#city",
@@ -1272,6 +1301,8 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
         "xpath=//input[@placeholder='Введите название города']",
         "xpath=//input[@id='city-input']",
         "xpath=//input[@placeholder='Поиск города']",
+        "xpath=//input[@placeholder='Город']",
+        "input[name='city']",
         "input[placeholder*='оиск']",
         "input[placeholder*='ород']",
         "input[type='search']",
@@ -1341,6 +1372,11 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
     old_url = page.url
     city_link_clicked = False
     for attempt in range(1, 4):
+        # Антифлак: если URL уже сменился, считаем выбор города успешным.
+        if page.url != old_url:
+            city_link_clicked = True
+            print("  [CITY] URL уже сменился до повторного клика — считаем выбор успешным")
+            break
         try:
             link.scroll_into_view_if_needed()
             link.click(timeout=4000, force=True)
@@ -1349,6 +1385,12 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
         except Exception as e:
             print(f"  [CITY] Клик по городу, попытка {attempt}/3: {e}")
             page.wait_for_timeout(500)
+            # Антифлак: click мог сработать, но Playwright выбросил timeout
+            # при ожидании завершения навигации.
+            if page.url != old_url:
+                city_link_clicked = True
+                print("  [CITY] После исключения URL сменился — считаем выбор успешным")
+                break
 
     if not city_link_clicked:
         log_error("click_failed", page,
