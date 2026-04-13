@@ -1,1 +1,0 @@
-[rtk-home-internet.ru] Шаг 3: попапы /business — неприменим (has_business=False)
