@@ -1088,9 +1088,11 @@ def dismiss_profit_popup(page: Page):
 
 def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                      btn_locator_fn, label: str = "POPUP",
-                     has_name_field: bool = False) -> tuple[int, int]:
+                     has_name_field: bool = False) -> tuple[int, int, str | None]:
     success    = 0
     failed     = 0
+    first_fail = None
+    fail_details = []
     site_label = base_url.replace("https://", "").replace("http://", "").strip("/")
 
     for num, entry in enumerate(buttons, 1):
@@ -1099,6 +1101,25 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
         sep       = "=" * 55
         print(f"\n{sep}\n[{label} {num}/{len(buttons)}] '{text}' hint={form_hint}\n{sep}")
 
+        def register_failure(code: str, details: str = ""):
+            nonlocal failed, first_fail
+            failed += 1
+            current_url = ""
+            try:
+                current_url = page.url
+            except Exception:
+                current_url = "n/a"
+            entry_line = (
+                f"{label} {num}/{len(buttons)} text='{text}' hint={form_hint} "
+                f"code={code} url={current_url}"
+            )
+            if details:
+                entry_line += f" | {details}"
+            fail_details.append(entry_line[:600])
+            if first_fail is None:
+                first_fail = entry_line[:220]
+            print(f"  [FAIL-DETAIL] {entry_line}")
+
         nav_ok, nav_critical, nav_reason = safe_goto(page, base_url)
         if not nav_ok:
             if nav_critical:
@@ -1106,7 +1127,7 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                     f"{label}: сайт недоступен на этапе {num}/{len(buttons)} ({base_url}) | {nav_reason}"
                 )
             log_error("navigation_failed", page, site_label, extra=nav_reason[:180])
-            failed += 1
+            register_failure("navigation_failed", nav_reason[:180])
             continue
         accept_cookie_banner(page)
         # Закрываем profit если всплыл сам — но не когда тестируем сам profit
@@ -1120,24 +1141,24 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
             page.wait_for_timeout(500)
         except Exception as e:
             log_error("click_failed", page, site_label, extra=str(e)[:150])
-            failed += 1
+            register_failure("click_failed", str(e).replace("\n", " ")[:180])
             continue
 
         form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
         if form_type is None:
             log_error("popup_not_found", page, site_label)
-            failed += 1
+            register_failure("popup_not_found")
             continue
 
         if not fill_form(page, container, form_type, has_name_field=has_name_field):
             log_error("form_not_filled", page, site_label)
-            failed += 1
+            register_failure("form_not_filled")
             continue
 
         submit = find_submit(container, form_type)
         if submit is None:
             log_error("submit_not_found", page, site_label)
-            failed += 1
+            register_failure("submit_not_found")
             continue
 
         submit.scroll_into_view_if_needed()
@@ -1158,23 +1179,30 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                 success += 1
             else:
                 log_error("no_confirmation", page, site_label)
-                failed += 1
+                register_failure("no_confirmation")
         else:
             print(f"  [{label}] ✅ Форма готова (REALLY_SUBMIT=False)")
             close_popup_or_page(page)
             success += 1
 
+    if fail_details:
+        allure.attach(
+            "\n".join(fail_details),
+            name=f"{label} failure details ({site_label})",
+            attachment_type=allure.attachment_type.TEXT,
+        )
+
     sep = "=" * 55
     print(f"\n{sep}\n[{label} RESULT] ✅ {success}  ❌ {failed}  Всего: {len(buttons)}\n{sep}\n")
-    return success, failed
+    return success, failed, first_fail
 
 
 def process_all_popups(page: Page, base_url: str,
-                        has_name_field: bool = False) -> tuple[int, int]:
+                        has_name_field: bool = False) -> tuple[int, int, str | None]:
     buttons = collect_popup_buttons(page)
     if not buttons:
         print("[POPUP] Кнопки не найдены — пропускаем")
-        return 0, 0
+        return 0, 0, None
 
     def locate(page, entry):
         css = entry.get("css")
@@ -1187,11 +1215,11 @@ def process_all_popups(page: Page, base_url: str,
 
 
 def process_business_popups(page: Page, base_url: str,
-                             has_name_field: bool = False) -> tuple[int, int]:
+                             has_name_field: bool = False) -> tuple[int, int, str | None]:
     buttons = collect_business_buttons(page)
     if not buttons:
         print("[BUSINESS] Кнопки не найдены — пропускаем")
-        return 0, 0
+        return 0, 0, None
 
     def locate(page, entry):
         return page.locator(POPUP_BUTTON_CLASSES["business"]).nth(entry["nth"])
@@ -1483,12 +1511,18 @@ def run_site_scenario(page: Page, cfg: dict):
         goto_or_handle_step(page, base_url, site_label, "2", "попапы главной")
         close_overlays(page)
         try:
-            s, f = process_all_popups(page, base_url, has_name_field=has_name_field)
+            s, f, first_fail = process_all_popups(page, base_url, has_name_field=has_name_field)
         except SiteUnavailableError as e:
             skip_site_due_unavailability(site_label, "2", "попапы главной", str(e), page)
         if f > 0:
-            send_step_alert(site_label, "2", "попапы главной", f"{f} ошибок, {s} успешно", page)
-        assert f == 0, f"[{site_label}] Попапы главной: {f} ошибок, {s} успешно"
+            reason = f"{f} ошибок, {s} успешно"
+            if first_fail:
+                reason += f" | first={first_fail}"
+            send_step_alert(site_label, "2", "попапы главной", reason[:900], page)
+        assert f == 0, (
+            f"[{site_label}] Попапы главной: {f} ошибок, {s} успешно"
+            + (f" | first={first_fail}" if first_fail else "")
+        )
 
     # ── 3. Попапы /business ───────────────────────────────────────────────
     with allure.step("Шаг 3: попапы /business"):
@@ -1498,12 +1532,18 @@ def run_site_scenario(page: Page, cfg: dict):
             goto_or_handle_step(page, business_url, site_label, "3", "попапы /business")
             close_overlays(page)
             try:
-                s, f = process_business_popups(page, business_url, has_name_field=has_name_field)
+                s, f, first_fail = process_business_popups(page, business_url, has_name_field=has_name_field)
             except SiteUnavailableError as e:
                 skip_site_due_unavailability(site_label, "3", "попапы /business", str(e), page)
             if f > 0:
-                send_step_alert(site_label, "3", "попапы /business", f"{f} ошибок, {s} успешно", page)
-            assert f == 0, f"[{site_label}] Бизнес: {f} ошибок, {s} успешно"
+                reason = f"{f} ошибок, {s} успешно"
+                if first_fail:
+                    reason += f" | first={first_fail}"
+                send_step_alert(site_label, "3", "попапы /business", reason[:900], page)
+            assert f == 0, (
+                f"[{site_label}] Бизнес: {f} ошибок, {s} успешно"
+                + (f" | first={first_fail}" if first_fail else "")
+            )
         else:
             mark_step_not_applicable(site_label, "3", "попапы /business", "has_business=False")
 
@@ -1532,12 +1572,18 @@ def run_site_scenario(page: Page, cfg: dict):
             goto_or_handle_step(page, city_base, site_label, "4a", "попапы главной города")
             close_overlays(page)
             try:
-                s, f = process_all_popups(page, city_base, has_name_field=has_name_field)
+                s, f, first_fail = process_all_popups(page, city_base, has_name_field=has_name_field)
             except SiteUnavailableError as e:
                 skip_site_due_unavailability(site_label, "4a", "попапы главной города", str(e), page)
             if f > 0:
-                send_step_alert(site_label, "4a", "попапы главной города", f"{f} ошибок, {s} успешно", page)
-            assert f == 0, f"[{site_label}] Попапы города: {f} ошибок"
+                reason = f"{f} ошибок, {s} успешно"
+                if first_fail:
+                    reason += f" | first={first_fail}"
+                send_step_alert(site_label, "4a", "попапы главной города", reason[:900], page)
+            assert f == 0, (
+                f"[{site_label}] Попапы города: {f} ошибок"
+                + (f" | first={first_fail}" if first_fail else "")
+            )
 
     # ── 4b. Попапы /business города ───────────────────────────────────────
     with allure.step("Шаг 4b: попапы /business города"):
@@ -1551,12 +1597,18 @@ def run_site_scenario(page: Page, cfg: dict):
             goto_or_handle_step(page, city_biz, site_label, "4b", "попапы /business города")
             close_overlays(page)
             try:
-                s, f = process_business_popups(page, city_biz, has_name_field=has_name_field)
+                s, f, first_fail = process_business_popups(page, city_biz, has_name_field=has_name_field)
             except SiteUnavailableError as e:
                 skip_site_due_unavailability(site_label, "4b", "попапы /business города", str(e), page)
             if f > 0:
-                send_step_alert(site_label, "4b", "попапы /business города", f"{f} ошибок, {s} успешно", page)
-            assert f == 0, f"[{site_label}] Бизнес города: {f} ошибок"
+                reason = f"{f} ошибок, {s} успешно"
+                if first_fail:
+                    reason += f" | first={first_fail}"
+                send_step_alert(site_label, "4b", "попапы /business города", reason[:900], page)
+            assert f == 0, (
+                f"[{site_label}] Бизнес города: {f} ошибок"
+                + (f" | first={first_fail}" if first_fail else "")
+            )
 
     print(f"\n{'#'*55}\n# ✅ ГОТОВО: {site_label}\n{'#'*55}\n")
 
