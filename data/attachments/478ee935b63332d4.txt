@@ -1,1 +1,0 @@
-POPUP 13/16 text='как подключить интернет билайн дома в россии?' hint=None code=no_confirmation url=https://beeline-ru.online/
