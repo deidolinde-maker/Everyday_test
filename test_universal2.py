@@ -410,7 +410,7 @@ SITE_CONFIGS = {
     },
      "stage-project.ru": {
         "base_url":        "https://stage-project.ru/",
-        "has_checkaddress": False,
+        "has_checkaddress": True,
         "has_business":     True,
         "city_name":        "Москва",
         "has_name_field": True,
