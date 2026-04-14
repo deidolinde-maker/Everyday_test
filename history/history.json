@@ -1,1 +1,1 @@
-{}
+{"ea33bcf6bafdef3e998006976b9eb63e":{"statistic":{"failed":1,"broken":0,"skipped":0,"passed":0,"unknown":0,"total":1},"items":[{"uid":"aa479c288e284441","reportUrl":"https://deidolinde-maker.github.io/Everyday_test/85/#testresult/aa479c288e284441","status":"failed","statusDetails":"AssertionError: [stage-project.ru] Попапы главной: 1 ошибок, 9 успешно | first=POPUP 10/10 text='' hint=profit code=popup_not_found url=https://stage-project.ru/\nassert 1 == 0","time":{"start":1776172174428,"stop":1776172320516,"duration":146088}}]}}
