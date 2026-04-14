@@ -408,6 +408,13 @@ SITE_CONFIGS = {
         "has_business":     False,
         "city_name":        None,   # нет Москвы в списке городов
     },
+     "stage-project.ru": {
+        "base_url":        "https://stage-project.ru/",
+        "has_checkaddress": False,
+        "has_business":     True,
+        "city_name":        "Москва",
+        "has_name_field": True,
+    },
 }
 
 # ---------------------------------------------------------------------------
