@@ -1,0 +1,1 @@
+POPUP 5/12 text='подключить' hint=None code=no_confirmation url=https://moskva.beeline-ru.online/

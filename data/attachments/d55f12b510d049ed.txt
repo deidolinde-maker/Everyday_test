@@ -1,0 +1,1 @@
+POPUP 9/10 text='подключить' hint=None code=click_failed url=https://stage-project.ru/ | Locator.scroll_into_view_if_needed: Timeout 29995ms exceeded. Call log:   - attempting scroll into view action     2 × waiting for element to be stable       - element is not visib
