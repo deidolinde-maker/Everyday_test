@@ -328,35 +328,35 @@ SITE_CONFIGS = {
     },
     "rtk-ru.online": {
         "base_url":        "https://rtk-ru.online/",
-        "has_checkaddress": False,
+        "has_checkaddress": True,
         "has_business":     True,
         "city_name":        "Москва",
         "has_name_field": True,
     },
     "rt-internet.online": {
         "base_url":        "https://rt-internet.online/",
-        "has_checkaddress": False,
+        "has_checkaddress": True,
         "has_business":     False,
         "city_name":        "Москва",
         "has_name_field": True,
     },
     "rtk-home-internet.ru": {
         "base_url":        "https://rtk-home-internet.ru/",
-        "has_checkaddress": False,
+        "has_checkaddress": True,
         "has_business":     False,
         "city_name":        "Москва",
         "has_name_field": True,
     },
     "rtk-internet.online": {
         "base_url":        "https://rtk-internet.online/",
-        "has_checkaddress": False,
+        "has_checkaddress": True,
         "has_business":     True,
         "city_name":        "Москва",
         "has_name_field": True,
     },
     "rtk-home.ru": {
         "base_url":        "http://rtk-home.ru/",
-        "has_checkaddress": False,
+        "has_checkaddress": True,
         "has_business":     True,
         "city_name":        "Москва",
         "has_name_field": True,
@@ -377,14 +377,14 @@ SITE_CONFIGS = {
     },
     "mega-premium.ru": {
         "base_url":        "https://mega-premium.ru/",
-        "has_checkaddress": False,
+        "has_checkaddress": True,
         "has_business":     False,
         "city_name":        "Москва",
         "has_name_field": True,
     },
     "mega-home-internet.ru": {
         "base_url":        "https://mega-home-internet.ru/",
-        "has_checkaddress": False,
+        "has_checkaddress": True,
         "has_business":     False,
          "city_name":        "Москва",
         "has_name_field": True,
@@ -408,13 +408,13 @@ SITE_CONFIGS = {
         "has_business":     False,
         "city_name":        None,   # нет Москвы в списке городов
     },
-     "stage-project.ru": {
-        "base_url":        "https://stage-project.ru/",
-        "has_checkaddress": True,
-        "has_business":     True,
-        "city_name":        "Москва",
-        "has_name_field": True,
-    },
+    # "stage-project.ru": {
+    #    "base_url":        "https://stage-project.ru/",
+     #   "has_checkaddress": True,
+      #  "has_business":     True,
+       # "city_name":        "Москва",
+        #"has_name_field": True,
+#    },
 }
 
 # ---------------------------------------------------------------------------
