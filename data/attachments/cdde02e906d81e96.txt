@@ -1,1 +1,0 @@
-POPUP 3/7 text='подключить' hint=None code=no_confirmation url=https://ttk-internet.ru/
