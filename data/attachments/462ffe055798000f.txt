@@ -1,0 +1,1 @@
+POPUP 6/11 text='подключить' hint=None code=no_confirmation url=https://internet-mts-home.online/
