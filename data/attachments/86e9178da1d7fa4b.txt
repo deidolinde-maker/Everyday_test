@@ -1,1 +1,0 @@
-POPUP 4/12 text='подключить интернет' hint=None code=no_confirmation url=https://providerdom.ru/
