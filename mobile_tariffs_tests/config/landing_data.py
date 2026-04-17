@@ -6,7 +6,8 @@
   - nav_selector: CSS-селектор элемента перехода в мобильный раздел
   - nav_text: ожидаемый текст элемента навигации (проверка "in")
   - card_button_selector: CSS-селектор кнопок «Подключить» на карточках
-  - expected_redirect_type: 'new_tab' | 'same_tab' | 'either'
+  - expected_redirect_type: 'new_tab' | 'same_tab' | 'either' | 'modal' | 'any'
+  - expected_url_contains: список обязательных фрагментов итогового URL после клика (опционально)
   - comment: короткая заметка об особенностях лендинга
 """
 
@@ -58,8 +59,13 @@ LANDINGS = [
         "nav_text": "Мобильная связь",
         "card_button_selector": ".card-block__button",
         "expected_redirect_type": "either",
-        # href кнопки ведёт на https://mobile.101internet.ru/beeline
-        "comment": "Переход через таб-кнопку внутри блока тарифов. CTA ведёт на 101internet.ru/beeline.",
+        "expected_url_contains": [
+            "beeline.ru/customers/products/toptariffs/",
+            "utm_source=mobideal",
+            "utm_medium=cpa",
+            "utm_campaign=landing",
+        ],
+        "comment": "Переход через таб-кнопку внутри блока тарифов. CTA ведёт на beeline.ru/customers/products/toptariffs/ с UTM.",
     },
     {
         "name": "Beeline beeline-ru.online",
@@ -68,6 +74,12 @@ LANDINGS = [
         "nav_text": "Мобильная связь",
         "card_button_selector": ".card-block__button",
         "expected_redirect_type": "either",
+        "expected_url_contains": [
+            "beeline.ru/customers/products/toptariffs/",
+            "utm_source=mobideal",
+            "utm_medium=cpa",
+            "utm_campaign=landing",
+        ],
         "comment": "Структура аналогична beeline-internet.online.",
     },
     {
@@ -81,6 +93,12 @@ LANDINGS = [
         # Берём только кнопки-ссылки с href через CSS :is(a).card-block__button
         "card_button_selector": "a.card-block__button",
         "expected_redirect_type": "same_tab",
+        "expected_url_contains": [
+            "beeline.ru/customers/products/toptariffs/",
+            "utm_source=mobideal",
+            "utm_medium=cpa",
+            "utm_campaign=landing",
+        ],
         "comment": "Мобильные карточки имеют селектор a.card-block__button (с href). Кнопки без href открывают модалку — не проверяем.",
     },
     # ─────────────────── Megafon ───────────────────

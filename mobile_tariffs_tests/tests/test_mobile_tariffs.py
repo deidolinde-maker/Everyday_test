@@ -67,6 +67,25 @@ def _allowed_redirect_types(expected_redirect_type: str) -> set[str]:
     return mapping.get(expected_redirect_type, {"new_tab", "same_tab"})
 
 
+def _validate_redirect_url(landing: dict, actual_url: str) -> str | None:
+    """
+    Проверить итоговый URL по опциональному правилу landing["expected_url_contains"].
+    Возвращает текст причины ошибки или None.
+    """
+    expected_parts = landing.get("expected_url_contains") or []
+    if not expected_parts:
+        return None
+
+    missing_parts = [part for part in expected_parts if part not in actual_url]
+    if not missing_parts:
+        return None
+
+    return (
+        f"итоговый URL '{actual_url}' не содержит ожидаемые фрагменты: "
+        f"{', '.join(missing_parts)}"
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Попапы
 # ─────────────────────────────────────────────────────────────────────────────
@@ -318,6 +337,13 @@ def _check_card_button(
                 new_page.close()
                 _fail_step(page, landing, logger, step_name, reason)
 
+            url_validation_error = _validate_redirect_url(landing, new_url)
+            if url_validation_error:
+                attach_card_result(card_index, href, url_before, new_url,
+                                   "new_tab", "❌ FAILED")
+                new_page.close()
+                _fail_step(page, landing, logger, step_name, url_validation_error)
+
             attach_card_result(card_index, href, url_before, new_url,
                                "new_tab", "✅ PASSED")
             step_ok(logger, step_name, f"новая вкладка → {new_url}")
@@ -333,6 +359,12 @@ def _check_card_button(
                     f"получен redirect_type='same_tab', ожидается '{expected_redirect_type}'"
                 )
                 _fail_step(page, landing, logger, step_name, reason)
+
+            url_validation_error = _validate_redirect_url(landing, url_after)
+            if url_validation_error:
+                attach_card_result(card_index, href, url_before, url_after,
+                                   "same_tab", "❌ FAILED")
+                _fail_step(page, landing, logger, step_name, url_validation_error)
 
             attach_card_result(card_index, href, url_before, url_after,
                                "same_tab", "✅ PASSED")
