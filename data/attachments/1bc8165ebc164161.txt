@@ -1,0 +1,1 @@
+[beeline-ru.pro] Шаг 4b: попапы /business города — неприменим (has_business=False)
