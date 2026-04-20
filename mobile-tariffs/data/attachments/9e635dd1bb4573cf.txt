@@ -1,0 +1,1 @@
+❌ Карточка #2: кнопка «Подключить» — ПРИЧИНА: итоговый URL 'chrome-error://chromewebdata/' не содержит ожидаемые фрагменты: beeline.ru/customers/products/toptariffs/, utm_source=mobideal, utm_medium=cpa, utm_campaign=landing
