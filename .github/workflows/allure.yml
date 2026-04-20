@@ -13,10 +13,6 @@ on:
   schedule:
     - cron: '0 5 * * *'
 
-  # Запуск при каждом пуше в main/master
-  push:
-    branches: [main, master]
-
 jobs:
   test:
     runs-on: ubuntu-latest
