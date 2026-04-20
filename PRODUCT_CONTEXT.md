@@ -131,7 +131,7 @@
   - `a9d1a58`: отключен `/business` для `rt-internet.online` и `rtk-home-internet.ru`.
 - CI:
   - `allure.yml` (формы): schedule `0 5 * * *`, workflow_dispatch (без автозапуска по push).
-  - `mobile-tariffs.yml`: только `workflow_dispatch`, публикация Allure в `gh-pages/mobile-tariffs`.
+  - `mobile-tariffs.yml`: workflow_dispatch + workflow_run после `Playwright Tests`, публикация Allure в `gh-pages/mobile-tariffs`.
 - Количество конфигов на 2026-04-13:
   - Suite A: 23 сайта,
   - Suite B: 10 лендингов.
