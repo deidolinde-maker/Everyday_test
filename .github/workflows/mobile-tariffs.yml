@@ -69,6 +69,16 @@ jobs:
           allure_report: mobile_tariffs_tests/allure-report
           allure_history: mobile_tariffs_tests/allure-history
 
+      - name: Публикация mobile Allure на GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: mobile_tariffs_tests/allure-report
+          destination_dir: mobile-tariffs
+          keep_files: true
+
       - name: Сохранить Allure report
         if: always()
         uses: actions/upload-artifact@v4
@@ -85,7 +95,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           ALLURE_RESULTS_DIR: allure-results
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          ALLURE_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ALLURE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/mobile-tariffs/
         run: python notify_from_allure_mobile.py
 
       - name: Завалить job если есть падения тестов
