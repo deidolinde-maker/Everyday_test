@@ -18,7 +18,7 @@ import allure
 import os
 import requests
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
 REALLY_SUBMIT = True # True — реально отправлять заявки
@@ -51,7 +51,12 @@ ERROR_STEP_NAMES = {
 
 
 def _now_msk_str() -> str:
-    return datetime.now(ZoneInfo("Europe/Moscow")).strftime("%Y-%m-%d %H:%M:%S (MSK)")
+    try:
+        dt = datetime.now(ZoneInfo("Europe/Moscow"))
+    except Exception:
+        # Windows-среды без tzdata: fallback к фиксированному UTC+3.
+        dt = datetime.now(timezone(timedelta(hours=3)))
+    return dt.strftime("%Y-%m-%d %H:%M:%S (MSK)")
 
 
 def _normalize_alert_text(text: str, max_len: int = 900) -> str:
