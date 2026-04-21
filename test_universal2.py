@@ -19,6 +19,7 @@ import os
 import requests
 import time
 import sys
+from urllib.parse import urlsplit
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
@@ -41,6 +42,7 @@ ERROR_REASONS = {
     "form_not_filled":  ("Форма не заполнена",            "Поле недоступно или перекрыто оверлеем"),
     "submit_not_found": ("Кнопка отправки не найдена",    "Форма не в ожидаемом состоянии"),
     "no_confirmation":  ("Подтверждение не получено",     "Сайт не перешёл на /thanks"),
+    "thanks_return_failed": ("Не выполнено закрытие страницы Спасибо", "Не удалось вернуться на главную без региона"),
     "click_failed":     ("Клик по кнопке не удался",      "Элемент не виден или не существует"),
     "city_not_found":   ("Город не найден в списке",      "Список городов не загрузился"),
     "city_no_redirect": ("Переход на город не произошёл", "URL не изменился после клика"),
@@ -52,6 +54,7 @@ ERROR_STEP_NAMES = {
     "form_not_filled": "Заполнение формы заявки",
     "submit_not_found": "Отправка заявки после клика на кнопку отправки",
     "no_confirmation": "Отправка заявки после клика на кнопку отправки",
+    "thanks_return_failed": "Закрытие страницы Спасибо и переход на главную без региона",
     "click_failed": "Клик по кнопке открытия формы",
     "city_not_found": "Изменить город в попапе заявки",
     "city_no_redirect": "Изменить город в попапе заявки",
@@ -500,6 +503,32 @@ SERVICE_PLACE_VALUES = [
     "Для бизнеса",
 ]
 
+REGION_POPUP_DETECT_SELECTORS = [
+    "#yesButton",
+    "#noButton",
+    ".popup-select-region__button.city",
+    "button.region-search__button",
+    ".region-search__button.button.button-red",
+    ".region-search__button.button.button-green",
+    ".popup-select-region__content-wrapper .popup__close",
+]
+
+THANKS_RETURN_SELECTORS = [
+    "a:has-text('На главную')",
+    "button:has-text('На главную')",
+    "a:has-text('Вернуться')",
+    "button:has-text('Вернуться')",
+    "a:has-text('Закрыть')",
+    "button:has-text('Закрыть')",
+    "a:has-text('Продолжить')",
+    "button:has-text('Продолжить')",
+    ".popup__close",
+    ".modal__close",
+    ".fancybox-close-small",
+    "[aria-label*='close']",
+    "[aria-label*='закры']",
+]
+
 
 # ---------------------------------------------------------------------------
 # pytest: параметр --site
@@ -803,6 +832,93 @@ def wait_for_success_url(page: Page, timeout_ms: int = SUBMIT_CONFIRM_TIMEOUT_MS
 
     print(f"  [SUBMIT] ❌ URL: {page.url}")
     return False
+
+
+def detect_visible_region_popup(page: Page) -> str | None:
+    for sel in REGION_POPUP_DETECT_SELECTORS:
+        try:
+            loc = page.locator(sel).first
+            if loc.count() > 0 and loc.is_visible():
+                return sel
+        except Exception:
+            pass
+
+    try:
+        choose_btn = page.get_by_role("button", name="Выбрать город").first
+        if choose_btn.count() > 0 and choose_btn.is_visible():
+            return "button:has-text('Выбрать город')"
+    except Exception:
+        pass
+
+    return None
+
+
+def _wait_until_left_success_url(page: Page, timeout_ms: int = 6000) -> bool:
+    poll_ms = 250
+    elapsed = 0
+    while elapsed < timeout_ms:
+        if not _is_success_url(page.url):
+            return True
+        page.wait_for_timeout(poll_ms)
+        elapsed += poll_ms
+    return not _is_success_url(page.url)
+
+
+def verify_thanks_close_and_return(page: Page, return_url: str) -> tuple[bool, str]:
+    with allure.step("Проверка: закрытие Thanks и возврат на главную без региона"):
+        if not _is_success_url(page.url):
+            return False, f"страница не в состоянии Thanks ({page.url})"
+
+        action = "none"
+        for sel in THANKS_RETURN_SELECTORS:
+            try:
+                btn = page.locator(sel).first
+                if btn.count() == 0 or not btn.is_visible():
+                    continue
+                btn.click(force=True)
+                if _wait_until_left_success_url(page, timeout_ms=5000):
+                    action = f"click:{sel}"
+                    break
+            except Exception:
+                pass
+
+        if _is_success_url(page.url):
+            try:
+                page.go_back(wait_until="domcontentloaded", timeout=7000)
+                page.wait_for_timeout(500)
+                if _wait_until_left_success_url(page, timeout_ms=2500):
+                    action = "go_back"
+            except Exception:
+                pass
+
+        if _is_success_url(page.url):
+            try:
+                page.goto(return_url, wait_until="domcontentloaded", timeout=15000)
+                page.wait_for_timeout(500)
+                if _wait_until_left_success_url(page, timeout_ms=2500):
+                    action = "goto_return_url"
+            except Exception as e:
+                return False, f"не удалось вернуться на главную ({e})"
+
+        if _is_success_url(page.url):
+            return False, f"после action={action} остались на Thanks ({page.url})"
+
+        expected_host = (urlsplit(return_url).netloc or "").lower()
+        current_host = (urlsplit(page.url).netloc or "").lower()
+        if expected_host and current_host and expected_host != current_host:
+            return False, f"возврат на другой хост ({current_host} вместо {expected_host})"
+
+        expected_path = (urlsplit(return_url).path or "").rstrip("/")
+        current_path = (urlsplit(page.url).path or "").rstrip("/")
+        if expected_path and expected_path != "/" and not current_path.startswith(expected_path):
+            return False, f"возврат на другой путь ({current_path} вместо {expected_path})"
+
+        region_sel = detect_visible_region_popup(page)
+        if region_sel:
+            return False, f"после возврата виден region-popup ({region_sel})"
+
+        print(f"  [THANKS] ✅ Возврат на главную подтверждён ({action})")
+        return True, action
 
 
 # ---------------------------------------------------------------------------
@@ -1240,6 +1356,7 @@ def process_auto_profit_popup(
         return 0, 1, "AUTO-PROFIT code=submit_not_found"[:220], True
 
     if REALLY_SUBMIT:
+        return_url_before_submit = page.url or base_url
         ok = submit_with_confirmation(
             page,
             container,
@@ -1249,11 +1366,10 @@ def process_auto_profit_popup(
         )
         if ok:
             print("  [AUTO-PROFIT] ✅ Заявка принята")
-            try:
-                page.wait_for_load_state("domcontentloaded", timeout=5000)
-            except Exception:
-                pass
-            page.wait_for_timeout(500)
+            thanks_ok, thanks_reason = verify_thanks_close_and_return(page, return_url_before_submit)
+            if not thanks_ok:
+                log_error("thanks_return_failed", page, site_label, extra=f"auto profit popup | {thanks_reason}")
+                return 0, 1, "AUTO-PROFIT code=thanks_return_failed"[:220], True
             return 1, 0, None, True
 
         log_error("no_confirmation", page, site_label, extra="auto profit popup")
@@ -1295,6 +1411,7 @@ def process_unexpected_auto_profit_popup(
         return True, False, "submit_not_found"
 
     if REALLY_SUBMIT:
+        return_url_before_submit = page.url or base_url
         ok = submit_with_confirmation(
             page, container, form_type,
             timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS, attempts=2
@@ -1302,11 +1419,10 @@ def process_unexpected_auto_profit_popup(
         if not ok:
             log_error("no_confirmation", page, site_label, extra=f"auto profit during {context}")
             return True, False, "no_confirmation"
-        try:
-            page.wait_for_load_state("domcontentloaded", timeout=5000)
-        except Exception:
-            pass
-        page.wait_for_timeout(500)
+        thanks_ok, thanks_reason = verify_thanks_close_and_return(page, return_url_before_submit)
+        if not thanks_ok:
+            log_error("thanks_return_failed", page, site_label, extra=f"auto profit during {context} | {thanks_reason}")
+            return True, False, "thanks_return_failed"
         return True, True, ""
 
     close_popup_or_page(page)
@@ -1531,18 +1647,25 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
             submit.scroll_into_view_if_needed()
 
             if REALLY_SUBMIT:
+                return_url_before_submit = page.url or base_url
                 ok = submit_with_confirmation(
                     page, container, form_type,
                     timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS, attempts=2
                 )
                 if ok:
                     print(f"  [{label}] ✅ Заявка принята ({service_label})")
-                    # Ждём завершения редиректов перед следующим safe_goto
-                    try:
-                        page.wait_for_load_state("domcontentloaded", timeout=5000)
-                    except Exception:
-                        pass
-                    page.wait_for_timeout(500)
+                    thanks_ok, thanks_reason = verify_thanks_close_and_return(
+                        page, return_url_before_submit
+                    )
+                    if not thanks_ok:
+                        log_error(
+                            "thanks_return_failed",
+                            page,
+                            site_label,
+                            extra=f"service={service_label} | {thanks_reason}",
+                        )
+                        register_failure("thanks_return_failed", f"service={service_label} | {thanks_reason}")
+                        continue
                     success += 1
                 else:
                     log_error("no_confirmation", page, site_label, extra=f"service={service_label}")
@@ -1879,12 +2002,21 @@ def run_site_scenario(page: Page, cfg: dict):
                     submit.scroll_into_view_if_needed()
                     print(f"  ✅ checkaddress готова")
                     if REALLY_SUBMIT:
+                        return_url_before_submit = page.url or base_url
                         ok = submit_with_confirmation(
                             page, container, "checkaddress",
                             timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS, attempts=2
                         )
                         if ok:
-                            safe_goto(page, base_url)
+                            thanks_ok, thanks_reason = verify_thanks_close_and_return(
+                                page, return_url_before_submit
+                            )
+                            if thanks_ok:
+                                nav_ok, _, nav_reason = safe_goto(page, base_url)
+                                if not nav_ok:
+                                    step_reason = f"не удалось вернуться на {base_url} после Thanks: {nav_reason}"
+                            else:
+                                step_reason = f"не выполнен шаг закрытия Thanks: {thanks_reason}"
                         else:
                             step_reason = "подтверждение отправки не получено"
                 elif not filled:
