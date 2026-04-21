@@ -1,7 +1,0 @@
-Карточка #2
-────────────────────────────────────────
-  href          : https://beeline.ru/customers/products/toptariffs/?utm_source=mobideal&utm_medium=cpa&utm_campaign=landing
-  URL до клика  : https://beeline-internet.online/
-  URL после     : chrome-error://chromewebdata/
-  Тип перехода  : same_tab
-  Результат     : ❌ FAILED
