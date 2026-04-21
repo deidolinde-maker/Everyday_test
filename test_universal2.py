@@ -494,6 +494,12 @@ SUGGESTION_SELECTORS = [
     "[class*='dropdown'] li",
 ]
 
+SERVICE_PLACE_VALUES = [
+    "В квартиру",
+    "В частный дом",
+    "Для бизнеса",
+]
+
 
 # ---------------------------------------------------------------------------
 # pytest: параметр --site
@@ -833,15 +839,62 @@ def choose_first_suggestion(page: Page, timeout_ms: int = 1500) -> bool:
         return False
 
 
+def _service_place_locator(container, service_value: str):
+    return container.locator(f"input[name='Place'][value='{service_value}']")
+
+
+def detect_service_place_values(container) -> list[str]:
+    values = []
+    for service_value in SERVICE_PLACE_VALUES:
+        try:
+            if _service_place_locator(container, service_value).count() > 0:
+                values.append(service_value)
+        except Exception:
+            pass
+    return values
+
+
+def select_service_place_value(container, service_value: str) -> bool:
+    options = _service_place_locator(container, service_value)
+    try:
+        count = options.count()
+    except Exception:
+        count = 0
+    if count == 0:
+        print(f"  [FORM] Вариант услуги не найден: {service_value}")
+        return False
+
+    for idx in range(count):
+        option = options.nth(idx)
+        try:
+            option.check(force=True)
+            print(f"  [FORM] Вариант услуги выбран: {service_value}")
+            return True
+        except Exception:
+            try:
+                option.click(force=True)
+                print(f"  [FORM] Вариант услуги выбран (click): {service_value}")
+                return True
+            except Exception:
+                pass
+    print(f"  [FORM] Не удалось выбрать вариант услуги: {service_value}")
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Заполнение формы
 # ---------------------------------------------------------------------------
 
 def fill_form(page: Page, container, form_type: str,
-              has_name_field: bool = False) -> bool:
+              has_name_field: bool = False,
+              service_place_value: str | None = None) -> bool:
     cfg        = FORM_CONFIGS[form_type]
     no_house   = cfg.get("no_house", False)
     no_suggest = cfg.get("no_suggest", False)
+
+    if service_place_value:
+        if not select_service_place_value(container, service_place_value):
+            return False
 
     # Адрес / Улица
     street = container.locator(cfg["street"]).first
@@ -1325,6 +1378,48 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                 register_failure("click_failed", f"reopen after auto-profit | {err}")
                 return "failed"
 
+        def reopen_target_popup(current_context: str):
+            nav_ok_local, nav_critical_local, nav_reason_local = safe_goto(page, base_url)
+            if not nav_ok_local:
+                if nav_critical_local:
+                    raise SiteUnavailableError(
+                        f"{label}: сайт недоступен при повторном открытии формы ({base_url}) | {nav_reason_local}"
+                    )
+                log_error("navigation_failed", page, site_label, extra=nav_reason_local[:180])
+                register_failure("navigation_failed", f"{current_context} | {nav_reason_local[:180]}")
+                return None, None, "failed"
+
+            accept_cookie_banner(page)
+            try:
+                retry_btn = btn_locator_fn(page, entry)
+                retry_btn.scroll_into_view_if_needed()
+                retry_btn.click(force=True)
+                page.wait_for_timeout(500)
+            except Exception as e:
+                err = str(e).replace("\n", " ")[:180]
+                log_error("click_failed", page, site_label, extra=f"{current_context} | {err}")
+                register_failure("click_failed", f"{current_context} | {err}")
+                return None, None, "failed"
+
+            reopened_form_type, reopened_container = wait_for_popup_with_fields(page, form_hint=form_hint)
+            if reopened_form_type is None:
+                recover_status_local = recover_from_unexpected_profit(
+                    f"{current_context}: ожидание целевого попапа"
+                )
+                if recover_status_local == "reopened":
+                    reopened_form_type, reopened_container = wait_for_popup_with_fields(
+                        page, form_hint=form_hint
+                    )
+                elif recover_status_local == "failed":
+                    return None, None, "failed"
+
+            if reopened_form_type is None:
+                log_error("popup_not_found", page, site_label, extra=current_context)
+                register_failure("popup_not_found", current_context)
+                return None, None, "failed"
+
+            return reopened_form_type, reopened_container, "ok"
+
         nav_ok, nav_critical, nav_reason = safe_goto(page, base_url)
         if not nav_ok:
             if nav_critical:
@@ -1358,71 +1453,112 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
             register_failure("popup_not_found")
             continue
 
-        if not fill_form(page, container, form_type, has_name_field=has_name_field):
-            recover_status = recover_from_unexpected_profit("заполнение целевой формы")
-            if recover_status == "reopened":
-                form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
-                if form_type is None:
-                    log_error("popup_not_found", page, site_label, extra="after auto-profit recovery")
-                    register_failure("popup_not_found", "after auto-profit recovery")
-                    continue
-                if fill_form(page, container, form_type, has_name_field=has_name_field):
-                    pass
-                else:
-                    log_error("form_not_filled", page, site_label)
-                    register_failure("form_not_filled")
-                    continue
-            elif recover_status == "failed":
-                continue
-            else:
-                log_error("form_not_filled", page, site_label)
-                register_failure("form_not_filled")
-                continue
-
-        submit = find_submit(container, form_type)
-        if submit is None:
-            recover_status = recover_from_unexpected_profit("поиск submit в целевой форме")
-            if recover_status == "reopened":
-                form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
-                if form_type is None:
-                    log_error("popup_not_found", page, site_label, extra="after auto-profit recovery")
-                    register_failure("popup_not_found", "after auto-profit recovery")
-                    continue
-                submit = find_submit(container, form_type)
-                if submit is None:
-                    log_error("submit_not_found", page, site_label)
-                    register_failure("submit_not_found")
-                    continue
-            elif recover_status == "failed":
-                continue
-            else:
-                log_error("submit_not_found", page, site_label)
-                register_failure("submit_not_found")
-                continue
-
-        submit.scroll_into_view_if_needed()
-
-        if REALLY_SUBMIT:
-            ok = submit_with_confirmation(
-                page, container, form_type,
-                timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS, attempts=2
-            )
-            if ok:
-                print(f"  [{label}] ✅ Заявка принята")
-                # Ждём завершения редиректов перед следующим safe_goto
-                try:
-                    page.wait_for_load_state("domcontentloaded", timeout=5000)
-                except Exception:
-                    pass
-                page.wait_for_timeout(500)
-                success += 1
-            else:
-                log_error("no_confirmation", page, site_label)
-                register_failure("no_confirmation")
+        if form_type in ("profit", "business"):
+            service_values = [None]
         else:
-            print(f"  [{label}] ✅ Форма готова (REALLY_SUBMIT=False)")
-            close_popup_or_page(page)
-            success += 1
+            detected_service_values = detect_service_place_values(container)
+            if detected_service_values:
+                service_values = detected_service_values
+                print(f"  [FORM] Найдены варианты услуги: {', '.join(service_values)}")
+            else:
+                service_values = [None]
+                print("  [FORM] Варианты услуги Place не обнаружены — submit без переключения")
+
+        for service_idx, service_value in enumerate(service_values, start=1):
+            service_label = service_value if service_value else "без выбора варианта"
+            print(
+                f"  [{label}] Вариант submit {service_idx}/{len(service_values)}: {service_label}"
+            )
+
+            if not fill_form(
+                page,
+                container,
+                form_type,
+                has_name_field=has_name_field,
+                service_place_value=service_value,
+            ):
+                recover_status = recover_from_unexpected_profit(
+                    f"заполнение целевой формы ({service_label})"
+                )
+                if recover_status == "reopened":
+                    form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
+                    if form_type is None:
+                        log_error("popup_not_found", page, site_label, extra="after auto-profit recovery")
+                        register_failure("popup_not_found", f"after auto-profit recovery | service={service_label}")
+                        continue
+                    if fill_form(
+                        page,
+                        container,
+                        form_type,
+                        has_name_field=has_name_field,
+                        service_place_value=service_value,
+                    ):
+                        pass
+                    else:
+                        log_error("form_not_filled", page, site_label, extra=f"service={service_label}")
+                        register_failure("form_not_filled", f"service={service_label}")
+                        continue
+                elif recover_status == "failed":
+                    continue
+                else:
+                    log_error("form_not_filled", page, site_label, extra=f"service={service_label}")
+                    register_failure("form_not_filled", f"service={service_label}")
+                    continue
+
+            submit = find_submit(container, form_type)
+            if submit is None:
+                recover_status = recover_from_unexpected_profit(
+                    f"поиск submit в целевой форме ({service_label})"
+                )
+                if recover_status == "reopened":
+                    form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
+                    if form_type is None:
+                        log_error("popup_not_found", page, site_label, extra="after auto-profit recovery")
+                        register_failure("popup_not_found", f"after auto-profit recovery | service={service_label}")
+                        continue
+                    submit = find_submit(container, form_type)
+                    if submit is None:
+                        log_error("submit_not_found", page, site_label, extra=f"service={service_label}")
+                        register_failure("submit_not_found", f"service={service_label}")
+                        continue
+                elif recover_status == "failed":
+                    continue
+                else:
+                    log_error("submit_not_found", page, site_label, extra=f"service={service_label}")
+                    register_failure("submit_not_found", f"service={service_label}")
+                    continue
+
+            submit.scroll_into_view_if_needed()
+
+            if REALLY_SUBMIT:
+                ok = submit_with_confirmation(
+                    page, container, form_type,
+                    timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS, attempts=2
+                )
+                if ok:
+                    print(f"  [{label}] ✅ Заявка принята ({service_label})")
+                    # Ждём завершения редиректов перед следующим safe_goto
+                    try:
+                        page.wait_for_load_state("domcontentloaded", timeout=5000)
+                    except Exception:
+                        pass
+                    page.wait_for_timeout(500)
+                    success += 1
+                else:
+                    log_error("no_confirmation", page, site_label, extra=f"service={service_label}")
+                    register_failure("no_confirmation", f"service={service_label}")
+                    continue
+            else:
+                print(f"  [{label}] ✅ Форма готова (REALLY_SUBMIT=False, {service_label})")
+                close_popup_or_page(page)
+                success += 1
+
+            if service_idx < len(service_values):
+                form_type, container, reopen_status = reopen_target_popup(
+                    f"переоткрытие формы для варианта услуги ({service_label})"
+                )
+                if reopen_status != "ok":
+                    break
 
     if fail_details:
         allure.attach(
@@ -1432,7 +1568,11 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
         )
 
     sep = "=" * 55
-    print(f"\n{sep}\n[{label} RESULT] ✅ {success}  ❌ {failed}  Всего: {len(buttons)}\n{sep}\n")
+    total_attempts = success + failed
+    print(
+        f"\n{sep}\n[{label} RESULT] ✅ {success}  ❌ {failed}  "
+        f"Submit-попыток: {total_attempts}\n{sep}\n"
+    )
     return success, failed, first_fail
 
 
