@@ -1,0 +1,7 @@
+Карточка #3
+────────────────────────────────────────
+  href          : #
+  URL до клика  : https://internet-mts-home.online/#mobile
+  URL после     : https://moskva.mts.ru/personal/mobilnaya-svyaz/tarifi/vse-tarifi/mobile?utm_source=mtspn&utm_medium=cpa&utm_content=&oid=841483&utm_campaign=c_mtspn_s_101internet_r_rf_f_mix_pl_%D0%9B%D0%B5%D0%BD%D0%B4%D0%B8%D0%BD%D0%B3%202-_t_cpa_a_broad_k_promo&clickid=569a43a1-93a4-4440-bb82-accd644b9851&clickid=569a43a1-93a4-4440-bb82-accd644b9851&erid=
+  Тип перехода  : same_tab
+  Результат     : ✅ PASSED
