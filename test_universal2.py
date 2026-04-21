@@ -19,6 +19,7 @@ import os
 import requests
 import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 REALLY_SUBMIT = True # True — реально отправлять заявки
 
@@ -36,6 +37,56 @@ ERROR_REASONS = {
     "city_not_found":   ("Город не найден в списке",      "Список городов не загрузился"),
     "city_no_redirect": ("Переход на город не произошёл", "URL не изменился после клика"),
 }
+
+ERROR_STEP_NAMES = {
+    "navigation_failed": "Открытие страницы лендинга",
+    "popup_not_found": "Появился попап заявки",
+    "form_not_filled": "Заполнение формы заявки",
+    "submit_not_found": "Отправка заявки после клика на кнопку отправки",
+    "no_confirmation": "Отправка заявки после клика на кнопку отправки",
+    "click_failed": "Клик по кнопке открытия формы",
+    "city_not_found": "Изменить город в попапе заявки",
+    "city_no_redirect": "Изменить город в попапе заявки",
+}
+
+
+def _now_msk_str() -> str:
+    return datetime.now(ZoneInfo("Europe/Moscow")).strftime("%Y-%m-%d %H:%M:%S (MSK)")
+
+
+def _normalize_alert_text(text: str, max_len: int = 900) -> str:
+    value = " ".join((text or "").split()).strip()
+    if len(value) > max_len:
+        return value[: max_len - 3] + "..."
+    return value
+
+
+def _build_form_alert_message(
+    site_label: str,
+    url: str,
+    error_text: str,
+    details: str = "",
+    *,
+    critical: bool = False,
+) -> str:
+    header = "🚨 Критическая ошибка автотеста формы" if critical else "🚨 Ошибка автотеста формы"
+    report_url = os.getenv("ALLURE_URL", "").strip() or os.getenv("RUN_URL", "").strip()
+
+    lines = [
+        header,
+        "",
+        f"🕒 Время: {_now_msk_str()}",
+        f"🌐 Лендинг: {site_label}",
+    ]
+    if url:
+        lines.append(f"🔗 URL: {url}")
+    lines.append(f"❌ Ошибка: {error_text}")
+    if details:
+        lines.append(f"🔎 Детали: {details}")
+    if report_url:
+        lines.append(f"🔗 Отчёт: {report_url}")
+
+    return "\n".join(lines)
 
 
 def send_telegram_alert(text: str, alert_type: str = "tech") -> bool:
@@ -75,21 +126,12 @@ def mark_step_not_applicable(site_label: str, step_no: str, step_name: str, reas
 
 def send_step_alert(site_label: str, step_no: str, step_name: str, reason: str, page: "Page" = None):
     url = page.url if page else ""
-    time_now = datetime.now().strftime("%H:%M:%S")
-    run_url = os.getenv("RUN_URL", "").strip()
-
-    lines = [
-        f"❌ [{site_label}] Шаг {step_no}: {step_name} — failed",
-        f"Статус: failed",
-        f"Причина: {reason}",
-        f"URL: {url}",
-        f"Время: {time_now}",
-    ]
-    if run_url:
-        lines.append(f"Run: {run_url}")
+    error_text = f'Не выполнен шаг "{step_name}"'
+    details = _normalize_alert_text(reason)
+    message = _build_form_alert_message(site_label, url, error_text, details)
 
     print(f"[STEP-ALERT] [{site_label}] Шаг {step_no}: {step_name} | {reason} | {url}")
-    send_telegram_alert("\n".join(lines), alert_type="step")
+    send_telegram_alert(message, alert_type="step")
 
 
 class SiteUnavailableError(RuntimeError):
@@ -98,20 +140,16 @@ class SiteUnavailableError(RuntimeError):
 
 def send_critical_alert(site_label: str, step_no: str, step_name: str, reason: str, page: "Page" = None):
     url = page.url if page else ""
-    time_now = datetime.now().strftime("%H:%M:%S")
-    run_url = os.getenv("RUN_URL", "").strip()
+    error_text = f'Не выполнен шаг "{step_name}"'
+    details = _normalize_alert_text(reason)
+    text = _build_form_alert_message(
+        site_label,
+        url,
+        error_text,
+        details,
+        critical=True,
+    )
 
-    lines = [
-        f"[CRITICAL] [{site_label}] Шаг {step_no}: {step_name}",
-        "Статус: critical",
-        f"Причина: {reason}",
-        f"URL: {url}",
-        f"Время: {time_now}",
-    ]
-    if run_url:
-        lines.append(f"Run: {run_url}")
-
-    text = "\n".join(lines)
     print(f"[CRITICAL] [{site_label}] Шаг {step_no}: {step_name} | {reason} | {url}")
     allure.attach(
         text,
@@ -164,30 +202,22 @@ def log_error(error_code: str, page: "Page", site_label: str, extra: str = ""):
         error_code, (error_code, "Неизвестная причина")
     )
     url  = page.url if page else ""
-    time = datetime.now().strftime("%H:%M:%S")
 
     # Консоль
     print(f"  ❌ {error_msg} | {reason} | {url}")
 
-    # Telegram
-    lines = [
-        "❌ Ошибка в тесте",
-        "",
-        f"Сайт: {site_label}",
-        f"Ошибка: {error_msg}",
-        f"Причина: {reason}",
-    ]
-    if extra:
-        lines.append(f"Детали: {extra}")
-    lines += [
-        f"URL: {url}",
-        f"Время: {time}",
-    ]
-    run_url = os.getenv("RUN_URL", "").strip()
-    if run_url:
-        lines.append(f"Run: {run_url}")
+    step_name = ERROR_STEP_NAMES.get(error_code, error_msg)
+    error_text = f'Не выполнен шаг "{step_name}"'
+    if error_code == "no_confirmation":
+        error_text += ", не произошел редирект на страницу Спасибо"
 
-    send_telegram_alert("\n".join(lines), alert_type="tech")
+    detail_parts = [_normalize_alert_text(reason, max_len=300)]
+    if extra:
+        detail_parts.append(_normalize_alert_text(extra, max_len=500))
+    details = " | ".join(p for p in detail_parts if p)
+
+    message = _build_form_alert_message(site_label, url, error_text, details)
+    send_telegram_alert(message, alert_type="tech")
 
 # ---------------------------------------------------------------------------
 # Конфигурация форм (CSS-классы полей)
