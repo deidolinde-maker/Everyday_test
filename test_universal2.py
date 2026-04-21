@@ -1128,6 +1128,130 @@ def dismiss_profit_popup(page: Page):
         pass
 
 
+def process_auto_profit_popup(
+    page: Page,
+    base_url: str,
+    has_name_field: bool = False,
+) -> tuple[int, int, str | None, bool]:
+    """
+    Проверяет автопоявляющийся profit-попап как полноценную форму:
+    fill -> submit -> confirm.
+
+    Возвращает:
+      success, failed, first_fail, auto_popup_tested
+    """
+    site_label = base_url.replace("https://", "").replace("http://", "").strip("/")
+    sep = "=" * 55
+    print(f"\n{sep}\n[AUTO-PROFIT] Проверка автопопапа\n{sep}")
+
+    nav_ok, nav_critical, nav_reason = safe_goto(page, base_url)
+    if not nav_ok:
+        if nav_critical:
+            raise SiteUnavailableError(
+                f"AUTO-PROFIT: сайт недоступен ({base_url}) | {nav_reason}"
+            )
+        log_error("navigation_failed", page, site_label, extra=nav_reason[:180])
+        first_fail = f"AUTO-PROFIT code=navigation_failed | {nav_reason[:180]}"
+        return 0, 1, first_fail[:220], False
+
+    # Для корректного ожидания авто-попапа закрываем только region/cookie.
+    dismiss_region_popup(page)
+    accept_cookie_banner(page)
+
+    form_type, container = wait_for_popup_with_fields(timeout_ms=12_000, page=page, form_hint="profit")
+    if form_type is None:
+        print("  [AUTO-PROFIT] Автопопап не появился — продолжаем обычный цикл")
+        allure.attach(
+            "Автопопап profit не появился за 12с. Сценарий пропущен как неприменимый.",
+            name=f"AUTO-PROFIT skip ({site_label})",
+            attachment_type=allure.attachment_type.TEXT,
+        )
+        return 0, 0, None, False
+
+    print("  [AUTO-PROFIT] Попап появился автоматически, запускаем полный submit-сценарий")
+    if not fill_form(page, container, form_type, has_name_field=has_name_field):
+        log_error("form_not_filled", page, site_label, extra="auto profit popup")
+        return 0, 1, "AUTO-PROFIT code=form_not_filled"[:220], True
+
+    submit = find_submit(container, form_type)
+    if submit is None:
+        log_error("submit_not_found", page, site_label, extra="auto profit popup")
+        return 0, 1, "AUTO-PROFIT code=submit_not_found"[:220], True
+
+    if REALLY_SUBMIT:
+        ok = submit_with_confirmation(
+            page,
+            container,
+            form_type,
+            timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS,
+            attempts=2,
+        )
+        if ok:
+            print("  [AUTO-PROFIT] ✅ Заявка принята")
+            try:
+                page.wait_for_load_state("domcontentloaded", timeout=5000)
+            except Exception:
+                pass
+            page.wait_for_timeout(500)
+            return 1, 0, None, True
+
+        log_error("no_confirmation", page, site_label, extra="auto profit popup")
+        return 0, 1, "AUTO-PROFIT code=no_confirmation"[:220], True
+
+    print("  [AUTO-PROFIT] ✅ Форма готова (REALLY_SUBMIT=False)")
+    close_popup_or_page(page)
+    return 1, 0, None, True
+
+
+def process_unexpected_auto_profit_popup(
+    page: Page,
+    base_url: str,
+    has_name_field: bool = False,
+    context: str = "",
+) -> tuple[bool, bool, str]:
+    """
+    Подстраховка: если auto-profit всплыл во время проверки другой формы,
+    отправляем его и возвращаемся к исходному сценарию.
+
+    Возвращает:
+      handled, ok, fail_code
+    """
+    site_label = base_url.replace("https://", "").replace("http://", "").strip("/")
+    form_type, container = wait_for_popup_with_fields(
+        page=page, timeout_ms=2_000, form_hint="profit"
+    )
+    if form_type is None:
+        return False, True, ""
+
+    print(f"  [AUTO-PROFIT] Неожиданное появление во время '{context}' — обрабатываем")
+    if not fill_form(page, container, form_type, has_name_field=has_name_field):
+        log_error("form_not_filled", page, site_label, extra=f"auto profit during {context}")
+        return True, False, "form_not_filled"
+
+    submit = find_submit(container, form_type)
+    if submit is None:
+        log_error("submit_not_found", page, site_label, extra=f"auto profit during {context}")
+        return True, False, "submit_not_found"
+
+    if REALLY_SUBMIT:
+        ok = submit_with_confirmation(
+            page, container, form_type,
+            timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS, attempts=2
+        )
+        if not ok:
+            log_error("no_confirmation", page, site_label, extra=f"auto profit during {context}")
+            return True, False, "no_confirmation"
+        try:
+            page.wait_for_load_state("domcontentloaded", timeout=5000)
+        except Exception:
+            pass
+        page.wait_for_timeout(500)
+        return True, True, ""
+
+    close_popup_or_page(page)
+    return True, True, ""
+
+
 def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                      btn_locator_fn, label: str = "POPUP",
                      has_name_field: bool = False) -> tuple[int, int, str | None]:
@@ -1162,6 +1286,37 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                 first_fail = entry_line[:220]
             print(f"  [FAIL-DETAIL] {entry_line}")
 
+        def recover_from_unexpected_profit(current_context: str) -> str:
+            # Когда целевая форма сама profit — это не "неожиданное" появление.
+            if form_hint == "profit":
+                return "none"
+
+            handled, ok, fail_code = process_unexpected_auto_profit_popup(
+                page,
+                base_url,
+                has_name_field=has_name_field,
+                context=current_context,
+            )
+            if not handled:
+                return "none"
+            if not ok:
+                register_failure(fail_code or "auto_profit_failed", f"context={current_context}")
+                return "failed"
+
+            # Возобновляем исходный сценарий: повторно открываем целевую форму.
+            try:
+                retry_btn = btn_locator_fn(page, entry)
+                retry_btn.scroll_into_view_if_needed()
+                retry_btn.click(force=True)
+                page.wait_for_timeout(500)
+                print(f"  [{label}] Возобновляем проверку после AUTO-PROFIT")
+                return "reopened"
+            except Exception as e:
+                err = str(e).replace("\n", " ")[:180]
+                log_error("click_failed", page, site_label, extra=f"reopen after auto-profit | {err}")
+                register_failure("click_failed", f"reopen after auto-profit | {err}")
+                return "failed"
+
         nav_ok, nav_critical, nav_reason = safe_goto(page, base_url)
         if not nav_ok:
             if nav_critical:
@@ -1172,9 +1327,6 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
             register_failure("navigation_failed", nav_reason[:180])
             continue
         accept_cookie_banner(page)
-        # Закрываем profit если всплыл сам — но не когда тестируем сам profit
-        if form_hint != "profit":
-            dismiss_profit_popup(page)
 
         try:
             btn = btn_locator_fn(page, entry)
@@ -1188,20 +1340,57 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
 
         form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
         if form_type is None:
+            recover_status = recover_from_unexpected_profit("ожидание целевого попапа")
+            if recover_status == "reopened":
+                form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
+            elif recover_status == "failed":
+                continue
+        if form_type is None:
             log_error("popup_not_found", page, site_label)
             register_failure("popup_not_found")
             continue
 
         if not fill_form(page, container, form_type, has_name_field=has_name_field):
-            log_error("form_not_filled", page, site_label)
-            register_failure("form_not_filled")
-            continue
+            recover_status = recover_from_unexpected_profit("заполнение целевой формы")
+            if recover_status == "reopened":
+                form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
+                if form_type is None:
+                    log_error("popup_not_found", page, site_label, extra="after auto-profit recovery")
+                    register_failure("popup_not_found", "after auto-profit recovery")
+                    continue
+                if fill_form(page, container, form_type, has_name_field=has_name_field):
+                    pass
+                else:
+                    log_error("form_not_filled", page, site_label)
+                    register_failure("form_not_filled")
+                    continue
+            elif recover_status == "failed":
+                continue
+            else:
+                log_error("form_not_filled", page, site_label)
+                register_failure("form_not_filled")
+                continue
 
         submit = find_submit(container, form_type)
         if submit is None:
-            log_error("submit_not_found", page, site_label)
-            register_failure("submit_not_found")
-            continue
+            recover_status = recover_from_unexpected_profit("поиск submit в целевой форме")
+            if recover_status == "reopened":
+                form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
+                if form_type is None:
+                    log_error("popup_not_found", page, site_label, extra="after auto-profit recovery")
+                    register_failure("popup_not_found", "after auto-profit recovery")
+                    continue
+                submit = find_submit(container, form_type)
+                if submit is None:
+                    log_error("submit_not_found", page, site_label)
+                    register_failure("submit_not_found")
+                    continue
+            elif recover_status == "failed":
+                continue
+            else:
+                log_error("submit_not_found", page, site_label)
+                register_failure("submit_not_found")
+                continue
 
         submit.scroll_into_view_if_needed()
 
@@ -1241,10 +1430,21 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
 
 def process_all_popups(page: Page, base_url: str,
                         has_name_field: bool = False) -> tuple[int, int, str | None]:
+    auto_success, auto_failed, auto_first_fail, auto_tested = process_auto_profit_popup(
+        page, base_url, has_name_field=has_name_field
+    )
+
     buttons = collect_popup_buttons(page)
+    if auto_tested and buttons:
+        before = len(buttons)
+        buttons = [b for b in buttons if b.get("form_hint") != "profit"]
+        removed = before - len(buttons)
+        if removed > 0:
+            print(f"[POPUP] AUTO-PROFIT уже проверен, исключено profit-кнопок: {removed}")
+
     if not buttons:
         print("[POPUP] Кнопки не найдены — пропускаем")
-        return 0, 0, None
+        return auto_success, auto_failed, auto_first_fail
 
     def locate(page, entry):
         css = entry.get("css")
@@ -1252,8 +1452,13 @@ def process_all_popups(page: Page, base_url: str,
             return page.locator(css).first
         return page.locator("button").nth(entry["index"])
 
-    return _run_popup_cycle(page, buttons, base_url, locate, label="POPUP",
-                            has_name_field=has_name_field)
+    success, failed, first_fail = _run_popup_cycle(
+        page, buttons, base_url, locate, label="POPUP", has_name_field=has_name_field
+    )
+    total_success = auto_success + success
+    total_failed = auto_failed + failed
+    total_first_fail = auto_first_fail if auto_first_fail else first_fail
+    return total_success, total_failed, total_first_fail
 
 
 def process_business_popups(page: Page, base_url: str,
