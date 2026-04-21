@@ -18,8 +18,16 @@ import allure
 import os
 import requests
 import time
+import sys
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
+
+try:
+    # Avoid UnicodeEncodeError on Windows consoles with cp1251.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 REALLY_SUBMIT = True # True — реально отправлять заявки
 
