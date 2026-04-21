@@ -1,1 +1,0 @@
-POPUP 6/14 text='подключить' hint=None code=no_confirmation url=https://rtk-internet.online/
