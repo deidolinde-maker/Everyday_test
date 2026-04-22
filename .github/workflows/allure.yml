@@ -112,7 +112,7 @@ jobs:
           SITE_INPUT: ${{ github.event.inputs.site }}
         continue-on-error: true
 
-      - name: Запуск тестов Core (доп профиль: firefox + adblock)
+      - name: "Запуск тестов Core (доп профиль: firefox + adblock)"
         id: run_tests_core_extra
         if: ${{ always() && steps.run_tests_core.outcome == 'success' && github.event.inputs.run_extra_checks == 'true' }}
         run: |
@@ -139,7 +139,7 @@ jobs:
           SITE_INPUT: ${{ github.event.inputs.site }}
         continue-on-error: true
 
-      - name: Запуск тестов Place Variants (доп профиль: firefox + adblock)
+      - name: "Запуск тестов Place Variants (доп профиль: firefox + adblock)"
         id: run_tests_variants_extra
         if: ${{ always() && steps.run_tests_core_extra.outcome == 'success' && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
         run: |
