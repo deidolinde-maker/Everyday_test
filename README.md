@@ -188,16 +188,17 @@ Run: <RUN_URL>    # если задан
 1. Ставит Python и зависимости.
 2. Ставит Chromium и Firefox для мультибраузерного «чистого» прогона.
 3. Запускает `core` в чистом профиле (`chromium` + `--blocking-profile none`).
-4. Запускает `variants` в чистом профиле (`chromium` + `--blocking-profile none`), если включено `run_place_variants`.
-5. После прогона Chromium запускает второй чистый прогон в Firefox (`core` + опционально `variants`) без условия "только после успешного шага".
-6. Собирает `allure-results`.
-7. Генерирует Allure report и публикует в `gh-pages`.
-8. Формирует и отправляет агрегированный Telegram summary:
+4. Сразу после `core` Chromium запускает `core` Firefox в чистом профиле (без условия "только после успешного шага").
+5. После двух core-прогонов запускает `variants` в `chromium` и `firefox` (если включено `run_place_variants`).
+6. Для `core/variants` в workflow заданы step-timeout, чтобы не держать job в длительном залипании.
+7. Собирает `allure-results`.
+8. Генерирует Allure report и публикует в `gh-pages`.
+9. Формирует и отправляет агрегированный Telegram summary:
    - 1–5 падений на лендинг: точечные алерты в summary;
    - >5 падений на лендинг: агрегированный блок по лендингу;
    - массовые падения на нескольких лендингах: сводный алерт;
    - при восстановлении относительно прошлого прогона: блок `Исправлено после восстановления`.
-9. Публикует `notify_state.json` вместе с отчётом через отдельную директорию publish (обход `Permission denied` при записи в `allure-report`).
+10. Публикует `notify_state.json` вместе с отчётом через отдельную директорию publish (обход `Permission denied` при записи в `allure-report`).
 
 ### 5.2 Adblock: `.github/workflows/allure-adblock.yml`
 

@@ -155,9 +155,10 @@
 - CI:
   - `allure.yml` (формы): schedule `0 5 * * *`, workflow_dispatch (без автозапуска по push).
   - `allure.yml` выполняет clean multi-browser запуск:
-    - `chromium` (`core` + опционально `variants` при `run_place_variants=true`);
-    - `firefox` (`core` + опционально `variants` при `run_place_variants=true`);
+    - сначала `core` в `chromium`, затем `core` в `firefox`;
+    - после core-запусков: `variants` в `chromium` и `firefox` при `run_place_variants=true`;
     - firefox-прогон не зависит от успешности chromium-прогона (ограничение "только после успешного шага" снято).
+    - для `core/variants` заданы step-timeout в workflow для ограничения длительных зависаний.
   - adblock-профиль вынесен в отдельный ручной workflow `allure-adblock.yml` (`firefox` + `blocking_profile=adblock-mvp`).
   - `allure.yml` сохраняет state агрегированных алертов в `notify_state.json` (публикуется в `gh-pages`) для детекции восстановления между прогонами.
   - `mobile-tariffs.yml`: workflow_dispatch + workflow_run после `Playwright Tests`, публикация Allure в `gh-pages/mobile-tariffs`.

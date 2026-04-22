@@ -22,6 +22,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      PYTHONUNBUFFERED: "1"
 
     steps:
       - name: Checkout репозитория
@@ -51,6 +53,7 @@ jobs:
 
       - name: Запуск тестов Core (chromium, чистый профиль)
         id: run_tests_core_chromium
+        timeout-minutes: 75
         run: |
           set -e
           PYTEST_ARGS=(
@@ -75,36 +78,10 @@ jobs:
           SITE_INPUT: ${{ github.event.inputs.site }}
         continue-on-error: true
 
-      - name: Запуск тестов Place Variants (chromium, чистый профиль)
-        id: run_tests_variants_chromium
-        if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
-        run: |
-          set -e
-          PYTEST_ARGS=(
-            test_universal2.py
-            --alluredir=allure-results-variants-chromium
-            --timeout=600
-            -s
-            --service-mode=variants
-            --browser=chromium
-            --blocking-profile=none
-          )
-          if [ -n "${SITE_INPUT}" ]; then
-            PYTEST_ARGS+=(--site="${SITE_INPUT}")
-          fi
-          echo "Running VARIANTS (clean profile): chromium + no blockers"
-          echo "Pytest args: ${PYTEST_ARGS[*]}"
-          python -m pytest "${PYTEST_ARGS[@]}"
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          SITE_INPUT: ${{ github.event.inputs.site }}
-        continue-on-error: true
-
       - name: Запуск тестов Core (firefox, чистый профиль)
         id: run_tests_core_firefox
         if: ${{ always() }}
+        timeout-minutes: 75
         run: |
           set -e
           PYTEST_ARGS=(
@@ -129,9 +106,38 @@ jobs:
           SITE_INPUT: ${{ github.event.inputs.site }}
         continue-on-error: true
 
+      - name: Запуск тестов Place Variants (chromium, чистый профиль)
+        id: run_tests_variants_chromium
+        if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
+        timeout-minutes: 80
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-variants-chromium
+            --timeout=600
+            -s
+            --service-mode=variants
+            --browser=chromium
+            --blocking-profile=none
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running VARIANTS (clean profile): chromium + no blockers"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ github.event.inputs.site }}
+        continue-on-error: true
+
       - name: Запуск тестов Place Variants (firefox, чистый профиль)
         id: run_tests_variants_firefox
         if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
+        timeout-minutes: 80
         run: |
           set -e
           PYTEST_ARGS=(
