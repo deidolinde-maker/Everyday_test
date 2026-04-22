@@ -1,0 +1,1 @@
+POPUP 1/14 text='подключиться' hint=None code=no_confirmation url=https://rtk-internet.online/ | service=В частный дом
