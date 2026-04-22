@@ -181,7 +181,7 @@ Run: <RUN_URL>    # если задан
 ### 5.1 Формы: `.github/workflows/allure.yml`
 
 Триггеры:
-- `workflow_dispatch` (входные параметры `site`, `run_place_variants`, `browsers`),
+- `workflow_dispatch` (входные параметры `site`, `run_place_variants`, `browsers`, `blocking_profile`),
 - `schedule: 0 5 * * *`.
 
 Что делает:
@@ -196,6 +196,7 @@ Run: <RUN_URL>    # если задан
    - >5 падений на лендинг: агрегированный блок по лендингу;
    - массовые падения на нескольких лендингах: сводный алерт;
    - при восстановлении относительно прошлого прогона: блок `Исправлено после восстановления`.
+8. Поддерживает MVP-профиль блокировщиков `adblock-mvp` (routing-based), при этом полноценные антивирусные сценарии в CI не эмулируются.
 
 ### 5.2 Mobile: `.github/workflows/mobile-tariffs.yml`
 
@@ -310,6 +311,12 @@ python -m pytest test_universal2.py -s --alluredir=allure-results --timeout=600 
 
 ```bash
 python -m pytest test_universal2.py -s --site=mts-home.online --alluredir=allure-results --timeout=600 --browser chromium
+```
+
+Один сайт в adblock MVP-режиме:
+
+```bash
+python -m pytest test_universal2.py -s --site=mts-home.online --alluredir=allure-results --timeout=600 --browser chromium --blocking-profile adblock-mvp
 ```
 
 ### 7.2 Suite B (mobile)

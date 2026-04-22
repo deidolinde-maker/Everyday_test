@@ -17,6 +17,14 @@ on:
         description: 'Браузеры для Suite A: all или список через запятую (chromium,firefox)'
         required: false
         default: 'chromium,firefox'
+      blocking_profile:
+        description: 'Профиль блокировщиков: none или adblock-mvp'
+        required: false
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - adblock-mvp
 
   # Запуск автоматически по расписанию (каждый день в 9:00 UTC)
   schedule:
@@ -97,10 +105,21 @@ jobs:
                 ;;
             esac
           done
+          BLOCKING_PROFILE_VALUE="${BLOCKING_PROFILE_INPUT:-none}"
+          case "${BLOCKING_PROFILE_VALUE}" in
+            none|adblock-mvp)
+              PYTEST_ARGS+=(--blocking-profile="${BLOCKING_PROFILE_VALUE}")
+              ;;
+            *)
+              echo "Unsupported blocking profile: ${BLOCKING_PROFILE_VALUE}"
+              exit 1
+              ;;
+          esac
           if [ -n "${SITE_INPUT}" ]; then
             PYTEST_ARGS+=(--site="${SITE_INPUT}")
           fi
           echo "Running CORE on browsers: ${BROWSER_LIST[*]}"
+          echo "Blocking profile: ${BLOCKING_PROFILE_VALUE}"
           echo "Pytest args: ${PYTEST_ARGS[*]}"
           python -m pytest "${PYTEST_ARGS[@]}"
         env:
@@ -109,6 +128,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SITE_INPUT: ${{ github.event.inputs.site }}
           BROWSERS_INPUT: ${{ github.event.inputs.browsers }}
+          BLOCKING_PROFILE_INPUT: ${{ github.event.inputs.blocking_profile }}
         continue-on-error: true
 
       - name: Запуск тестов Place Variants (только после Core)
@@ -135,10 +155,21 @@ jobs:
                 ;;
             esac
           done
+          BLOCKING_PROFILE_VALUE="${BLOCKING_PROFILE_INPUT:-none}"
+          case "${BLOCKING_PROFILE_VALUE}" in
+            none|adblock-mvp)
+              PYTEST_ARGS+=(--blocking-profile="${BLOCKING_PROFILE_VALUE}")
+              ;;
+            *)
+              echo "Unsupported blocking profile: ${BLOCKING_PROFILE_VALUE}"
+              exit 1
+              ;;
+          esac
           if [ -n "${SITE_INPUT}" ]; then
             PYTEST_ARGS+=(--site="${SITE_INPUT}")
           fi
           echo "Running VARIANTS on browsers: ${BROWSER_LIST[*]}"
+          echo "Blocking profile: ${BLOCKING_PROFILE_VALUE}"
           echo "Pytest args: ${PYTEST_ARGS[*]}"
           python -m pytest "${PYTEST_ARGS[@]}"
         env:
@@ -147,6 +178,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SITE_INPUT: ${{ github.event.inputs.site }}
           BROWSERS_INPUT: ${{ github.event.inputs.browsers }}
+          BLOCKING_PROFILE_INPUT: ${{ github.event.inputs.blocking_profile }}
         continue-on-error: true
 
       - name: Объединить результаты Allure

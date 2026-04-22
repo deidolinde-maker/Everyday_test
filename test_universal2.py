@@ -2371,7 +2371,7 @@ def run_site_scenario(page: Page, cfg: dict):
 # Тест
 # ---------------------------------------------------------------------------
 
-def test_site(page: Page, site_cfg: dict, browser_name: str):
+def test_site(page: Page, site_cfg: dict, browser_name: str, blocking_profile: str):
     """
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
@@ -2380,8 +2380,11 @@ def test_site(page: Page, site_cfg: dict, browser_name: str):
         pytest -s --headed
     """
     service_mode = normalize_service_mode(site_cfg.get("_service_mode", SERVICE_MODE_ALL))
-    allure.dynamic.title(f"Сайт: {site_cfg['base_url']} [{service_mode}] [{browser_name}]")
+    allure.dynamic.title(
+        f"Сайт: {site_cfg['base_url']} [{service_mode}] [{browser_name}] [{blocking_profile}]"
+    )
     allure.dynamic.label("suite", "Формы провайдеров")
     allure.dynamic.label("subSuite", f"service-mode: {service_mode}")
     allure.dynamic.parameter("browser", browser_name)
+    allure.dynamic.parameter("blocking_profile", blocking_profile)
     run_site_scenario(page, site_cfg)

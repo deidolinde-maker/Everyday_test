@@ -1,6 +1,21 @@
 import pytest
 import allure
 
+ADBLOCK_MVP_BLOCKLIST = (
+    "doubleclick.net",
+    "googlesyndication.com",
+    "googleadservices.com",
+    "adservice.google.com",
+    "yandex.ru/ads",
+    "an.yandex.ru",
+    "mc.yandex.ru",
+    "top.mail.ru",
+    "adriver.ru",
+    "adfox",
+    "advert",
+    "banner",
+)
+
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -16,6 +31,50 @@ def pytest_addoption(parser):
         choices=("all", "core", "variants"),
         help="Режим submit по Place: all (все), core (базовый), variants (только варианты Place).",
     )
+    parser.addoption(
+        "--blocking-profile",
+        action="store",
+        default="none",
+        choices=("none", "adblock-mvp"),
+        help="Профиль блокировщиков: none (по умолчанию) или adblock-mvp.",
+    )
+
+
+def _should_block_request(url: str, resource_type: str) -> bool:
+    current_url = (url or "").lower()
+    current_type = (resource_type or "").lower()
+
+    if not current_url:
+        return False
+
+    # MVP: блокируем рекламные/трекерные домены и часть тяжёлых рекламных ресурсов.
+    if any(marker in current_url for marker in ADBLOCK_MVP_BLOCKLIST):
+        return True
+    if current_type in {"media", "object"} and "ad" in current_url:
+        return True
+    return False
+
+
+@pytest.fixture
+def blocking_profile(pytestconfig):
+    return pytestconfig.getoption("--blocking-profile", default="none")
+
+
+@pytest.fixture(autouse=True)
+def apply_blocking_profile(page, blocking_profile):
+    if blocking_profile != "adblock-mvp":
+        return
+
+    def _route_handler(route, request):
+        try:
+            if _should_block_request(request.url, request.resource_type):
+                route.abort()
+                return
+        except Exception:
+            pass
+        route.continue_()
+
+    page.route("**/*", _route_handler)
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
