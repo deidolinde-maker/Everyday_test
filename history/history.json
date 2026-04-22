@@ -1,1 +1,1 @@
-{"2c59c190bb1ea273ba393dab86a1743b":{"statistic":{"failed":1,"broken":0,"skipped":0,"passed":0,"unknown":0,"total":1},"items":[{"uid":"560e99c8e7377eb4","reportUrl":"https://deidolinde-maker.github.io/Everyday_test/99/#testresult/560e99c8e7377eb4","status":"failed","statusDetails":"AssertionError: [mts-home-gpon.ru] Попапы главной: 2 ошибок, 32 успешно | first=POPUP 11/12 text='подключить' hint=None code=no_confirmation url=https://mts-home-gpon.ru/ | service=В частный дом\nassert 2 == 0","time":{"start":1776841101675,"stop":1776841648866,"duration":547191}}]}}
+{}

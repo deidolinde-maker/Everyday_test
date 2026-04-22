@@ -1,8 +1,0 @@
-"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","547191","Сайт: https://mts-home-gpon.ru/","","Wed Apr 22 06:58:21 UTC 2026","failed","Wed Apr 22 07:07:28 UTC 2026","","Формы провайдеров","",""
