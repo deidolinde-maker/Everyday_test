@@ -318,18 +318,18 @@ SITE_CONFIGS = {
         #"city_name":        "Москва",
         #"has_name_field": True,
     #},
-    "internet-mts-home.online": {
-        "base_url":        "https://internet-mts-home.online/",
-        "has_checkaddress": False,
-        "has_business":     False,
-        "city_name":        "Москва",
-    },
-    "mts-internet.online": {
-        "base_url":        "https://mts-internet.online/",
-        "has_checkaddress": False,
-        "has_business":     False,
-        "city_name":        "Москва",
-    },
+ #   "internet-mts-home.online": {
+   #     "base_url":        "https://internet-mts-home.online/",
+    #    "has_checkaddress": False,
+    #    "has_business":     False,
+   #     "city_name":        "Москва",
+  #  },
+ #   "mts-internet.online": {
+ #       "base_url":        "https://mts-internet.online/",
+ #       "has_checkaddress": False,
+ #       "has_business":     False,
+ #       "city_name":        "Москва",
+#    },
     "beeline-internet.online": {
         "base_url":        "https://beeline-internet.online/",
         "has_checkaddress": False,
