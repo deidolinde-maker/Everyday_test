@@ -176,14 +176,6 @@ jobs:
           allure_report: allure-report
           allure_history: allure-history
 
-      - name: Публикация отчёта на GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        if: always()
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: allure-report
-
       - name: Собрать сообщение для Telegram из Allure
         if: always()
         run: python notify_from_allure.py
@@ -192,6 +184,8 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           ALLURE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
           SITE_HINT: ${{ github.event.inputs.site }}
+          NOTIFY_STATE_FILE: notify_state.json
+          NOTIFY_STATE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/notify_state.json
 
       - name: Проверить, нужно ли слать алерт
         if: always()
@@ -204,3 +198,18 @@ jobs:
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode "text@telegram_message.txt"
+
+      - name: Добавить state алертов в Allure publish
+        if: always()
+        run: |
+          if [ -f notify_state.json ] && [ -d allure-report ]; then
+            cp notify_state.json allure-report/notify_state.json
+          fi
+
+      - name: Публикация отчёта на GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-report
