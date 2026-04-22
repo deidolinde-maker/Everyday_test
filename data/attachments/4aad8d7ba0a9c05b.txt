@@ -1,6 +1,0 @@
-POPUP 1/7 text='подключиться' hint=None code=no_confirmation url=https://beeline-internet.online/ | service=В квартиру
-POPUP 2/7 text='подключить' hint=None code=no_confirmation url=https://beeline-internet.online/ | service=В квартиру
-POPUP 3/7 text='подключить' hint=None code=no_confirmation url=https://beeline-internet.online/ | service=В квартиру
-POPUP 5/7 text='получить консультацию' hint=None code=no_confirmation url=https://beeline-internet.online/ | service=В квартиру
-POPUP 6/7 text='подключиться' hint=None code=no_confirmation url=https://beeline-internet.online/ | service=В квартиру
-POPUP 7/7 text='' hint=profit code=no_confirmation url=https://beeline-internet.online/ | service=без выбора варианта
