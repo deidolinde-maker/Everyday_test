@@ -1,0 +1,16 @@
+Лендинг  : MTS internet-mts-home.online
+URL      : https://internet-mts-home.online
+Результат: ❌ ТЕСТ УПАЛ
+Причина  : Locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator(".button-mobile-application").nth(1)
+    - locator resolved to <a href="#" target="_blank" class="button-mobile-application button-mobile button-red connection_address_card_button">↵                                Подключить↵     …</a>
+  - attempting click action
+    - waiting for element to be visible, enabled and stable
+    - element is visible, enabled and stable
+    - scrolling into view if needed
+    - done scrolling
+    - performing click action
+    - click action done
+    - waiting for scheduled navigations to finish
+
