@@ -1,0 +1,7 @@
+Карточка #3
+────────────────────────────────────────
+  href          : https://t2.ru/promo/partner-all?utm_source=webdealer&utm_medium=leads&utm_campaign=partner_m_webdealer_ooo_online-services/
+  URL до клика  : https://t2-ru.online/moskva/mobilnaya-svyaz
+  URL после     : https://msk.t2.ru/promo/partner-all?utm_campaign=partner_m_webdealer_ooo_online-services%2F&utm_medium=leads&utm_source=webdealer&pageParams=askForRegion%3Dtrue
+  Тип перехода  : new_tab
+  Результат     : ✅ PASSED
