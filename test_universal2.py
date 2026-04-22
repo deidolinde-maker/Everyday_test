@@ -640,6 +640,8 @@ BUSINESS_NAV_SELECTORS = [
 ]
 BUSINESS_NAV_CLICK_TIMEOUT_MS = 2_500
 BUSINESS_NAV_WAIT_TIMEOUT_MS = 5_000
+POPUP_MAX_BUTTONS_PER_TEXT = 3
+POPUP_REPEAT_NO_CONFIRMATION_SKIP_THRESHOLD = 2
 
 SERVICE_MODE_ALL = "all"
 SERVICE_MODE_CORE = "core"
@@ -1490,6 +1492,7 @@ def collect_popup_buttons(page: Page) -> list:
     total    = all_btns.count()
     result   = []
     seen_idx = set()
+    text_counters = {}
 
     print(f"\n[COLLECT] Кнопок на странице: {total}")
 
@@ -1504,8 +1507,17 @@ def collect_popup_buttons(page: Page) -> list:
                 continue
             if any(kw in text for kw in POPUP_SKIP_KEYWORDS):
                 continue
+            text_key = ("generic", text)
+            current_count = text_counters.get(text_key, 0)
+            if current_count >= POPUP_MAX_BUTTONS_PER_TEXT:
+                print(
+                    f"  [COLLECT] SKIP duplicate text '{text}' "
+                    f"(limit={POPUP_MAX_BUTTONS_PER_TEXT})"
+                )
+                continue
             seen_idx.add(i)
             result.append({"index": i, "text": text, "form_hint": None, "css": None})
+            text_counters[text_key] = current_count + 1
             print(f"  [COLLECT] #{len(result)} index={i} '{text}'")
         except Exception:
             pass
@@ -1525,10 +1537,19 @@ def collect_popup_buttons(page: Page) -> list:
                 )
                 if global_idx in seen_idx:
                     continue
-                seen_idx.add(global_idx)
                 text = (btn.inner_text() or "").strip().lower()
+                text_key = (form_hint, text)
+                current_count = text_counters.get(text_key, 0)
+                if current_count >= POPUP_MAX_BUTTONS_PER_TEXT:
+                    print(
+                        f"  [COLLECT] SKIP duplicate text '{text}' ({form_hint}) "
+                        f"(limit={POPUP_MAX_BUTTONS_PER_TEXT})"
+                    )
+                    continue
+                seen_idx.add(global_idx)
                 result.append({"index": global_idx, "text": text,
                                "form_hint": form_hint, "css": css_class})
+                text_counters[text_key] = current_count + 1
                 print(f"  [COLLECT] #{len(result)} index={global_idx} "
                       f"'{text}' ({form_hint})")
             except Exception:
@@ -1727,10 +1748,18 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
     first_fail = None
     fail_details = []
     site_label = base_url.replace("https://", "").replace("http://", "").strip("/")
+    no_confirmation_by_text = {}
 
     for num, entry in enumerate(buttons, 1):
         text      = entry.get("text", "")
         form_hint = entry.get("form_hint")
+        text_key = (form_hint or "generic", (text or "").strip().lower())
+        if no_confirmation_by_text.get(text_key, 0) >= POPUP_REPEAT_NO_CONFIRMATION_SKIP_THRESHOLD:
+            print(
+                f"  [{label}] SKIP: повторный no_confirmation для '{text}' "
+                f"(threshold={POPUP_REPEAT_NO_CONFIRMATION_SKIP_THRESHOLD})"
+            )
+            continue
         sep       = "=" * 55
         print(f"\n{sep}\n[{label} {num}/{len(buttons)}] '{text}' hint={form_hint}\n{sep}")
 
@@ -1962,6 +1991,7 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                 else:
                     log_error("no_confirmation", page, site_label, extra=f"service={service_label}")
                     register_failure("no_confirmation", f"service={service_label}")
+                    no_confirmation_by_text[text_key] = no_confirmation_by_text.get(text_key, 0) + 1
                     continue
             else:
                 print(f"  [{label}] ✅ Форма готова (REALLY_SUBMIT=False, {service_label})")
