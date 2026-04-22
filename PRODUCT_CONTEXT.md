@@ -100,7 +100,7 @@
   - кнопки CTA "Подключить".
 
 ## 8. Интеграции
-- Playwright (browser automation, Chromium).
+- Playwright (browser automation, Chromium + Firefox).
 - Pytest + плагины (`pytest-playwright`, `pytest-timeout`, `allure-pytest`).
 - Allure (локально и в CI).
 - Telegram Bot API:
@@ -115,6 +115,7 @@
 - Основной test-suite A:
   - конфиг доменов: `SITE_CONFIGS` (23 сайта на 2026-04-13),
   - параметр запуска: `--service-mode` (`all` по умолчанию, также `core`, `variants`),
+  - мультибраузерный запуск: `pytest-playwright` `--browser` (локально и в CI),
   - таймауты/ретраи:
     - `NAV_GOTO_TIMEOUT_MS=20000`,
     - `NAV_RETRIES=3`,
@@ -148,7 +149,8 @@
   - `allure.yml` (формы): schedule `0 5 * * *`, workflow_dispatch (без автозапуска по push).
   - `allure.yml` выполняет двухфазный запуск:
     - Phase 1: `core` (базовый сценарий);
-    - Phase 2: `variants` (варианты `Place`) только после успешного `core` и при включённом флаге `run_place_variants` для ручного запуска.
+    - Phase 2: `variants` (варианты `Place`) только после успешного `core` и при включённом флаге `run_place_variants` для ручного запуска;
+    - обе фазы выполняются в выбранной матрице браузеров (`chromium + firefox` по умолчанию; ручной override через input `browsers`).
   - `mobile-tariffs.yml`: workflow_dispatch + workflow_run после `Playwright Tests`, публикация Allure в `gh-pages/mobile-tariffs`.
 - Количество конфигов на 2026-04-13:
   - Suite A: 23 сайта,

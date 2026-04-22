@@ -181,17 +181,17 @@ Run: <RUN_URL>    # если задан
 ### 5.1 Формы: `.github/workflows/allure.yml`
 
 Триггеры:
-- `workflow_dispatch` (входной параметр `site`),
-- `schedule: 0 5 * * *`,
-- `push` в `main/master`.
+- `workflow_dispatch` (входные параметры `site`, `run_place_variants`, `browsers`),
+- `schedule: 0 5 * * *`.
 
 Что делает:
 1. Ставит Python и зависимости.
-2. Ставит Chromium для Playwright.
-3. Запускает `pytest test_universal2.py` (либо по одному `site`, либо все).
-4. Собирает `allure-results`.
-5. Генерирует Allure report и публикует в `gh-pages`.
-6. Формирует и отправляет Telegram summary.
+2. Ставит браузеры Playwright (`chromium + firefox` по умолчанию, либо выбранный список из `browsers`).
+3. Запускает `pytest test_universal2.py` в выбранной матрице браузеров для фазы `core`.
+4. После успешного `core` запускает фазу `variants` (если включено `run_place_variants`).
+5. Собирает `allure-results`.
+6. Генерирует Allure report и публикует в `gh-pages`.
+7. Формирует и отправляет Telegram summary.
 
 ### 5.2 Mobile: `.github/workflows/mobile-tariffs.yml`
 
@@ -293,19 +293,19 @@ Run: <RUN_URL>    # если задан
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m pip install requests pytest-timeout
-python -m playwright install chromium
+python -m playwright install chromium firefox
 ```
 
 Все сайты:
 
 ```bash
-python -m pytest test_universal2.py -s --alluredir=allure-results --timeout=600
+python -m pytest test_universal2.py -s --alluredir=allure-results --timeout=600 --browser chromium --browser firefox
 ```
 
 Один сайт:
 
 ```bash
-python -m pytest test_universal2.py -s --site=mts-home.online --alluredir=allure-results --timeout=600
+python -m pytest test_universal2.py -s --site=mts-home.online --alluredir=allure-results --timeout=600 --browser chromium
 ```
 
 ### 7.2 Suite B (mobile)

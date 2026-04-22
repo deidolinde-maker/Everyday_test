@@ -13,6 +13,10 @@ on:
         required: false
         default: true
         type: boolean
+      browsers:
+        description: 'Браузеры для Suite A: all или список через запятую (chromium,firefox)'
+        required: false
+        default: 'chromium,firefox'
 
   # Запуск автоматически по расписанию (каждый день в 9:00 UTC)
   schedule:
@@ -38,10 +42,34 @@ jobs:
           python -m pip install pytest playwright pytest-playwright allure-pytest pytest-timeout requests
           python -m pip show playwright
 
-      - name: Установка браузера Chromium
+      - name: Установка браузеров Playwright
         run: |
-          python -m playwright install chromium
-          python -m playwright install-deps chromium
+          set -e
+          BROWSERS_RAW="${BROWSERS_INPUT:-chromium,firefox}"
+          if [ "${BROWSERS_RAW}" = "all" ]; then
+            BROWSERS_RAW="chromium,firefox"
+          fi
+          BROWSERS_RAW="${BROWSERS_RAW// /}"
+          IFS=',' read -ra BROWSER_LIST <<< "${BROWSERS_RAW}"
+          if [ ${#BROWSER_LIST[@]} -eq 0 ]; then
+            BROWSER_LIST=(chromium firefox)
+          fi
+
+          echo "Installing Playwright browsers: ${BROWSER_LIST[*]}"
+          for browser in "${BROWSER_LIST[@]}"; do
+            case "${browser}" in
+              chromium|firefox)
+                python -m playwright install "${browser}"
+                python -m playwright install-deps "${browser}"
+                ;;
+              *)
+                echo "Unsupported browser: ${browser}"
+                exit 1
+                ;;
+            esac
+          done
+        env:
+          BROWSERS_INPUT: ${{ github.event.inputs.browsers }}
 
       - name: Проверка импорта playwright
         run: python -c "from playwright.sync_api import Page; print('playwright OK')"
@@ -51,16 +79,36 @@ jobs:
         run: |
           set -e
           PYTEST_ARGS=(test_universal2.py --alluredir=allure-results-core --timeout=600 -s --service-mode=core)
+          BROWSERS_RAW="${BROWSERS_INPUT:-chromium,firefox}"
+          if [ "${BROWSERS_RAW}" = "all" ]; then
+            BROWSERS_RAW="chromium,firefox"
+          fi
+          BROWSERS_RAW="${BROWSERS_RAW// /}"
+          IFS=',' read -ra BROWSER_LIST <<< "${BROWSERS_RAW}"
+          if [ ${#BROWSER_LIST[@]} -eq 0 ]; then
+            BROWSER_LIST=(chromium firefox)
+          fi
+          for browser in "${BROWSER_LIST[@]}"; do
+            case "${browser}" in
+              chromium|firefox) PYTEST_ARGS+=(--browser="${browser}") ;;
+              *)
+                echo "Unsupported browser: ${browser}"
+                exit 1
+                ;;
+            esac
+          done
           if [ -n "${SITE_INPUT}" ]; then
             PYTEST_ARGS+=(--site="${SITE_INPUT}")
           fi
-          echo "Running CORE: ${PYTEST_ARGS[*]}"
+          echo "Running CORE on browsers: ${BROWSER_LIST[*]}"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
           python -m pytest "${PYTEST_ARGS[@]}"
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SITE_INPUT: ${{ github.event.inputs.site }}
+          BROWSERS_INPUT: ${{ github.event.inputs.browsers }}
         continue-on-error: true
 
       - name: Запуск тестов Place Variants (только после Core)
@@ -69,16 +117,36 @@ jobs:
         run: |
           set -e
           PYTEST_ARGS=(test_universal2.py --alluredir=allure-results-variants --timeout=600 -s --service-mode=variants)
+          BROWSERS_RAW="${BROWSERS_INPUT:-chromium,firefox}"
+          if [ "${BROWSERS_RAW}" = "all" ]; then
+            BROWSERS_RAW="chromium,firefox"
+          fi
+          BROWSERS_RAW="${BROWSERS_RAW// /}"
+          IFS=',' read -ra BROWSER_LIST <<< "${BROWSERS_RAW}"
+          if [ ${#BROWSER_LIST[@]} -eq 0 ]; then
+            BROWSER_LIST=(chromium firefox)
+          fi
+          for browser in "${BROWSER_LIST[@]}"; do
+            case "${browser}" in
+              chromium|firefox) PYTEST_ARGS+=(--browser="${browser}") ;;
+              *)
+                echo "Unsupported browser: ${browser}"
+                exit 1
+                ;;
+            esac
+          done
           if [ -n "${SITE_INPUT}" ]; then
             PYTEST_ARGS+=(--site="${SITE_INPUT}")
           fi
-          echo "Running VARIANTS: ${PYTEST_ARGS[*]}"
+          echo "Running VARIANTS on browsers: ${BROWSER_LIST[*]}"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
           python -m pytest "${PYTEST_ARGS[@]}"
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SITE_INPUT: ${{ github.event.inputs.site }}
+          BROWSERS_INPUT: ${{ github.event.inputs.browsers }}
         continue-on-error: true
 
       - name: Объединить результаты Allure
