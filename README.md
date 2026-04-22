@@ -181,22 +181,23 @@ Run: <RUN_URL>    # если задан
 ### 5.1 Формы: `.github/workflows/allure.yml`
 
 Триггеры:
-- `workflow_dispatch` (входные параметры `site`, `run_place_variants`, `browsers`, `blocking_profile`),
+- `workflow_dispatch` (входные параметры `site`, `run_place_variants`, `run_extra_checks`),
 - `schedule: 0 5 * * *`.
 
 Что делает:
 1. Ставит Python и зависимости.
-2. Ставит браузеры Playwright (`chromium + firefox` по умолчанию, либо выбранный список из `browsers`).
-3. Запускает `pytest test_universal2.py` в выбранной матрице браузеров для фазы `core`.
-4. После успешного `core` запускает фазу `variants` (если включено `run_place_variants`).
-5. Собирает `allure-results`.
-6. Генерирует Allure report и публикует в `gh-pages`.
-7. Формирует и отправляет агрегированный Telegram summary:
+2. Ставит Chromium для базового «чистого» прогона.
+3. Запускает `core` в чистом профиле (`chromium` + `--blocking-profile none`).
+4. После успешного `core` запускает `variants` в чистом профиле (если включено `run_place_variants`).
+5. При включённом `run_extra_checks=true` дополнительно запускает отдельный блок с доп-профилем (`firefox` + `--blocking-profile adblock-mvp`) для `core/variants`.
+6. Собирает `allure-results`.
+7. Генерирует Allure report и публикует в `gh-pages`.
+8. Формирует и отправляет агрегированный Telegram summary:
    - 1–5 падений на лендинг: точечные алерты в summary;
    - >5 падений на лендинг: агрегированный блок по лендингу;
    - массовые падения на нескольких лендингах: сводный алерт;
    - при восстановлении относительно прошлого прогона: блок `Исправлено после восстановления`.
-8. Поддерживает MVP-профиль блокировщиков `adblock-mvp` (routing-based), при этом полноценные антивирусные сценарии в CI не эмулируются.
+9. MVP-профиль блокировщиков `adblock-mvp` включается только как доп-профиль; полноценные антивирусные сценарии в CI не эмулируются.
 
 ### 5.2 Mobile: `.github/workflows/mobile-tariffs.yml`
 
@@ -298,25 +299,26 @@ Run: <RUN_URL>    # если задан
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m pip install requests pytest-timeout
-python -m playwright install chromium firefox
+python -m playwright install chromium
 ```
 
 Все сайты:
 
 ```bash
-python -m pytest test_universal2.py -s --alluredir=allure-results --timeout=600 --browser chromium --browser firefox
+python -m pytest test_universal2.py -s --alluredir=allure-results --timeout=600 --browser chromium --blocking-profile none
 ```
 
 Один сайт:
 
 ```bash
-python -m pytest test_universal2.py -s --site=mts-home.online --alluredir=allure-results --timeout=600 --browser chromium
+python -m pytest test_universal2.py -s --site=mts-home.online --alluredir=allure-results --timeout=600 --browser chromium --blocking-profile none
 ```
 
 Один сайт в adblock MVP-режиме:
 
 ```bash
-python -m pytest test_universal2.py -s --site=mts-home.online --alluredir=allure-results --timeout=600 --browser chromium --blocking-profile adblock-mvp
+python -m playwright install firefox
+python -m pytest test_universal2.py -s --site=mts-home.online --alluredir=allure-results --timeout=600 --browser firefox --blocking-profile adblock-mvp
 ```
 
 ### 7.2 Suite B (mobile)

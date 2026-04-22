@@ -13,18 +13,11 @@ on:
         required: false
         default: true
         type: boolean
-      browsers:
-        description: 'Браузеры для Suite A: all или список через запятую (chromium,firefox)'
+      run_extra_checks:
+        description: 'Запустить дополнительный профиль (firefox + adblock-mvp) отдельным блоком'
         required: false
-        default: 'chromium,firefox'
-      blocking_profile:
-        description: 'Профиль блокировщиков: none или adblock-mvp'
-        required: false
-        default: 'none'
-        type: choice
-        options:
-          - none
-          - adblock-mvp
+        default: false
+        type: boolean
 
   # Запуск автоматически по расписанию (каждый день в 9:00 UTC)
   schedule:
@@ -53,73 +46,36 @@ jobs:
       - name: Установка браузеров Playwright
         run: |
           set -e
-          BROWSERS_RAW="${BROWSERS_INPUT:-chromium,firefox}"
-          if [ "${BROWSERS_RAW}" = "all" ]; then
-            BROWSERS_RAW="chromium,firefox"
-          fi
-          BROWSERS_RAW="${BROWSERS_RAW// /}"
-          IFS=',' read -ra BROWSER_LIST <<< "${BROWSERS_RAW}"
-          if [ ${#BROWSER_LIST[@]} -eq 0 ]; then
-            BROWSER_LIST=(chromium firefox)
-          fi
+          python -m playwright install chromium
+          python -m playwright install-deps chromium
 
-          echo "Installing Playwright browsers: ${BROWSER_LIST[*]}"
-          for browser in "${BROWSER_LIST[@]}"; do
-            case "${browser}" in
-              chromium|firefox)
-                python -m playwright install "${browser}"
-                python -m playwright install-deps "${browser}"
-                ;;
-              *)
-                echo "Unsupported browser: ${browser}"
-                exit 1
-                ;;
-            esac
-          done
+          if [ "${RUN_EXTRA_CHECKS_INPUT}" = "true" ]; then
+            python -m playwright install firefox
+            python -m playwright install-deps firefox
+          fi
         env:
-          BROWSERS_INPUT: ${{ github.event.inputs.browsers }}
+          RUN_EXTRA_CHECKS_INPUT: ${{ github.event.inputs.run_extra_checks }}
 
       - name: Проверка импорта playwright
         run: python -c "from playwright.sync_api import Page; print('playwright OK')"
 
-      - name: Запуск тестов Core (базовый сценарий)
+      - name: Запуск тестов Core (чистый профиль)
         id: run_tests_core
         run: |
           set -e
-          PYTEST_ARGS=(test_universal2.py --alluredir=allure-results-core --timeout=600 -s --service-mode=core)
-          BROWSERS_RAW="${BROWSERS_INPUT:-chromium,firefox}"
-          if [ "${BROWSERS_RAW}" = "all" ]; then
-            BROWSERS_RAW="chromium,firefox"
-          fi
-          BROWSERS_RAW="${BROWSERS_RAW// /}"
-          IFS=',' read -ra BROWSER_LIST <<< "${BROWSERS_RAW}"
-          if [ ${#BROWSER_LIST[@]} -eq 0 ]; then
-            BROWSER_LIST=(chromium firefox)
-          fi
-          for browser in "${BROWSER_LIST[@]}"; do
-            case "${browser}" in
-              chromium|firefox) PYTEST_ARGS+=(--browser="${browser}") ;;
-              *)
-                echo "Unsupported browser: ${browser}"
-                exit 1
-                ;;
-            esac
-          done
-          BLOCKING_PROFILE_VALUE="${BLOCKING_PROFILE_INPUT:-none}"
-          case "${BLOCKING_PROFILE_VALUE}" in
-            none|adblock-mvp)
-              PYTEST_ARGS+=(--blocking-profile="${BLOCKING_PROFILE_VALUE}")
-              ;;
-            *)
-              echo "Unsupported blocking profile: ${BLOCKING_PROFILE_VALUE}"
-              exit 1
-              ;;
-          esac
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-core
+            --timeout=600
+            -s
+            --service-mode=core
+            --browser=chromium
+            --blocking-profile=none
+          )
           if [ -n "${SITE_INPUT}" ]; then
             PYTEST_ARGS+=(--site="${SITE_INPUT}")
           fi
-          echo "Running CORE on browsers: ${BROWSER_LIST[*]}"
-          echo "Blocking profile: ${BLOCKING_PROFILE_VALUE}"
+          echo "Running CORE (clean profile): chromium + no blockers"
           echo "Pytest args: ${PYTEST_ARGS[*]}"
           python -m pytest "${PYTEST_ARGS[@]}"
         env:
@@ -127,49 +83,26 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SITE_INPUT: ${{ github.event.inputs.site }}
-          BROWSERS_INPUT: ${{ github.event.inputs.browsers }}
-          BLOCKING_PROFILE_INPUT: ${{ github.event.inputs.blocking_profile }}
         continue-on-error: true
 
-      - name: Запуск тестов Place Variants (только после Core)
+      - name: Запуск тестов Place Variants (чистый профиль)
         id: run_tests_variants
         if: ${{ always() && steps.run_tests_core.outcome == 'success' && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
         run: |
           set -e
-          PYTEST_ARGS=(test_universal2.py --alluredir=allure-results-variants --timeout=600 -s --service-mode=variants)
-          BROWSERS_RAW="${BROWSERS_INPUT:-chromium,firefox}"
-          if [ "${BROWSERS_RAW}" = "all" ]; then
-            BROWSERS_RAW="chromium,firefox"
-          fi
-          BROWSERS_RAW="${BROWSERS_RAW// /}"
-          IFS=',' read -ra BROWSER_LIST <<< "${BROWSERS_RAW}"
-          if [ ${#BROWSER_LIST[@]} -eq 0 ]; then
-            BROWSER_LIST=(chromium firefox)
-          fi
-          for browser in "${BROWSER_LIST[@]}"; do
-            case "${browser}" in
-              chromium|firefox) PYTEST_ARGS+=(--browser="${browser}") ;;
-              *)
-                echo "Unsupported browser: ${browser}"
-                exit 1
-                ;;
-            esac
-          done
-          BLOCKING_PROFILE_VALUE="${BLOCKING_PROFILE_INPUT:-none}"
-          case "${BLOCKING_PROFILE_VALUE}" in
-            none|adblock-mvp)
-              PYTEST_ARGS+=(--blocking-profile="${BLOCKING_PROFILE_VALUE}")
-              ;;
-            *)
-              echo "Unsupported blocking profile: ${BLOCKING_PROFILE_VALUE}"
-              exit 1
-              ;;
-          esac
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-variants
+            --timeout=600
+            -s
+            --service-mode=variants
+            --browser=chromium
+            --blocking-profile=none
+          )
           if [ -n "${SITE_INPUT}" ]; then
             PYTEST_ARGS+=(--site="${SITE_INPUT}")
           fi
-          echo "Running VARIANTS on browsers: ${BROWSER_LIST[*]}"
-          echo "Blocking profile: ${BLOCKING_PROFILE_VALUE}"
+          echo "Running VARIANTS (clean profile): chromium + no blockers"
           echo "Pytest args: ${PYTEST_ARGS[*]}"
           python -m pytest "${PYTEST_ARGS[@]}"
         env:
@@ -177,8 +110,60 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SITE_INPUT: ${{ github.event.inputs.site }}
-          BROWSERS_INPUT: ${{ github.event.inputs.browsers }}
-          BLOCKING_PROFILE_INPUT: ${{ github.event.inputs.blocking_profile }}
+        continue-on-error: true
+
+      - name: Запуск тестов Core (доп профиль: firefox + adblock)
+        id: run_tests_core_extra
+        if: ${{ always() && steps.run_tests_core.outcome == 'success' && github.event.inputs.run_extra_checks == 'true' }}
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-core-extra
+            --timeout=600
+            -s
+            --service-mode=core
+            --browser=firefox
+            --blocking-profile=adblock-mvp
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running CORE (extra profile): firefox + adblock-mvp"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ github.event.inputs.site }}
+        continue-on-error: true
+
+      - name: Запуск тестов Place Variants (доп профиль: firefox + adblock)
+        id: run_tests_variants_extra
+        if: ${{ always() && steps.run_tests_core_extra.outcome == 'success' && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-variants-extra
+            --timeout=600
+            -s
+            --service-mode=variants
+            --browser=firefox
+            --blocking-profile=adblock-mvp
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running VARIANTS (extra profile): firefox + adblock-mvp"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ github.event.inputs.site }}
         continue-on-error: true
 
       - name: Объединить результаты Allure
@@ -190,6 +175,12 @@ jobs:
           fi
           if [ -d allure-results-variants ]; then
             cp -R allure-results-variants/. allure-results/
+          fi
+          if [ -d allure-results-core-extra ]; then
+            cp -R allure-results-core-extra/. allure-results/
+          fi
+          if [ -d allure-results-variants-extra ]; then
+            cp -R allure-results-variants-extra/. allure-results/
           fi
 
       - name: Сохранить результаты Allure
