@@ -13,6 +13,16 @@ on:
         required: false
         default: true
         type: boolean
+      run_chromium:
+        description: 'Запускать clean-прогон в Chromium'
+        required: false
+        default: true
+        type: boolean
+      run_firefox:
+        description: 'Запускать clean-прогон в Firefox'
+        required: false
+        default: true
+        type: boolean
 
   # Запуск автоматически по расписанию (каждый день в 9:00 UTC)
   schedule:
@@ -24,6 +34,8 @@ jobs:
     timeout-minutes: 180
     env:
       PYTHONUNBUFFERED: "1"
+      RUN_CHROMIUM: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_chromium == 'true' }}
+      RUN_FIREFOX: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_firefox == 'true' }}
 
     steps:
       - name: Checkout репозитория
@@ -40,19 +52,34 @@ jobs:
           python -m pip install pytest playwright pytest-playwright allure-pytest pytest-timeout requests
           python -m pip show playwright
 
+      - name: Проверка выбора браузеров
+        run: |
+          set -e
+          echo "RUN_CHROMIUM=${RUN_CHROMIUM}"
+          echo "RUN_FIREFOX=${RUN_FIREFOX}"
+          if [ "${RUN_CHROMIUM}" != "true" ] && [ "${RUN_FIREFOX}" != "true" ]; then
+            echo "::error::Выберите хотя бы один браузер (run_chromium/run_firefox)."
+            exit 1
+          fi
+
       - name: Установка браузеров Playwright
         run: |
           set -e
-          python -m playwright install chromium
-          python -m playwright install-deps chromium
-          python -m playwright install firefox
-          python -m playwright install-deps firefox
+          if [ "${RUN_CHROMIUM}" = "true" ]; then
+            python -m playwright install chromium
+            python -m playwright install-deps chromium
+          fi
+          if [ "${RUN_FIREFOX}" = "true" ]; then
+            python -m playwright install firefox
+            python -m playwright install-deps firefox
+          fi
 
       - name: Проверка импорта playwright
         run: python -c "from playwright.sync_api import Page; print('playwright OK')"
 
       - name: Запуск тестов Core (chromium, чистый профиль)
         id: run_tests_core_chromium
+        if: ${{ always() && env.RUN_CHROMIUM == 'true' }}
         timeout-minutes: 75
         run: |
           set -e
@@ -80,7 +107,7 @@ jobs:
 
       - name: Запуск тестов Core (firefox, чистый профиль)
         id: run_tests_core_firefox
-        if: ${{ always() }}
+        if: ${{ always() && env.RUN_FIREFOX == 'true' }}
         timeout-minutes: 75
         run: |
           set -e
@@ -108,7 +135,7 @@ jobs:
 
       - name: Запуск тестов Place Variants (chromium, чистый профиль)
         id: run_tests_variants_chromium
-        if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
+        if: ${{ always() && env.RUN_CHROMIUM == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
         timeout-minutes: 80
         run: |
           set -e
@@ -136,7 +163,7 @@ jobs:
 
       - name: Запуск тестов Place Variants (firefox, чистый профиль)
         id: run_tests_variants_firefox
-        if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
+        if: ${{ always() && env.RUN_FIREFOX == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
         timeout-minutes: 80
         run: |
           set -e

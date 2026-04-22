@@ -181,15 +181,15 @@ Run: <RUN_URL>    # если задан
 ### 5.1 Формы: `.github/workflows/allure.yml`
 
 Триггеры:
-- `workflow_dispatch` (входные параметры `site`, `run_place_variants`),
+- `workflow_dispatch` (входные параметры `site`, `run_place_variants`, `run_chromium`, `run_firefox`),
 - `schedule: 0 5 * * *`.
 
 Что делает:
 1. Ставит Python и зависимости.
-2. Ставит Chromium и Firefox для мультибраузерного «чистого» прогона.
-3. Запускает `core` в чистом профиле (`chromium` + `--blocking-profile none`).
-4. Сразу после `core` Chromium запускает `core` Firefox в чистом профиле (без условия "только после успешного шага").
-5. После двух core-прогонов запускает `variants` в `chromium` и `firefox` (если включено `run_place_variants`).
+2. Для ручного запуска позволяет включать/выключать `chromium` и `firefox` отдельными флагами.
+3. Ставит только выбранные браузеры Playwright.
+4. Запускает `core` в выбранных браузерах в clean-профиле (`--blocking-profile none`).
+5. Запускает `variants` только для выбранных браузеров (если включено `run_place_variants`).
 6. Для `core/variants` в workflow заданы step-timeout, чтобы не держать job в длительном залипании.
 7. Собирает `allure-results`.
 8. Генерирует Allure report и публикует в `gh-pages`.
