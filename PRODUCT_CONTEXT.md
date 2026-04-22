@@ -45,6 +45,7 @@
   - сценарий по сайту: шаги `1 -> 2 -> 3 -> 4 -> 4a -> 4b`;
   - success submit: URL содержит `/tilda/form1/submitted` или `/thanks`;
   - submit проверяется с retry и grace-периодом;
+  - if the House field does not activate, test performs one full refill retry; if it still fails, the form is marked as `form_not_filled` without long submit wait;
   - для форм с переключателем услуги `Place` заявка отправляется по каждому доступному варианту (`В квартиру`, `В частный дом`, `Для бизнеса`) в рамках одного попапа;
   - исключения по `Place`: форма `profit` и форма `business` отправляются без переключения варианта услуги;
   - после успешной отправки выполняется отдельная проверка шага `Закрытие страницы Спасибо и переход на главную без региона`:

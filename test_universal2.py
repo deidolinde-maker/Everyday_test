@@ -473,6 +473,8 @@ NAV_GOTO_TIMEOUT_MS = 20_000
 NAV_RETRIES = 3
 SUBMIT_CONFIRM_TIMEOUT_MS = 25_000
 SUBMIT_CONFIRM_GRACE_MS = 2_000
+CITY_LOADSTATE_TIMEOUT_MS = 7_000
+HOUSE_ENABLE_TIMEOUT_MS = 3_500
 
 POPUP_CONTAINER_SELECTORS = [
     "div#popup", "div.popup",
@@ -1012,38 +1014,67 @@ def fill_form(page: Page, container, form_type: str,
         if not select_service_place_value(container, service_place_value):
             return False
 
-    # Адрес / Улица
-    street = container.locator(cfg["street"]).first
-    if street.count() > 0 and street.is_visible():
-        street.scroll_into_view_if_needed()
-        street.click(force=True)
-        street.fill("Ленина")
-        if no_suggest:
-            print("  [FORM] Адрес введён (без подсказки)")
-        else:
-            print("  [FORM] Улица введена, ждём подсказку...")
-            choose_first_suggestion(page)
-    else:
-        print(f"  [FORM] Поле адреса не найдено ({cfg['street']})")
+    def fill_street_and_pick() -> bool:
+        street_local = container.locator(cfg["street"]).first
+        if street_local.count() == 0 or not street_local.is_visible():
+            print(f"  [FORM] Address field not found ({cfg['street']})")
+            return False
 
-    # Дом
+        street_local.scroll_into_view_if_needed()
+        street_local.click(force=True)
+        try:
+            street_local.fill("")
+        except Exception:
+            pass
+        street_local.fill("\u041b\u0435\u043d\u0438\u043d\u0430")
+
+        if no_suggest:
+            print("  [FORM] Address entered (no suggestion)")
+            return True
+
+        print("  [FORM] Street entered, waiting suggestion...")
+        choose_first_suggestion(page)
+        return True
+
+    # Address / Street
+    if not fill_street_and_pick():
+        return False
+
+    # House
     if no_house:
-        print("  [FORM] Поле Дом пропущено")
+        print("  [FORM] House field skipped")
     else:
         house_sel = cfg.get("house")
         if house_sel:
-            house = container.locator(house_sel).first
-            if house.count() > 0:
-                print("  [FORM] Ждём активации поля Дом...")
-                try:
-                    expect(house).to_be_enabled(timeout=8000)
-                    house.scroll_into_view_if_needed()
-                    house.click(force=True)
-                    house.fill("1")
-                    print("  [FORM] Дом введён, ждём подсказку...")
-                    choose_first_suggestion(page, timeout_ms=1500)
-                except Exception:
-                    print("  [FORM] Поле Дом не активировалось — продолжаем")
+            house_ready = False
+
+            for house_attempt in range(1, 3):
+                house = container.locator(house_sel).first
+                if house.count() == 0 or not house.is_visible():
+                    print(f"  [FORM] House field not found/visible ({house_sel}) | attempt {house_attempt}/2")
+                else:
+                    print(f"  [FORM] Waiting house field enable... attempt {house_attempt}/2")
+                    try:
+                        expect(house).to_be_enabled(timeout=HOUSE_ENABLE_TIMEOUT_MS)
+                        house.scroll_into_view_if_needed()
+                        house.click(force=True)
+                        house.fill("1")
+                        print("  [FORM] House entered, waiting suggestion...")
+                        choose_first_suggestion(page, timeout_ms=1500)
+                        house_ready = True
+                        break
+                    except Exception as e:
+                        print(f"  [FORM] House field did not activate: {e}")
+
+                if house_attempt == 1:
+                    print("  [FORM] Retry with full refill...")
+                    if not fill_street_and_pick():
+                        print("  [FORM] Retry failed: address could not be refilled")
+                        return False
+
+            if not house_ready:
+                print("  [FORM] House field did not activate after retry; mark form as not filled")
+                return False
 
     # Имя (только для RTK-сайтов, has_name_field=True)
     if has_name_field:
@@ -1950,7 +1981,10 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
     for _ in range(50):
         page.wait_for_timeout(300)
         if page.url != old_url:
-            page.wait_for_load_state("domcontentloaded")
+            try:
+                page.wait_for_load_state("domcontentloaded", timeout=CITY_LOADSTATE_TIMEOUT_MS)
+            except Exception as e:
+                print(f"  [CITY] domcontentloaded timeout ({CITY_LOADSTATE_TIMEOUT_MS}ms), continue without wait: {e}")
             city_base_url = page.url.rstrip("/")
             break
 
