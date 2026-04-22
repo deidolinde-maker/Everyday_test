@@ -1,0 +1,2 @@
+POPUP 11/12 text='подключить' hint=None code=no_confirmation url=https://mts-home-gpon.ru/ | service=В частный дом
+POPUP 11/12 text='подключить' hint=None code=no_confirmation url=https://mts-home-gpon.ru/ | service=Для бизнеса

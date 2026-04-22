@@ -1,7 +1,0 @@
-Карточка #2
-────────────────────────────────────────
-  href          : https://mobile.101internet.ru/megafon
-  URL до клика  : https://mega-home-internet.ru/
-  URL после     : https://mobile.101internet.ru/megafon
-  Тип перехода  : same_tab
-  Результат     : ✅ PASSED
