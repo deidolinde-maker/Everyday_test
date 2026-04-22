@@ -565,6 +565,10 @@ SUBMIT_CONFIRM_TIMEOUT_MS = 25_000
 SUBMIT_CONFIRM_GRACE_MS = 2_000
 CITY_LOADSTATE_TIMEOUT_MS = 7_000
 HOUSE_ENABLE_TIMEOUT_MS = 3_500
+CHECKBOX_SCAN_LIMIT = 20
+CHECKBOX_CHECK_LIMIT = 4
+CHECKBOX_VISIBILITY_TIMEOUT_MS = 250
+CHECKBOX_ACTION_TIMEOUT_MS = 1_200
 
 POPUP_CONTAINER_SELECTORS = [
     "div#popup", "div.popup",
@@ -1160,6 +1164,55 @@ def select_service_place_value(container, service_value: str) -> bool:
     return False
 
 
+def apply_form_checkboxes(container):
+    """
+    Ставит только ограниченное число видимых чекбоксов.
+    Это защищает от длинных/залипающих циклов в формах с большим количеством hidden checkbox.
+    """
+    checkboxes = container.locator("input[type='checkbox']")
+    try:
+        total = checkboxes.count()
+    except Exception:
+        total = 0
+
+    if total <= 0:
+        return
+
+    scan_total = min(total, CHECKBOX_SCAN_LIMIT)
+    checked_total = 0
+    print(
+        f"  [FORM] Checkbox scan: total={total}, scan_limit={scan_total}, "
+        f"check_limit={CHECKBOX_CHECK_LIMIT}"
+    )
+
+    for idx in range(scan_total):
+        if checked_total >= CHECKBOX_CHECK_LIMIT:
+            print(f"  [FORM] Checkbox check limit reached: {checked_total}")
+            break
+
+        cb = checkboxes.nth(idx)
+        try:
+            if not cb.is_visible(timeout=CHECKBOX_VISIBILITY_TIMEOUT_MS):
+                continue
+        except Exception:
+            continue
+
+        try:
+            if cb.is_checked():
+                continue
+        except Exception:
+            pass
+
+        try:
+            cb.check(force=True, timeout=CHECKBOX_ACTION_TIMEOUT_MS)
+            checked_total += 1
+        except Exception as e:
+            err = str(e).replace("\n", " ")[:160]
+            print(f"  [FORM] Checkbox skip #{idx + 1}: {err}")
+
+    print(f"  [FORM] Checkbox checked: {checked_total}")
+
+
 # ---------------------------------------------------------------------------
 # Заполнение формы
 # ---------------------------------------------------------------------------
@@ -1269,12 +1322,7 @@ def fill_form(page: Page, container, form_type: str,
     phone.press_sequentially("1111111111", delay=50)
     print("  [FORM] Телефон введён")
 
-    for cb in iter_visible(container.locator("input[type='checkbox']")):
-        try:
-            if not cb.is_checked():
-                cb.check(force=True)
-        except Exception:
-            pass
+    apply_form_checkboxes(container)
 
     return True
 
