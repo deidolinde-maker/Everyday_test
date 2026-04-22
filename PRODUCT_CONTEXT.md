@@ -154,10 +154,11 @@
   - `a9d1a58`: отключен `/business` для `rt-internet.online` и `rtk-home-internet.ru`.
 - CI:
   - `allure.yml` (формы): schedule `0 5 * * *`, workflow_dispatch (без автозапуска по push).
-  - `allure.yml` выполняет двухфазный запуск чистого профиля:
-    - Phase 1: `core` (`chromium` + `blocking_profile=none`);
-    - Phase 2: `variants` (варианты `Place`) только после успешного `core` и при включённом флаге `run_place_variants` для ручного запуска.
-  - для ручного запуска поддержан флаг `run_extra_checks`; при `true` выполняется отдельный дополнительный профиль (`firefox` + `blocking_profile=adblock-mvp`) для `core/variants`.
+  - `allure.yml` выполняет clean multi-browser запуск:
+    - `chromium` (`core` + опционально `variants` при `run_place_variants=true`);
+    - `firefox` (`core` + опционально `variants` при `run_place_variants=true`);
+    - firefox-прогон не зависит от успешности chromium-прогона (ограничение "только после успешного шага" снято).
+  - adblock-профиль вынесен в отдельный ручной workflow `allure-adblock.yml` (`firefox` + `blocking_profile=adblock-mvp`).
   - `allure.yml` сохраняет state агрегированных алертов в `notify_state.json` (публикуется в `gh-pages`) для детекции восстановления между прогонами.
   - `mobile-tariffs.yml`: workflow_dispatch + workflow_run после `Playwright Tests`, публикация Allure в `gh-pages/mobile-tariffs`.
 - Количество конфигов на 2026-04-13:

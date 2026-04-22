@@ -181,15 +181,15 @@ Run: <RUN_URL>    # если задан
 ### 5.1 Формы: `.github/workflows/allure.yml`
 
 Триггеры:
-- `workflow_dispatch` (входные параметры `site`, `run_place_variants`, `run_extra_checks`),
+- `workflow_dispatch` (входные параметры `site`, `run_place_variants`),
 - `schedule: 0 5 * * *`.
 
 Что делает:
 1. Ставит Python и зависимости.
-2. Ставит Chromium для базового «чистого» прогона.
+2. Ставит Chromium и Firefox для мультибраузерного «чистого» прогона.
 3. Запускает `core` в чистом профиле (`chromium` + `--blocking-profile none`).
-4. После успешного `core` запускает `variants` в чистом профиле (если включено `run_place_variants`).
-5. При включённом `run_extra_checks=true` дополнительно запускает отдельный блок с доп-профилем (`firefox` + `--blocking-profile adblock-mvp`) для `core/variants`.
+4. Запускает `variants` в чистом профиле (`chromium` + `--blocking-profile none`), если включено `run_place_variants`.
+5. После прогона Chromium запускает второй чистый прогон в Firefox (`core` + опционально `variants`) без условия "только после успешного шага".
 6. Собирает `allure-results`.
 7. Генерирует Allure report и публикует в `gh-pages`.
 8. Формирует и отправляет агрегированный Telegram summary:
@@ -197,9 +197,19 @@ Run: <RUN_URL>    # если задан
    - >5 падений на лендинг: агрегированный блок по лендингу;
    - массовые падения на нескольких лендингах: сводный алерт;
    - при восстановлении относительно прошлого прогона: блок `Исправлено после восстановления`.
-9. MVP-профиль блокировщиков `adblock-mvp` включается только как доп-профиль; полноценные антивирусные сценарии в CI не эмулируются.
+9. Публикует `notify_state.json` вместе с отчётом через отдельную директорию publish (обход `Permission denied` при записи в `allure-report`).
 
-### 5.2 Mobile: `.github/workflows/mobile-tariffs.yml`
+### 5.2 Adblock: `.github/workflows/allure-adblock.yml`
+
+Триггеры:
+- только `workflow_dispatch` (входные параметры `site`, `run_place_variants`).
+
+Что делает:
+1. Выполняет отдельный прогон `firefox + --blocking-profile adblock-mvp` (core и опционально variants).
+2. Не влияет на основной ежедневный clean multi-browser pipeline.
+3. Публикует отчёт в `gh-pages/adblock`.
+
+### 5.3 Mobile: `.github/workflows/mobile-tariffs.yml`
 
 Триггеры:
 - `workflow_dispatch` (входной параметр `landing_filter`),
@@ -212,7 +222,7 @@ Run: <RUN_URL>    # если задан
 4. Отправляет Telegram summary.
 5. Финально роняет job, если тесты упали.
 
-### 5.3 Во сколько запускается на сервере
+### 5.4 Во сколько запускается на сервере
 
 - GitHub Actions работает в UTC.
 - Автозапуск `allure.yml` по cron `0 5 * * *`:

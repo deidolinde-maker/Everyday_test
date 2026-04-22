@@ -1,7 +1,6 @@
-name: Playwright Tests
+name: Playwright Tests (Adblock Profile)
 
 on:
-  # Запуск вручную через GitHub UI с выбором сайта
   workflow_dispatch:
     inputs:
       site:
@@ -9,19 +8,15 @@ on:
         required: false
         default: ''
       run_place_variants:
-        description: 'Запускать прогон Place-вариантов (для обоих браузеров)'
+        description: 'Запускать прогон Place-вариантов в adblock-профиле'
         required: false
-        default: true
+        default: false
         type: boolean
 
-  # Запуск автоматически по расписанию (каждый день в 9:00 UTC)
-  schedule:
-    - cron: '0 5 * * *'
-
 jobs:
-  test:
+  test_adblock:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 150
 
     steps:
       - name: Checkout репозитория
@@ -38,88 +33,33 @@ jobs:
           python -m pip install pytest playwright pytest-playwright allure-pytest pytest-timeout requests
           python -m pip show playwright
 
-      - name: Установка браузеров Playwright
+      - name: Установка Firefox для adblock-профиля
         run: |
           set -e
-          python -m playwright install chromium
-          python -m playwright install-deps chromium
           python -m playwright install firefox
           python -m playwright install-deps firefox
 
       - name: Проверка импорта playwright
         run: python -c "from playwright.sync_api import Page; print('playwright OK')"
 
-      - name: Запуск тестов Core (chromium, чистый профиль)
-        id: run_tests_core_chromium
+      - name: Запуск тестов Core (firefox + adblock-mvp)
+        id: run_tests_core_adblock
+        timeout-minutes: 90
         run: |
           set -e
           PYTEST_ARGS=(
             test_universal2.py
-            --alluredir=allure-results-core-chromium
-            --timeout=600
-            -s
-            --service-mode=core
-            --browser=chromium
-            --blocking-profile=none
-          )
-          if [ -n "${SITE_INPUT}" ]; then
-            PYTEST_ARGS+=(--site="${SITE_INPUT}")
-          fi
-          echo "Running CORE (clean profile): chromium + no blockers"
-          echo "Pytest args: ${PYTEST_ARGS[*]}"
-          python -m pytest "${PYTEST_ARGS[@]}"
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          SITE_INPUT: ${{ github.event.inputs.site }}
-        continue-on-error: true
-
-      - name: Запуск тестов Place Variants (chromium, чистый профиль)
-        id: run_tests_variants_chromium
-        if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
-        run: |
-          set -e
-          PYTEST_ARGS=(
-            test_universal2.py
-            --alluredir=allure-results-variants-chromium
-            --timeout=600
-            -s
-            --service-mode=variants
-            --browser=chromium
-            --blocking-profile=none
-          )
-          if [ -n "${SITE_INPUT}" ]; then
-            PYTEST_ARGS+=(--site="${SITE_INPUT}")
-          fi
-          echo "Running VARIANTS (clean profile): chromium + no blockers"
-          echo "Pytest args: ${PYTEST_ARGS[*]}"
-          python -m pytest "${PYTEST_ARGS[@]}"
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          SITE_INPUT: ${{ github.event.inputs.site }}
-        continue-on-error: true
-
-      - name: Запуск тестов Core (firefox, чистый профиль)
-        id: run_tests_core_firefox
-        if: ${{ always() }}
-        run: |
-          set -e
-          PYTEST_ARGS=(
-            test_universal2.py
-            --alluredir=allure-results-core-firefox
+            --alluredir=allure-results-core-adblock
             --timeout=600
             -s
             --service-mode=core
             --browser=firefox
-            --blocking-profile=none
+            --blocking-profile=adblock-mvp
           )
           if [ -n "${SITE_INPUT}" ]; then
             PYTEST_ARGS+=(--site="${SITE_INPUT}")
           fi
-          echo "Running CORE (clean profile): firefox + no blockers"
+          echo "Running CORE (adblock profile): firefox + adblock-mvp"
           echo "Pytest args: ${PYTEST_ARGS[*]}"
           python -m pytest "${PYTEST_ARGS[@]}"
         env:
@@ -129,24 +69,25 @@ jobs:
           SITE_INPUT: ${{ github.event.inputs.site }}
         continue-on-error: true
 
-      - name: Запуск тестов Place Variants (firefox, чистый профиль)
-        id: run_tests_variants_firefox
-        if: ${{ always() && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
+      - name: Запуск тестов Place Variants (firefox + adblock-mvp)
+        id: run_tests_variants_adblock
+        if: ${{ always() && github.event.inputs.run_place_variants == 'true' }}
+        timeout-minutes: 90
         run: |
           set -e
           PYTEST_ARGS=(
             test_universal2.py
-            --alluredir=allure-results-variants-firefox
+            --alluredir=allure-results-variants-adblock
             --timeout=600
             -s
             --service-mode=variants
             --browser=firefox
-            --blocking-profile=none
+            --blocking-profile=adblock-mvp
           )
           if [ -n "${SITE_INPUT}" ]; then
             PYTEST_ARGS+=(--site="${SITE_INPUT}")
           fi
-          echo "Running VARIANTS (clean profile): firefox + no blockers"
+          echo "Running VARIANTS (adblock profile): firefox + adblock-mvp"
           echo "Pytest args: ${PYTEST_ARGS[*]}"
           python -m pytest "${PYTEST_ARGS[@]}"
         env:
@@ -160,24 +101,18 @@ jobs:
         if: always()
         run: |
           mkdir -p allure-results
-          if [ -d allure-results-core-chromium ]; then
-            cp -R allure-results-core-chromium/. allure-results/
+          if [ -d allure-results-core-adblock ]; then
+            cp -R allure-results-core-adblock/. allure-results/
           fi
-          if [ -d allure-results-variants-chromium ]; then
-            cp -R allure-results-variants-chromium/. allure-results/
-          fi
-          if [ -d allure-results-core-firefox ]; then
-            cp -R allure-results-core-firefox/. allure-results/
-          fi
-          if [ -d allure-results-variants-firefox ]; then
-            cp -R allure-results-variants-firefox/. allure-results/
+          if [ -d allure-results-variants-adblock ]; then
+            cp -R allure-results-variants-adblock/. allure-results/
           fi
 
       - name: Сохранить результаты Allure
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: allure-results
+          name: allure-results-adblock
           path: allure-results/
           retention-days: 30
 
@@ -195,10 +130,10 @@ jobs:
         env:
           ALLURE_RESULTS_DIR: allure-results
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          ALLURE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          ALLURE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/adblock/
           SITE_HINT: ${{ github.event.inputs.site }}
           NOTIFY_STATE_FILE: notify_state.json
-          NOTIFY_STATE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/notify_state.json
+          NOTIFY_STATE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/adblock/notify_state.json
 
       - name: Проверить, нужно ли слать алерт
         if: always()
@@ -230,3 +165,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: allure-publish
+          destination_dir: adblock
