@@ -8,6 +8,11 @@ on:
         description: 'Домен сайта (оставьте пустым для всех)'
         required: false
         default: ''
+      run_place_variants:
+        description: 'Запускать второй прогон Place-вариантов после успешного core'
+        required: false
+        default: true
+        type: boolean
 
   # Запуск автоматически по расписанию (каждый день в 9:00 UTC)
   schedule:
@@ -41,34 +46,51 @@ jobs:
       - name: Проверка импорта playwright
         run: python -c "from playwright.sync_api import Page; print('playwright OK')"
 
-      - name: Запуск тестов (один сайт)
-        id: run_tests_single
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.site != '' }}
+      - name: Запуск тестов Core (базовый сценарий)
+        id: run_tests_core
         run: |
-          python -m pytest test_universal2.py \
-            --site=${{ github.event.inputs.site }} \
-            --alluredir=allure-results \
-            --timeout=600 \
-            -s
+          set -e
+          PYTEST_ARGS=(test_universal2.py --alluredir=allure-results-core --timeout=600 -s --service-mode=core)
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running CORE: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ github.event.inputs.site }}
         continue-on-error: true
 
-      - name: Запуск тестов (все сайты)
-        id: run_tests_all
-        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.site == '' }}
+      - name: Запуск тестов Place Variants (только после Core)
+        id: run_tests_variants
+        if: ${{ always() && steps.run_tests_core.outcome == 'success' && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
         run: |
-          python -m pytest test_universal2.py \
-            --alluredir=allure-results \
-            --timeout=600 \
-            -s
+          set -e
+          PYTEST_ARGS=(test_universal2.py --alluredir=allure-results-variants --timeout=600 -s --service-mode=variants)
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running VARIANTS: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ github.event.inputs.site }}
         continue-on-error: true
+
+      - name: Объединить результаты Allure
+        if: always()
+        run: |
+          mkdir -p allure-results
+          if [ -d allure-results-core ]; then
+            cp -R allure-results-core/. allure-results/
+          fi
+          if [ -d allure-results-variants ]; then
+            cp -R allure-results-variants/. allure-results/
+          fi
 
       - name: Сохранить результаты Allure
         uses: actions/upload-artifact@v4

@@ -9,6 +9,13 @@ def pytest_addoption(parser):
         default=None,
         help="Домен сайта из SITE_CONFIGS, например: mts-home-gpon.ru",
     )
+    parser.addoption(
+        "--service-mode",
+        action="store",
+        default="all",
+        choices=("all", "core", "variants"),
+        help="Режим submit по Place: all (все), core (базовый), variants (только варианты Place).",
+    )
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)

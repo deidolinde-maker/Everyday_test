@@ -8,6 +8,8 @@
     pytest -s --headed  (прогоняет все сайты из SITE_CONFIGS)
     pytest test_universal2.py --alluredir=allure-results -s - все сайты с аллюр
     pytest test_universal2.py --site=mts-home-gpon.ru --alluredir=allure-results -s - конкретный сайт с аллюр
+    pytest test_universal2.py --service-mode=core -s - базовый submit без полного перебора Place
+    pytest test_universal2.py --service-mode=variants -s - отдельный прогон только Place-вариантов
 
 Добавить новый сайт — достаточно добавить запись в SITE_CONFIGS.
 """
@@ -203,6 +205,94 @@ def goto_or_handle_step(
 
     send_step_alert(site_label, step_no, step_name, reason, page)
     pytest.fail(f"[{site_label}] Шаг {step_no}: {step_name} | {reason}")
+
+
+
+def _is_business_target_url(current_url: str, business_url: str) -> bool:
+    target_host = (urlsplit(business_url).netloc or "").lower()
+    target_path = (urlsplit(business_url).path or "").rstrip("/").lower()
+
+    cur_host = (urlsplit(current_url).netloc or "").lower()
+    cur_path = (urlsplit(current_url).path or "").rstrip("/").lower()
+
+    if target_host and cur_host and cur_host != target_host:
+        return False
+    if not target_path:
+        return False
+    return cur_path == target_path or cur_path.startswith(target_path + "/")
+
+
+def try_open_business_via_navigation(page: "Page", business_url: str) -> tuple[bool, str]:
+    if _is_business_target_url(page.url, business_url):
+        return True, "already_on_business"
+
+    checked = 0
+    for sel in BUSINESS_NAV_SELECTORS:
+        try:
+            loc = page.locator(sel)
+            total = loc.count()
+        except Exception:
+            continue
+
+        for idx in range(min(total, 8)):
+            checked += 1
+            cand = loc.nth(idx)
+            try:
+                if not cand.is_visible():
+                    continue
+            except Exception:
+                continue
+
+            try:
+                href = (cand.get_attribute("href") or "").strip().lower()
+            except Exception:
+                href = ""
+
+            if href.startswith("mailto:") or href.startswith("tel:"):
+                continue
+
+            before_url = page.url
+            try:
+                cand.scroll_into_view_if_needed()
+                cand.click(timeout=BUSINESS_NAV_CLICK_TIMEOUT_MS, force=True)
+            except Exception:
+                continue
+
+            page.wait_for_timeout(500)
+            try:
+                page.wait_for_load_state("domcontentloaded", timeout=BUSINESS_NAV_WAIT_TIMEOUT_MS)
+            except Exception:
+                pass
+
+            if _is_business_target_url(page.url, business_url):
+                return True, f"selector={sel} idx={idx}"
+
+            if page.url != before_url and _is_business_target_url(page.url, business_url):
+                return True, f"selector={sel} idx={idx} delayed_url"
+
+    if checked == 0:
+        return False, "business nav candidates not found"
+    return False, "business nav click did not lead to target"
+
+
+def goto_business_or_handle_step(
+    page: "Page",
+    start_url: str,
+    business_url: str,
+    site_label: str,
+    step_no: str,
+    step_name: str,
+):
+    goto_or_handle_step(page, start_url, site_label, step_no, step_name)
+    close_overlays(page)
+
+    nav_ok, nav_reason = try_open_business_via_navigation(page, business_url)
+    if nav_ok:
+        print(f"  [BUSINESS-NAV] success via landing nav ({nav_reason})")
+        return
+
+    print(f"  [BUSINESS-NAV] fallback goto -> {business_url} ({nav_reason})")
+    goto_or_handle_step(page, business_url, site_label, step_no, step_name)
 
 
 def log_error(error_code: str, page: "Page", site_label: str, extra: str = ""):
@@ -531,6 +621,33 @@ THANKS_RETURN_SELECTORS = [
     "[aria-label*='закры']",
 ]
 
+BUSINESS_NAV_SELECTORS = [
+    "header a[href*='/business']",
+    "nav a[href*='/business']",
+    "a[href*='/business']",
+    "header a[href*='business']",
+    "nav a[href*='business']",
+    "a[href*='business']",
+    "a:has-text('\u0414\u043b\u044f \u0431\u0438\u0437\u043d\u0435\u0441\u0430')",
+    "button:has-text('\u0414\u043b\u044f \u0431\u0438\u0437\u043d\u0435\u0441\u0430')",
+    "a:has-text('\u0411\u0438\u0437\u043d\u0435\u0441')",
+    "button:has-text('\u0411\u0438\u0437\u043d\u0435\u0441')",
+]
+BUSINESS_NAV_CLICK_TIMEOUT_MS = 2_500
+BUSINESS_NAV_WAIT_TIMEOUT_MS = 5_000
+
+SERVICE_MODE_ALL = "all"
+SERVICE_MODE_CORE = "core"
+SERVICE_MODE_VARIANTS = "variants"
+SERVICE_MODE_CHOICES = {SERVICE_MODE_ALL, SERVICE_MODE_CORE, SERVICE_MODE_VARIANTS}
+
+
+def normalize_service_mode(value: str | None) -> str:
+    mode = (value or SERVICE_MODE_ALL).strip().lower()
+    if mode not in SERVICE_MODE_CHOICES:
+        return SERVICE_MODE_ALL
+    return mode
+
 
 # ---------------------------------------------------------------------------
 # pytest: параметр --site
@@ -547,12 +664,23 @@ def pytest_generate_tests(metafunc):
     """Параметризует фикстуру site_cfg — один прогон на каждый сайт."""
     if "site_cfg" in metafunc.fixturenames:
         site_arg = metafunc.config.getoption("--site", default=None)
+        service_mode = normalize_service_mode(
+            metafunc.config.getoption("--service-mode", default=SERVICE_MODE_ALL)
+        )
+
         if site_arg:
-            configs = [SITE_CONFIGS[site_arg]]
-            ids     = [site_arg]
+            selected_items = [(site_arg, SITE_CONFIGS[site_arg])]
         else:
-            configs = list(SITE_CONFIGS.values())
-            ids     = list(SITE_CONFIGS.keys())
+            selected_items = list(SITE_CONFIGS.items())
+
+        configs = []
+        ids = []
+        for site_id, cfg in selected_items:
+            cfg_copy = dict(cfg)
+            cfg_copy["_service_mode"] = service_mode
+            configs.append(cfg_copy)
+            ids.append(site_id if service_mode == SERVICE_MODE_ALL else f"{site_id}[{service_mode}]")
+
         metafunc.parametrize("site_cfg", configs, ids=ids)
 
 
@@ -972,6 +1100,39 @@ def detect_service_place_values(container) -> list[str]:
     return values
 
 
+def resolve_service_values_for_mode(
+    form_type: str,
+    detected_service_values: list[str],
+    service_mode: str,
+) -> list[str | None]:
+    mode = normalize_service_mode(service_mode)
+
+    if mode == SERVICE_MODE_VARIANTS:
+        if form_type in ("profit", "business"):
+            print("  [FORM] VARIANTS: тип формы без Place — пропускаем")
+            return []
+        if detected_service_values:
+            print(f"  [FORM] VARIANTS: submit по Place: {', '.join(detected_service_values)}")
+            return detected_service_values
+        print("  [FORM] VARIANTS: Place не найден — пропускаем")
+        return []
+
+    if form_type in ("profit", "business"):
+        return [None]
+
+    if not detected_service_values:
+        print("  [FORM] Варианты услуги Place не обнаружены — submit без переключения")
+        return [None]
+
+    if mode == SERVICE_MODE_CORE:
+        primary_value = detected_service_values[0]
+        print(f"  [FORM] CORE: используем базовый вариант услуги: {primary_value}")
+        return [primary_value]
+
+    print(f"  [FORM] Найдены варианты услуги: {', '.join(detected_service_values)}")
+    return detected_service_values
+
+
 def select_service_place_value(container, service_value: str) -> bool:
     options = _service_place_locator(container, service_value)
     try:
@@ -1340,6 +1501,7 @@ def process_auto_profit_popup(
     page: Page,
     base_url: str,
     has_name_field: bool = False,
+    service_mode: str = SERVICE_MODE_ALL,
 ) -> tuple[int, int, str | None, bool]:
     """
     Проверяет автопоявляющийся profit-попап как полноценную форму:
@@ -1351,6 +1513,10 @@ def process_auto_profit_popup(
     site_label = base_url.replace("https://", "").replace("http://", "").strip("/")
     sep = "=" * 55
     print(f"\n{sep}\n[AUTO-PROFIT] Проверка автопопапа\n{sep}")
+
+    if normalize_service_mode(service_mode) == SERVICE_MODE_VARIANTS:
+        print("  [AUTO-PROFIT] VARIANTS-режим: автопопап не проверяем")
+        return 0, 0, None, False
 
     nav_ok, nav_critical, nav_reason = safe_goto(page, base_url)
     if not nav_ok:
@@ -1462,7 +1628,8 @@ def process_unexpected_auto_profit_popup(
 
 def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                      btn_locator_fn, label: str = "POPUP",
-                     has_name_field: bool = False) -> tuple[int, int, str | None]:
+                     has_name_field: bool = False,
+                     service_mode: str = SERVICE_MODE_ALL) -> tuple[int, int, str | None]:
     success    = 0
     failed     = 0
     first_fail = None
@@ -1600,16 +1767,18 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
             register_failure("popup_not_found")
             continue
 
-        if form_type in ("profit", "business"):
-            service_values = [None]
-        else:
+        detected_service_values = []
+        if form_type not in ("profit", "business"):
             detected_service_values = detect_service_place_values(container)
-            if detected_service_values:
-                service_values = detected_service_values
-                print(f"  [FORM] Найдены варианты услуги: {', '.join(service_values)}")
-            else:
-                service_values = [None]
-                print("  [FORM] Варианты услуги Place не обнаружены — submit без переключения")
+
+        service_values = resolve_service_values_for_mode(
+            form_type=form_type,
+            detected_service_values=detected_service_values,
+            service_mode=service_mode,
+        )
+        if not service_values:
+            print(f"  [{label}] Пропуск формы: нет применимых вариантов для режима '{service_mode}'")
+            continue
 
         for service_idx, service_value in enumerate(service_values, start=1):
             service_label = service_value if service_value else "без выбора варианта"
@@ -1731,9 +1900,10 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
 
 
 def process_all_popups(page: Page, base_url: str,
-                        has_name_field: bool = False) -> tuple[int, int, str | None]:
+                        has_name_field: bool = False,
+                        service_mode: str = SERVICE_MODE_ALL) -> tuple[int, int, str | None]:
     auto_success, auto_failed, auto_first_fail, auto_tested = process_auto_profit_popup(
-        page, base_url, has_name_field=has_name_field
+        page, base_url, has_name_field=has_name_field, service_mode=service_mode
     )
 
     buttons = collect_popup_buttons(page)
@@ -1755,7 +1925,8 @@ def process_all_popups(page: Page, base_url: str,
         return page.locator("button").nth(entry["index"])
 
     success, failed, first_fail = _run_popup_cycle(
-        page, buttons, base_url, locate, label="POPUP", has_name_field=has_name_field
+        page, buttons, base_url, locate, label="POPUP",
+        has_name_field=has_name_field, service_mode=service_mode
     )
     total_success = auto_success + success
     total_failed = auto_failed + failed
@@ -1764,7 +1935,12 @@ def process_all_popups(page: Page, base_url: str,
 
 
 def process_business_popups(page: Page, base_url: str,
-                             has_name_field: bool = False) -> tuple[int, int, str | None]:
+                             has_name_field: bool = False,
+                             service_mode: str = SERVICE_MODE_ALL) -> tuple[int, int, str | None]:
+    if normalize_service_mode(service_mode) == SERVICE_MODE_VARIANTS:
+        print("[BUSINESS] VARIANTS-режим: шаг /business пропущен")
+        return 0, 0, None
+
     buttons = collect_business_buttons(page)
     if not buttons:
         print("[BUSINESS] Кнопки не найдены — пропускаем")
@@ -1773,8 +1949,10 @@ def process_business_popups(page: Page, base_url: str,
     def locate(page, entry):
         return page.locator(POPUP_BUTTON_CLASSES["business"]).nth(entry["nth"])
 
-    return _run_popup_cycle(page, buttons, base_url, locate, label="BUSINESS",
-                            has_name_field=has_name_field)
+    return _run_popup_cycle(
+        page, buttons, base_url, locate, label="BUSINESS",
+        has_name_field=has_name_field, service_mode=service_mode
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2013,12 +2191,15 @@ def run_site_scenario(page: Page, cfg: dict):
     city_name      = cfg.get("city_name")
     city_base      = None
     city_biz       = None
+    service_mode   = normalize_service_mode(cfg.get("_service_mode", SERVICE_MODE_ALL))
 
-    print(f"\n{'#'*55}\n# САЙТ: {site_label}\n{'#'*55}")
+    print(f"\n{'#'*55}\n# САЙТ: {site_label} | MODE: {service_mode}\n{'#'*55}")
 
     # ── 1. Форма checkaddress ─────────────────────────────────────────────
     with allure.step("Шаг 1: форма checkaddress"):
-        if cfg.get("has_checkaddress"):
+        if service_mode == SERVICE_MODE_VARIANTS:
+            mark_step_not_applicable(site_label, "1", "форма checkaddress", "service_mode=variants")
+        elif cfg.get("has_checkaddress"):
             print(f"\n{sep}\n[{site_label}] Шаг 1: форма checkaddress\n{sep}")
             goto_or_handle_step(page, base_url, site_label, "1", "форма checkaddress")
             close_overlays(page)
@@ -2072,7 +2253,9 @@ def run_site_scenario(page: Page, cfg: dict):
         goto_or_handle_step(page, base_url, site_label, "2", "попапы главной")
         close_overlays(page)
         try:
-            s, f, first_fail = process_all_popups(page, base_url, has_name_field=has_name_field)
+            s, f, first_fail = process_all_popups(
+                page, base_url, has_name_field=has_name_field, service_mode=service_mode
+            )
         except SiteUnavailableError as e:
             skip_site_due_unavailability(site_label, "2", "попапы главной", str(e), page)
         if f > 0:
@@ -2087,13 +2270,17 @@ def run_site_scenario(page: Page, cfg: dict):
 
     # ── 3. Попапы /business ───────────────────────────────────────────────
     with allure.step("Шаг 3: попапы /business"):
-        if cfg.get("has_business"):
+        if service_mode == SERVICE_MODE_VARIANTS:
+            mark_step_not_applicable(site_label, "3", "попапы /business", "service_mode=variants")
+        elif cfg.get("has_business"):
             business_url = base_url.rstrip("/") + "/business"
             print(f"\n{sep}\n[{site_label}] Шаг 3: попапы /business\n{sep}")
-            goto_or_handle_step(page, business_url, site_label, "3", "попапы /business")
-            close_overlays(page)
+            goto_business_or_handle_step(page, base_url, business_url, site_label, "3", "\u043f\u043e\u043f\u0430\u043f\u044b /business")
+            # close_overlays is already handled inside goto_business_or_handle_step
             try:
-                s, f, first_fail = process_business_popups(page, business_url, has_name_field=has_name_field)
+                s, f, first_fail = process_business_popups(
+                    page, business_url, has_name_field=has_name_field, service_mode=service_mode
+                )
             except SiteUnavailableError as e:
                 skip_site_due_unavailability(site_label, "3", "попапы /business", str(e), page)
             if f > 0:
@@ -2133,7 +2320,9 @@ def run_site_scenario(page: Page, cfg: dict):
             goto_or_handle_step(page, city_base, site_label, "4a", "попапы главной города")
             close_overlays(page)
             try:
-                s, f, first_fail = process_all_popups(page, city_base, has_name_field=has_name_field)
+                s, f, first_fail = process_all_popups(
+                    page, city_base, has_name_field=has_name_field, service_mode=service_mode
+                )
             except SiteUnavailableError as e:
                 skip_site_due_unavailability(site_label, "4a", "попапы главной города", str(e), page)
             if f > 0:
@@ -2150,15 +2339,19 @@ def run_site_scenario(page: Page, cfg: dict):
     with allure.step("Шаг 4b: попапы /business города"):
         if city_name is None:
             mark_step_not_applicable(site_label, "4b", "попапы /business города", "city_name=None")
+        elif service_mode == SERVICE_MODE_VARIANTS:
+            mark_step_not_applicable(site_label, "4b", "попапы /business города", "service_mode=variants")
         elif not cfg.get("has_business"):
             mark_step_not_applicable(site_label, "4b", "попапы /business города", "has_business=False")
         elif city_biz is None:
             mark_step_not_applicable(site_label, "4b", "попапы /business города", "городской сценарий недоступен по условию")
         else:
-            goto_or_handle_step(page, city_biz, site_label, "4b", "попапы /business города")
-            close_overlays(page)
+            goto_business_or_handle_step(page, city_base, city_biz, site_label, "4b", "\u043f\u043e\u043f\u0430\u043f\u044b /business \u0433\u043e\u0440\u043e\u0434\u0430")
+            # close_overlays is already handled inside goto_business_or_handle_step
             try:
-                s, f, first_fail = process_business_popups(page, city_biz, has_name_field=has_name_field)
+                s, f, first_fail = process_business_popups(
+                    page, city_biz, has_name_field=has_name_field, service_mode=service_mode
+                )
             except SiteUnavailableError as e:
                 skip_site_due_unavailability(site_label, "4b", "попапы /business города", str(e), page)
             if f > 0:
@@ -2186,6 +2379,8 @@ def test_site(page: Page, site_cfg: dict):
     Запуск для всех сайтов:
         pytest -s --headed
     """
-    allure.dynamic.title(f"Сайт: {site_cfg['base_url']}")
+    service_mode = normalize_service_mode(site_cfg.get("_service_mode", SERVICE_MODE_ALL))
+    allure.dynamic.title(f"Сайт: {site_cfg['base_url']} [{service_mode}]")
     allure.dynamic.label("suite", "Формы провайдеров")
+    allure.dynamic.label("subSuite", f"service-mode: {service_mode}")
     run_site_scenario(page, site_cfg)

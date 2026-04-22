@@ -1,5 +1,5 @@
 # PRODUCT_CONTEXT
-Обновлено: 2026-04-21
+Обновлено: 2026-04-22
 
 ## 1. Общее описание продукта
 - Продукт: репозиторий автотестов `Everyday_test` для проверки лендингов интернет-провайдеров.
@@ -42,6 +42,10 @@
 
 ## 5. Бизнес-логика
 - Suite A (`test_universal2.py`):
+  - поддерживаются режимы прогона `--service-mode`:
+    - `core`: для форм с `Place` выполняется один базовый submit (первый доступный вариант, обычно `В квартиру`);
+    - `variants`: выполняются только проверки вариантов `Place` (формы без `Place`, а также `profit` и `business`, пропускаются как неприменимые);
+    - `all`: полный режим с submit по всем доступным вариантам `Place`;
   - сценарий по сайту: шаги `1 -> 2 -> 3 -> 4 -> 4a -> 4b`;
   - success submit: URL содержит `/tilda/form1/submitted` или `/thanks`;
   - submit проверяется с retry и grace-периодом;
@@ -110,6 +114,7 @@
 - Язык: Python.
 - Основной test-suite A:
   - конфиг доменов: `SITE_CONFIGS` (23 сайта на 2026-04-13),
+  - параметр запуска: `--service-mode` (`all` по умолчанию, также `core`, `variants`),
   - таймауты/ретраи:
     - `NAV_GOTO_TIMEOUT_MS=20000`,
     - `NAV_RETRIES=3`,
@@ -141,6 +146,9 @@
   - `a9d1a58`: отключен `/business` для `rt-internet.online` и `rtk-home-internet.ru`.
 - CI:
   - `allure.yml` (формы): schedule `0 5 * * *`, workflow_dispatch (без автозапуска по push).
+  - `allure.yml` выполняет двухфазный запуск:
+    - Phase 1: `core` (базовый сценарий);
+    - Phase 2: `variants` (варианты `Place`) только после успешного `core` и при включённом флаге `run_place_variants` для ручного запуска.
   - `mobile-tariffs.yml`: workflow_dispatch + workflow_run после `Playwright Tests`, публикация Allure в `gh-pages/mobile-tariffs`.
 - Количество конфигов на 2026-04-13:
   - Suite A: 23 сайта,
