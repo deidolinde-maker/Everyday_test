@@ -569,6 +569,7 @@ CHECKBOX_SCAN_LIMIT = 20
 CHECKBOX_CHECK_LIMIT = 4
 CHECKBOX_VISIBILITY_TIMEOUT_MS = 250
 CHECKBOX_ACTION_TIMEOUT_MS = 1_200
+CHECKBOX_AGGRESSIVE_CHECK_LIMIT = 12
 
 POPUP_CONTAINER_SELECTORS = [
     "div#popup", "div.popup",
@@ -1164,35 +1165,70 @@ def select_service_place_value(container, service_value: str) -> bool:
     return False
 
 
-def apply_form_checkboxes(container):
+def _check_required_checkboxes_via_dom(container) -> tuple[int, int, int]:
     """
-    Ставит только ограниченное число видимых чекбоксов.
-    Это защищает от длинных/залипающих циклов в формах с большим количеством hidden checkbox.
+    Быстро отмечает обязательные чекбоксы (required / aria-required=true), включая скрытые input.
+    Возвращает: total, required_found, required_checked.
     """
-    checkboxes = container.locator("input[type='checkbox']")
     try:
-        total = checkboxes.count()
+        data = container.evaluate(
+            """(root) => {
+                const boxes = Array.from(root.querySelectorAll("input[type='checkbox']"));
+                let requiredFound = 0;
+                let requiredChecked = 0;
+                for (const box of boxes) {
+                    const ariaRequired = (box.getAttribute('aria-required') || '').toLowerCase();
+                    const isRequired = !!box.required || ariaRequired === 'true';
+                    if (!isRequired) continue;
+                    requiredFound += 1;
+                    if (box.disabled || box.checked) continue;
+                    box.checked = true;
+                    box.dispatchEvent(new Event('input', { bubbles: true }));
+                    box.dispatchEvent(new Event('change', { bubbles: true }));
+                    requiredChecked += 1;
+                }
+                return {
+                    total: boxes.length,
+                    requiredFound,
+                    requiredChecked
+                };
+            }"""
+        )
+        total = int((data or {}).get("total", 0))
+        required_found = int((data or {}).get("requiredFound", 0))
+        required_checked = int((data or {}).get("requiredChecked", 0))
+        return total, required_found, required_checked
     except Exception:
-        total = 0
+        return 0, 0, 0
 
+
+def apply_form_checkboxes(container, aggressive: bool = False):
+    """
+    Ставит обязательные чекбоксы и ограниченное число дополнительных.
+    aggressive=True используется перед retry submit, чтобы шире пройти по чекбоксам.
+    """
+    total, required_found, required_checked = _check_required_checkboxes_via_dom(container)
     if total <= 0:
         return
 
     scan_total = min(total, CHECKBOX_SCAN_LIMIT)
-    checked_total = 0
+    optional_limit = CHECKBOX_AGGRESSIVE_CHECK_LIMIT if aggressive else CHECKBOX_CHECK_LIMIT
+    checked_optional = 0
     print(
         f"  [FORM] Checkbox scan: total={total}, scan_limit={scan_total}, "
-        f"check_limit={CHECKBOX_CHECK_LIMIT}"
+        f"optional_limit={optional_limit}, required_found={required_found}, "
+        f"required_checked={required_checked}, aggressive={aggressive}"
     )
 
+    checkboxes = container.locator("input[type='checkbox']")
     for idx in range(scan_total):
-        if checked_total >= CHECKBOX_CHECK_LIMIT:
-            print(f"  [FORM] Checkbox check limit reached: {checked_total}")
+        if checked_optional >= optional_limit:
+            print(f"  [FORM] Optional checkbox limit reached: {checked_optional}")
             break
 
         cb = checkboxes.nth(idx)
         try:
-            if not cb.is_visible(timeout=CHECKBOX_VISIBILITY_TIMEOUT_MS):
+            if not aggressive and not cb.is_visible(timeout=CHECKBOX_VISIBILITY_TIMEOUT_MS):
                 continue
         except Exception:
             continue
@@ -1205,12 +1241,15 @@ def apply_form_checkboxes(container):
 
         try:
             cb.check(force=True, timeout=CHECKBOX_ACTION_TIMEOUT_MS)
-            checked_total += 1
+            checked_optional += 1
         except Exception as e:
             err = str(e).replace("\n", " ")[:160]
             print(f"  [FORM] Checkbox skip #{idx + 1}: {err}")
 
-    print(f"  [FORM] Checkbox checked: {checked_total}")
+    print(
+        f"  [FORM] Checkbox checked: required={required_checked}, "
+        f"optional={checked_optional}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1373,6 +1412,11 @@ def submit_with_confirmation(
 
         if attempt < attempts:
             print(f"  [SUBMIT] Повторная попытка {attempt + 1}/{attempts}")
+            try:
+                print("  [SUBMIT] Восстанавливаем чекбоксы перед retry")
+                apply_form_checkboxes(container, aggressive=True)
+            except Exception:
+                pass
             page.wait_for_timeout(1200)
 
     return False
