@@ -566,6 +566,12 @@ SUBMIT_CONFIRM_GRACE_MS = 2_000
 CITY_LOADSTATE_TIMEOUT_MS = 7_000
 HOUSE_ENABLE_TIMEOUT_MS = 3_500
 FIREFOX_HOUSE_ENABLE_TIMEOUT_MS = 5_000
+PHONE_TEST_VALUE = "9991234567"
+PHONE_RETRY_VALUE = "79991234567"
+PHONE_INPUT_DELAY_MS = 50
+FIREFOX_PHONE_INPUT_DELAY_MS = 80
+SUGGEST_TIMEOUT_MS = 1_500
+FIREFOX_SUGGEST_TIMEOUT_MS = 3_000
 CHECKBOX_SCAN_LIMIT = 20
 CHECKBOX_CHECK_LIMIT = 4
 CHECKBOX_VISIBILITY_TIMEOUT_MS = 250
@@ -1008,6 +1014,108 @@ def wait_for_success_url(page: Page, timeout_ms: int = SUBMIT_CONFIRM_TIMEOUT_MS
     return False
 
 
+def wait_for_cf7_feedback_status(page: Page, timeout_ms: int = 2_000) -> str:
+    """
+    Пытается поймать AJAX-ответ Contact Form 7 feedback.
+    Возвращает status (например, mail_sent/validation_failed) или "".
+    """
+    try:
+        response = page.wait_for_response(
+            lambda r: "/wp-json/contact-form-7/" in (r.url or "").lower()
+            and "/feedback" in (r.url or "").lower(),
+            timeout=timeout_ms,
+        )
+    except Exception:
+        return ""
+
+    try:
+        payload = response.json()
+    except Exception:
+        return ""
+
+    status = ""
+    if isinstance(payload, dict):
+        status = str(payload.get("status") or "").strip().lower()
+        if not status and isinstance(payload.get("data"), dict):
+            status = str(payload["data"].get("status") or "").strip().lower()
+    return status
+
+
+def _snapshot_submit_network(page: Page) -> set[str]:
+    try:
+        items = page.evaluate(
+            """() => {
+                return performance.getEntriesByType("resource")
+                    .filter(e => ["fetch", "xmlhttprequest"].includes((e.initiatorType || "").toLowerCase()))
+                    .map(e => String(e.name || ""));
+            }"""
+        )
+    except Exception:
+        return set()
+    return {item for item in (items or []) if item}
+
+
+TRACKING_REQUEST_MARKERS = (
+    "mc.yandex.ru",
+    "metrika",
+    "google-analytics",
+    "googletagmanager",
+    "clarity.ms",
+)
+
+
+def _has_non_tracking_requests(urls: list[str]) -> bool:
+    for url in urls:
+        normalized = (url or "").lower()
+        if not normalized:
+            continue
+        if any(marker in normalized for marker in TRACKING_REQUEST_MARKERS):
+            continue
+        return True
+    return False
+
+
+def _compact_request_url(url: str) -> str:
+    try:
+        parsed = urlsplit(url)
+        host = (parsed.netloc or "").lower()
+        path = parsed.path or ""
+        compact = f"{host}{path}"
+        return compact[:140] if compact else (url or "")[:140]
+    except Exception:
+        return (url or "")[:140]
+
+
+def _trigger_native_form_submit(container) -> bool:
+    try:
+        return bool(
+            container.evaluate(
+                """(root) => {
+                    const submitEl =
+                        root.querySelector("button[type='submit'], input[type='submit'], .wpcf7-submit")
+                        || root.querySelector("button, input[type='button']");
+                    if (submitEl) {
+                        submitEl.click();
+                    }
+
+                    const form = root.closest("form") || root.querySelector("form");
+                    if (!form) return !!submitEl;
+                    if (typeof form.requestSubmit === "function") {
+                        form.requestSubmit();
+                        return true;
+                    }
+                    if (typeof form.submit === "function") {
+                        form.submit();
+                        return true;
+                    }
+                    return !!submitEl;
+                }"""
+            )
+        )
+    except Exception:
+        return False
+
+
 def detect_visible_region_popup(page: Page) -> str | None:
     for sel in REGION_POPUP_DETECT_SELECTORS:
         try:
@@ -1099,7 +1207,7 @@ def verify_thanks_close_and_return(page: Page, return_url: str) -> tuple[bool, s
 # Подсказки
 # ---------------------------------------------------------------------------
 
-def choose_first_suggestion(page: Page, timeout_ms: int = 1500) -> bool:
+def choose_first_suggestion(page: Page, timeout_ms: int = SUGGEST_TIMEOUT_MS, field=None) -> bool:
     poll_ms = 150
     elapsed = 0
     while elapsed < timeout_ms:
@@ -1120,6 +1228,12 @@ def choose_first_suggestion(page: Page, timeout_ms: int = 1500) -> bool:
 
     print("  [SUGGEST FALLBACK] ArrowDown+Enter")
     try:
+        if field is not None:
+            try:
+                field.scroll_into_view_if_needed()
+                field.click(force=True)
+            except Exception:
+                pass
         page.keyboard.press("ArrowDown")
         page.wait_for_timeout(200)
         page.keyboard.press("Enter")
@@ -1298,6 +1412,103 @@ def apply_form_checkboxes(page: Page, container, aggressive: bool = False):
     )
 
 
+def _collect_invalid_controls(container, limit: int = 5) -> list[str]:
+    try:
+        raw_items = container.evaluate(
+            """([root, maxCount]) => {
+                const items = [];
+                const controls = Array.from(root.querySelectorAll("input, textarea, select"));
+                for (const el of controls) {
+                    if (items.length >= maxCount) break;
+                    if (typeof el.checkValidity !== "function") continue;
+                    if (el.checkValidity()) continue;
+                    const isCheck = el.type === "checkbox" || el.type === "radio";
+                    items.push({
+                        tag: (el.tagName || "").toLowerCase(),
+                        type: (el.getAttribute("type") || "").toLowerCase(),
+                        name: el.getAttribute("name") || "",
+                        id: el.id || "",
+                        placeholder: el.getAttribute("placeholder") || "",
+                        value: isCheck ? (el.checked ? "checked" : "unchecked") : String(el.value || "").slice(0, 40),
+                        msg: String(el.validationMessage || "").slice(0, 120),
+                    });
+                }
+                return items;
+            }""",
+            [limit],
+        )
+    except Exception:
+        return []
+
+    if not raw_items:
+        return []
+
+    details = []
+    for item in raw_items:
+        tag = (item.get("tag") or "?").strip()
+        typ = (item.get("type") or "").strip()
+        name = (item.get("name") or "").strip()
+        ident = (item.get("id") or "").strip()
+        placeholder = (item.get("placeholder") or "").strip()
+        value = (item.get("value") or "").strip()
+        msg = (item.get("msg") or "").strip()
+        label = f"{tag}:{typ or '-'} name='{name}' id='{ident}' ph='{placeholder}' value='{value}'"
+        if msg:
+            label += f" msg='{msg}'"
+        details.append(label[:260])
+    return details
+
+
+def _stabilize_form_before_retry(page: Page, container, form_type: str) -> str:
+    """
+    Перед повторным submit усиливаем подготовку формы:
+    чекбоксы + нормализация телефона + диагностика невалидных полей.
+    """
+    notes = []
+    try:
+        apply_form_checkboxes(page, container, aggressive=True)
+    except Exception:
+        pass
+
+    cfg = FORM_CONFIGS.get(form_type, {})
+    phone_sel = cfg.get("phone")
+    if phone_sel:
+        phone = container.locator(phone_sel).first
+        try:
+            if phone.count() > 0 and phone.is_visible():
+                current_value = phone.input_value() or ""
+                current_digits = "".join(ch for ch in current_value if ch.isdigit())
+                must_retype = len(current_digits) < 10 or is_firefox_browser(page)
+                if must_retype:
+                    delay_ms = browser_timeout(page, PHONE_INPUT_DELAY_MS, FIREFOX_PHONE_INPUT_DELAY_MS)
+                    phone.scroll_into_view_if_needed()
+                    phone.click(force=True)
+                    try:
+                        phone.press("Control+A")
+                    except Exception:
+                        pass
+                    try:
+                        phone.fill("")
+                    except Exception:
+                        pass
+                    phone.press_sequentially(PHONE_RETRY_VALUE, delay=delay_ms)
+                    page.wait_for_timeout(browser_timeout(page, 200, 350))
+                    try:
+                        page.keyboard.press("Tab")
+                    except Exception:
+                        pass
+                    new_digits = "".join(ch for ch in (phone.input_value() or "") if ch.isdigit())
+                    notes.append(f"phone_retyped digits={len(current_digits)}->{len(new_digits)}")
+        except Exception as e:
+            notes.append(f"phone_retype_error={str(e).replace(chr(10), ' ')[:120]}")
+
+    invalid_controls = _collect_invalid_controls(container, limit=5)
+    if invalid_controls:
+        notes.append("invalid=" + " || ".join(invalid_controls))
+
+    return " | ".join(notes)[:700]
+
+
 # ---------------------------------------------------------------------------
 # Заполнение формы
 # ---------------------------------------------------------------------------
@@ -1332,7 +1543,8 @@ def fill_form(page: Page, container, form_type: str,
             return True
 
         print("  [FORM] Street entered, waiting suggestion...")
-        choose_first_suggestion(page)
+        suggest_timeout = browser_timeout(page, SUGGEST_TIMEOUT_MS, FIREFOX_SUGGEST_TIMEOUT_MS)
+        choose_first_suggestion(page, timeout_ms=suggest_timeout, field=street_local)
         return True
 
     # Address / Street
@@ -1362,7 +1574,10 @@ def fill_form(page: Page, container, form_type: str,
                         house.click(force=True)
                         house.fill("1")
                         print("  [FORM] House entered, waiting suggestion...")
-                        choose_first_suggestion(page, timeout_ms=1500)
+                        suggest_timeout = browser_timeout(
+                            page, SUGGEST_TIMEOUT_MS, FIREFOX_SUGGEST_TIMEOUT_MS
+                        )
+                        choose_first_suggestion(page, timeout_ms=suggest_timeout, field=house)
                         house_ready = True
                         break
                     except Exception as e:
@@ -1407,8 +1622,13 @@ def fill_form(page: Page, container, form_type: str,
 
     phone.scroll_into_view_if_needed()
     phone.click(force=True)
-    phone.press_sequentially("1111111111", delay=50)
-    print("  [FORM] Телефон введён")
+    phone_delay = browser_timeout(page, PHONE_INPUT_DELAY_MS, FIREFOX_PHONE_INPUT_DELAY_MS)
+    phone.press_sequentially(PHONE_TEST_VALUE, delay=phone_delay)
+    try:
+        phone_digits = "".join(ch for ch in (phone.input_value() or "") if ch.isdigit())
+        print(f"  [FORM] Телефон введён ({len(phone_digits)} digits)")
+    except Exception:
+        print("  [FORM] Телефон введён")
 
     apply_form_checkboxes(page, container)
 
@@ -1444,6 +1664,8 @@ def submit_with_confirmation(
         return False
 
     for attempt in range(1, attempts + 1):
+        cf7_status = ""
+        network_before = _snapshot_submit_network(page)
         try:
             last_submit.scroll_into_view_if_needed()
             last_submit.click(force=True)
@@ -1455,15 +1677,45 @@ def submit_with_confirmation(
             last_submit.scroll_into_view_if_needed()
             last_submit.click(force=True)
 
+        cf7_timeout = browser_timeout(page, 1_200, 2_500)
+        cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=cf7_timeout)
+        if cf7_status:
+            print(f"  [SUBMIT] CF7 feedback status='{cf7_status}'")
+
+        if is_firefox_browser(page):
+            page.wait_for_timeout(900)
+            network_probe = _snapshot_submit_network(page)
+            new_probe_requests = sorted(network_probe - network_before)
+            if new_probe_requests and not _has_non_tracking_requests(new_probe_requests):
+                native_triggered = _trigger_native_form_submit(container)
+                if native_triggered:
+                    print("  [SUBMIT] Firefox fallback: requestSubmit()/native click")
+                    page.wait_for_timeout(700)
+                    network_before = _snapshot_submit_network(page)
+                    cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=2_000) or cf7_status
+
         ok = wait_for_success_url(page, timeout_ms=timeout_ms)
         if ok:
             return True
+        if cf7_status == "mail_sent":
+            print("  [SUBMIT] ✅ Подтверждено по CF7 mail_sent (без redirect)")
+            return True
+
+        network_after = _snapshot_submit_network(page)
+        new_requests = sorted(network_after - network_before)
+        if new_requests:
+            preview = " | ".join(_compact_request_url(item) for item in new_requests[:3])
+            print(f"  [SUBMIT] New XHR/fetch after submit: {preview}")
+        else:
+            print("  [SUBMIT] New XHR/fetch after submit: none")
 
         if attempt < attempts:
             print(f"  [SUBMIT] Повторная попытка {attempt + 1}/{attempts}")
             try:
-                print("  [SUBMIT] Восстанавливаем чекбоксы перед retry")
-                apply_form_checkboxes(page, container, aggressive=True)
+                print("  [SUBMIT] Стабилизация формы перед retry")
+                retry_notes = _stabilize_form_before_retry(page, container, form_type)
+                if retry_notes:
+                    print(f"  [SUBMIT] Retry diagnostics: {retry_notes}")
             except Exception:
                 pass
             page.wait_for_timeout(1200)
