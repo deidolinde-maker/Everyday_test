@@ -1056,7 +1056,10 @@ def _snapshot_submit_network(page: Page) -> set[str]:
 
 
 TRACKING_REQUEST_MARKERS = (
-    "mc.yandex.ru",
+    "mc.yandex.",
+    "metrika.yandex",
+    "/clmap/",
+    "/webvisor/",
     "metrika",
     "google-analytics",
     "googletagmanager",
