@@ -1,0 +1,2 @@
+POPUP 1/2 text='подключиться' hint=None code=no_confirmation url=https://t2-ru.online/ | service=без выбора варианта
+POPUP 2/2 text='подключиться' hint=None code=no_confirmation url=https://t2-ru.online/ | service=без выбора варианта
