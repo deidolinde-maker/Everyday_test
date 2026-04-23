@@ -1,7 +1,0 @@
-Карточка #1
-────────────────────────────────────────
-  href          : https://beeline.ru/customers/products/toptariffs/?utm_source=mobideal&utm_medium=cpa&utm_campaign=landing
-  URL до клика  : https://beeline-ru.online/
-  URL после     : https://moskva.beeline.ru/customers/products/toptariffs/?utm_source=mobideal&utm_medium=cpa&utm_campaign=landing
-  Тип перехода  : same_tab
-  Результат     : ✅ PASSED
