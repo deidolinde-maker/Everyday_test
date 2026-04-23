@@ -1097,21 +1097,27 @@ def _trigger_native_form_submit(container) -> bool:
                     const submitEl =
                         root.querySelector("button[type='submit'], input[type='submit'], .wpcf7-submit")
                         || root.querySelector("button, input[type='button']");
+                    const form = root.closest("form") || root.querySelector("form");
+                    if (!form) {
+                        if (submitEl) {
+                            submitEl.click();
+                            return true;
+                        }
+                        return false;
+                    }
+                    if (typeof form.requestSubmit === "function") {
+                        if (submitEl && submitEl.tagName && submitEl.tagName.toLowerCase() === "button") {
+                            form.requestSubmit(submitEl);
+                        } else {
+                            form.requestSubmit();
+                        }
+                        return true;
+                    }
                     if (submitEl) {
                         submitEl.click();
-                    }
-
-                    const form = root.closest("form") || root.querySelector("form");
-                    if (!form) return !!submitEl;
-                    if (typeof form.requestSubmit === "function") {
-                        form.requestSubmit();
                         return true;
                     }
-                    if (typeof form.submit === "function") {
-                        form.submit();
-                        return true;
-                    }
-                    return !!submitEl;
+                    return false;
                 }"""
             )
         )
@@ -1693,19 +1699,28 @@ def submit_with_confirmation(
         if cf7_status:
             print(f"  [SUBMIT] CF7 feedback status='{cf7_status}'")
 
-        if is_firefox_browser(page):
+        ok = wait_for_success_url(page, timeout_ms=timeout_ms)
+
+        if not ok and is_firefox_browser(page):
             page.wait_for_timeout(900)
             network_probe = _snapshot_submit_network(page)
             new_probe_requests = sorted(network_probe - attempt_network_start)
-            if new_probe_requests and not _has_non_tracking_requests(new_probe_requests):
+            can_try_native_fallback = (
+                cf7_status != "mail_sent"
+                and new_probe_requests
+                and not _has_non_tracking_requests(new_probe_requests)
+            )
+            if can_try_native_fallback:
                 native_triggered = _trigger_native_form_submit(container)
                 if native_triggered:
                     used_native_fallback = True
                     print("  [SUBMIT] Firefox fallback: requestSubmit()/native click")
                     page.wait_for_timeout(700)
-                    cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=2_000) or cf7_status
-
-        ok = wait_for_success_url(page, timeout_ms=timeout_ms)
+                    cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=2_500) or cf7_status
+                    ok = wait_for_success_url(
+                        page,
+                        timeout_ms=browser_timeout(page, 4_000, 6_000),
+                    )
 
         network_after = _snapshot_submit_network(page)
         new_requests = sorted(network_after - attempt_network_start)
