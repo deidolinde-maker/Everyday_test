@@ -33,6 +33,23 @@ except Exception:
     pass
 
 
+def env_bool(name: str, default: bool = True) -> bool:
+    raw = (os.getenv(name) or "").strip().lower()
+    if not raw:
+        return default
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
+ALERT_ERRORS_ENABLED = env_bool("ALERT_ERRORS_ENABLED", True)
+ALERT_AGGREGATES_ENABLED = env_bool("ALERT_AGGREGATES_ENABLED", True)
+ALERT_SUMMARY_ENABLED = env_bool("ALERT_SUMMARY_ENABLED", True)
+ALERT_RECOVERED_ENABLED = env_bool("ALERT_RECOVERED_ENABLED", True)
+
+
 def normalize_text(value: str, max_len: int = 220) -> str:
     text = " ".join((value or "").split()).strip()
     if len(text) > max_len:
@@ -192,48 +209,55 @@ def build_summary(
     passed: int,
     failed_records: list[dict],
     resolved_sites: list[str],
-) -> str:
+) -> tuple[str, bool]:
     failed_total = len(failed_records)
     grouped = group_failed_by_site(failed_records)
     failed_sites_count = len(grouped)
+
+    lines: list[str] = []
+    has_any_category_output = False
 
     if failed_total == 0:
         header = "✅ Прогон завершён успешно"
     else:
         header = "❌ Прогон завершён с ошибками"
 
-    lines = [header, ""]
-
-    if SITE_HINT:
-        lines.append(f"Сайт (input): {SITE_HINT}")
-        lines.append("")
-
-    lines.append(f"✅ Успешно: {passed}")
-    lines.append(f"❌ Упало: {failed_total}")
-    lines.append(f"🌐 Лендингов с ошибками: {failed_sites_count}")
+    if ALERT_SUMMARY_ENABLED:
+        has_any_category_output = True
+        lines.extend([header, ""])
+        if SITE_HINT:
+            lines.append(f"Сайт (input): {SITE_HINT}")
+            lines.append("")
+        lines.append(f"✅ Успешно: {passed}")
+        lines.append(f"❌ Упало: {failed_total}")
+        lines.append(f"🌐 Лендингов с ошибками: {failed_sites_count}")
 
     if failed_total > 0:
         sorted_sites = sorted(grouped.items(), key=lambda item: len(item[1]), reverse=True)
         regular_sites = [(site, items) for site, items in sorted_sites if len(items) <= NORMAL_ALERT_MAX_PER_SITE]
         aggregated_sites = [(site, items) for site, items in sorted_sites if len(items) > NORMAL_ALERT_MAX_PER_SITE]
 
-        if failed_sites_count > MASS_ALERT_SITE_THRESHOLD:
+        if ALERT_AGGREGATES_ENABLED and failed_sites_count > MASS_ALERT_SITE_THRESHOLD:
+            has_any_category_output = True
             lines.append("")
             lines.append(
                 f"🚨 Массовая ошибка: {failed_sites_count} лендингов имеют падения (всего {failed_total} ошибок)."
             )
 
-        if regular_sites:
+        if ALERT_ERRORS_ENABLED and regular_sites:
+            has_any_category_output = True
             lines.append("")
             lines.append("Точечные алерты (1–5 падений на лендинг):")
             append_site_lines(lines, regular_sites)
 
-        if aggregated_sites:
+        if ALERT_AGGREGATES_ENABLED and aggregated_sites:
+            has_any_category_output = True
             lines.append("")
             lines.append("Агрегированные алерты (>5 падений на лендинг):")
             append_site_lines(lines, aggregated_sites)
 
-    if resolved_sites:
+    if ALERT_RECOVERED_ENABLED and resolved_sites:
+        has_any_category_output = True
         lines.append("")
         lines.append("✅ Исправлено после восстановления:")
         for site in resolved_sites[:10]:
@@ -241,13 +265,14 @@ def build_summary(
         if len(resolved_sites) > 10:
             lines.append(f"... и ещё {len(resolved_sites) - 10}")
 
-    lines.append("")
-    if RUN_URL:
-        lines.append(f"Run: {RUN_URL}")
-    if ALLURE_URL:
-        lines.append(f"Allure: {ALLURE_URL}")
+    if has_any_category_output:
+        lines.append("")
+        if RUN_URL:
+            lines.append(f"Run: {RUN_URL}")
+        if ALLURE_URL:
+            lines.append(f"Allure: {ALLURE_URL}")
 
-    return trim_message("\n".join(lines).strip())
+    return trim_message("\n".join(lines).strip()), has_any_category_output
 
 
 def main() -> int:
@@ -256,11 +281,10 @@ def main() -> int:
     previous_failed_sites = load_previous_failed_sites()
     resolved_sites = sorted(previous_failed_sites - current_failed_sites)
 
-    message = build_summary(passed, failed_records, resolved_sites)
+    message, should_send = build_summary(passed, failed_records, resolved_sites)
     save_current_failed_sites(current_failed_sites)
 
-    # Всегда шлём — и при успехе и при падении.
-    OUT_FLAG_FILE.write_text("1", encoding="utf-8")
+    OUT_FLAG_FILE.write_text("1" if should_send else "0", encoding="utf-8")
     OUT_MESSAGE_FILE.write_text(message, encoding="utf-8")
     print(message)
     return 0

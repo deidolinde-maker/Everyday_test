@@ -23,6 +23,26 @@ on:
         required: false
         default: false
         type: boolean
+      alert_errors:
+        description: 'Telegram: одиночные ошибки (1–5 на лендинг)'
+        required: false
+        default: true
+        type: boolean
+      alert_aggregates:
+        description: 'Telegram: накопительные/массовые ошибки'
+        required: false
+        default: true
+        type: boolean
+      alert_summary:
+        description: 'Telegram: итог прогона'
+        required: false
+        default: true
+        type: boolean
+      alert_recovered:
+        description: 'Telegram: блок восстановлений (исправлено)'
+        required: false
+        default: true
+        type: boolean
 
   # Запуск автоматически по расписанию (каждый день в 9:00 UTC)
   schedule:
@@ -37,6 +57,10 @@ jobs:
       RUN_CHROMIUM: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_chromium == 'true' }}
       RUN_FIREFOX: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_firefox == 'true' }}
       RUN_PLACE_VARIANTS: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_place_variants == 'true' }}
+      ALERT_ERRORS_ENABLED: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.alert_errors == 'true' }}
+      ALERT_AGGREGATES_ENABLED: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.alert_aggregates == 'true' }}
+      ALERT_SUMMARY_ENABLED: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.alert_summary == 'true' }}
+      ALERT_RECOVERED_ENABLED: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.alert_recovered == 'true' }}
 
     steps:
       - name: Checkout репозитория
@@ -234,6 +258,10 @@ jobs:
           SITE_HINT: ${{ github.event.inputs.site }}
           NOTIFY_STATE_FILE: notify_state.json
           NOTIFY_STATE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/notify_state.json
+          ALERT_ERRORS_ENABLED: ${{ env.ALERT_ERRORS_ENABLED }}
+          ALERT_AGGREGATES_ENABLED: ${{ env.ALERT_AGGREGATES_ENABLED }}
+          ALERT_SUMMARY_ENABLED: ${{ env.ALERT_SUMMARY_ENABLED }}
+          ALERT_RECOVERED_ENABLED: ${{ env.ALERT_RECOVERED_ENABLED }}
 
       - name: Проверить, нужно ли слать алерт
         if: always()

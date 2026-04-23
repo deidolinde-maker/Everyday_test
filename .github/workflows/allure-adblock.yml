@@ -12,11 +12,36 @@ on:
         required: false
         default: false
         type: boolean
+      alert_errors:
+        description: 'Telegram: одиночные ошибки (1–5 на лендинг)'
+        required: false
+        default: true
+        type: boolean
+      alert_aggregates:
+        description: 'Telegram: накопительные/массовые ошибки'
+        required: false
+        default: true
+        type: boolean
+      alert_summary:
+        description: 'Telegram: итог прогона'
+        required: false
+        default: true
+        type: boolean
+      alert_recovered:
+        description: 'Telegram: блок восстановлений (исправлено)'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   test_adblock:
     runs-on: ubuntu-latest
     timeout-minutes: 150
+    env:
+      ALERT_ERRORS_ENABLED: ${{ github.event.inputs.alert_errors == 'true' }}
+      ALERT_AGGREGATES_ENABLED: ${{ github.event.inputs.alert_aggregates == 'true' }}
+      ALERT_SUMMARY_ENABLED: ${{ github.event.inputs.alert_summary == 'true' }}
+      ALERT_RECOVERED_ENABLED: ${{ github.event.inputs.alert_recovered == 'true' }}
 
     steps:
       - name: Checkout репозитория
@@ -134,6 +159,10 @@ jobs:
           SITE_HINT: ${{ github.event.inputs.site }}
           NOTIFY_STATE_FILE: notify_state.json
           NOTIFY_STATE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/adblock/notify_state.json
+          ALERT_ERRORS_ENABLED: ${{ env.ALERT_ERRORS_ENABLED }}
+          ALERT_AGGREGATES_ENABLED: ${{ env.ALERT_AGGREGATES_ENABLED }}
+          ALERT_SUMMARY_ENABLED: ${{ env.ALERT_SUMMARY_ENABLED }}
+          ALERT_RECOVERED_ENABLED: ${{ env.ALERT_RECOVERED_ENABLED }}
 
       - name: Проверить, нужно ли слать алерт
         if: always()
