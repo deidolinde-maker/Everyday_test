@@ -565,11 +565,17 @@ SUBMIT_CONFIRM_TIMEOUT_MS = 25_000
 SUBMIT_CONFIRM_GRACE_MS = 2_000
 CITY_LOADSTATE_TIMEOUT_MS = 7_000
 HOUSE_ENABLE_TIMEOUT_MS = 3_500
+FIREFOX_HOUSE_ENABLE_TIMEOUT_MS = 5_000
 CHECKBOX_SCAN_LIMIT = 20
 CHECKBOX_CHECK_LIMIT = 4
 CHECKBOX_VISIBILITY_TIMEOUT_MS = 250
 CHECKBOX_ACTION_TIMEOUT_MS = 1_200
 CHECKBOX_AGGRESSIVE_CHECK_LIMIT = 12
+FIREFOX_CHECKBOX_VISIBILITY_TIMEOUT_MS = 500
+FIREFOX_CHECKBOX_ACTION_TIMEOUT_MS = 1_800
+FIREFOX_POPUP_CLICK_SETTLE_MS = 900
+FIREFOX_POPUP_WAIT_TIMEOUT_MS = 13_000
+FIREFOX_SUBMIT_TIMEOUT_BONUS_MS = 7_000
 
 POPUP_CONTAINER_SELECTORS = [
     "div#popup", "div.popup",
@@ -654,6 +660,34 @@ def normalize_service_mode(value: str | None) -> str:
     if mode not in SERVICE_MODE_CHOICES:
         return SERVICE_MODE_ALL
     return mode
+
+
+def get_browser_name_from_page(page: Page | None) -> str:
+    if page is None:
+        return ""
+    try:
+        browser = page.context.browser
+        if browser and browser.browser_type:
+            return (browser.browser_type.name or "").strip().lower()
+    except Exception:
+        pass
+    return ""
+
+
+def is_firefox_browser(page: Page | None) -> bool:
+    return get_browser_name_from_page(page) == "firefox"
+
+
+def browser_timeout(page: Page | None, default_ms: int, firefox_ms: int) -> int:
+    return firefox_ms if is_firefox_browser(page) else default_ms
+
+
+def popup_wait_timeout_ms(page: Page | None) -> int:
+    return browser_timeout(page, 10_000, FIREFOX_POPUP_WAIT_TIMEOUT_MS)
+
+
+def popup_click_settle_ms(page: Page | None) -> int:
+    return browser_timeout(page, 500, FIREFOX_POPUP_CLICK_SETTLE_MS)
 
 
 # ---------------------------------------------------------------------------
@@ -940,11 +974,14 @@ def _is_success_url(url: str) -> bool:
 
 
 def wait_for_success_url(page: Page, timeout_ms: int = SUBMIT_CONFIRM_TIMEOUT_MS) -> bool:
-    print(f"  [SUBMIT] Ждём подтверждения (до {timeout_ms // 1000}с)...")
+    effective_timeout_ms = timeout_ms + (
+        FIREFOX_SUBMIT_TIMEOUT_BONUS_MS if is_firefox_browser(page) else 0
+    )
+    print(f"  [SUBMIT] Ждём подтверждения (до {effective_timeout_ms // 1000}с)...")
     poll_ms = 300
     elapsed = 0
 
-    while elapsed < timeout_ms:
+    while elapsed < effective_timeout_ms:
         current_url = page.url
         if _is_success_url(current_url):
             print(f"  [SUBMIT] ✅ {current_url}")
@@ -1204,7 +1241,7 @@ def _check_required_checkboxes_via_dom(container) -> tuple[int, int, int]:
         return 0, 0, 0
 
 
-def apply_form_checkboxes(container, aggressive: bool = False):
+def apply_form_checkboxes(page: Page, container, aggressive: bool = False):
     """
     Ставит обязательные чекбоксы и ограниченное число дополнительных.
     aggressive=True используется перед retry submit, чтобы шире пройти по чекбоксам.
@@ -1215,11 +1252,18 @@ def apply_form_checkboxes(container, aggressive: bool = False):
 
     scan_total = min(total, CHECKBOX_SCAN_LIMIT)
     optional_limit = CHECKBOX_AGGRESSIVE_CHECK_LIMIT if aggressive else CHECKBOX_CHECK_LIMIT
+    visibility_timeout = browser_timeout(
+        page, CHECKBOX_VISIBILITY_TIMEOUT_MS, FIREFOX_CHECKBOX_VISIBILITY_TIMEOUT_MS
+    )
+    action_timeout = browser_timeout(
+        page, CHECKBOX_ACTION_TIMEOUT_MS, FIREFOX_CHECKBOX_ACTION_TIMEOUT_MS
+    )
     checked_optional = 0
     print(
         f"  [FORM] Checkbox scan: total={total}, scan_limit={scan_total}, "
         f"optional_limit={optional_limit}, required_found={required_found}, "
-        f"required_checked={required_checked}, aggressive={aggressive}"
+        f"required_checked={required_checked}, aggressive={aggressive}, "
+        f"visibility_timeout={visibility_timeout}ms, action_timeout={action_timeout}ms"
     )
 
     checkboxes = container.locator("input[type='checkbox']")
@@ -1230,7 +1274,7 @@ def apply_form_checkboxes(container, aggressive: bool = False):
 
         cb = checkboxes.nth(idx)
         try:
-            if not aggressive and not cb.is_visible(timeout=CHECKBOX_VISIBILITY_TIMEOUT_MS):
+            if not aggressive and not cb.is_visible(timeout=visibility_timeout):
                 continue
         except Exception:
             continue
@@ -1242,7 +1286,7 @@ def apply_form_checkboxes(container, aggressive: bool = False):
             pass
 
         try:
-            cb.check(force=True, timeout=CHECKBOX_ACTION_TIMEOUT_MS)
+            cb.check(force=True, timeout=action_timeout)
             checked_optional += 1
         except Exception as e:
             err = str(e).replace("\n", " ")[:160]
@@ -1310,7 +1354,10 @@ def fill_form(page: Page, container, form_type: str,
                 else:
                     print(f"  [FORM] Waiting house field enable... attempt {house_attempt}/2")
                     try:
-                        expect(house).to_be_enabled(timeout=HOUSE_ENABLE_TIMEOUT_MS)
+                        house_enable_timeout = browser_timeout(
+                            page, HOUSE_ENABLE_TIMEOUT_MS, FIREFOX_HOUSE_ENABLE_TIMEOUT_MS
+                        )
+                        expect(house).to_be_enabled(timeout=house_enable_timeout)
                         house.scroll_into_view_if_needed()
                         house.click(force=True)
                         house.fill("1")
@@ -1363,7 +1410,7 @@ def fill_form(page: Page, container, form_type: str,
     phone.press_sequentially("1111111111", delay=50)
     print("  [FORM] Телефон введён")
 
-    apply_form_checkboxes(container)
+    apply_form_checkboxes(page, container)
 
     return True
 
@@ -1416,7 +1463,7 @@ def submit_with_confirmation(
             print(f"  [SUBMIT] Повторная попытка {attempt + 1}/{attempts}")
             try:
                 print("  [SUBMIT] Восстанавливаем чекбоксы перед retry")
-                apply_form_checkboxes(container, aggressive=True)
+                apply_form_checkboxes(page, container, aggressive=True)
             except Exception:
                 pass
             page.wait_for_timeout(1200)
@@ -1645,7 +1692,11 @@ def process_auto_profit_popup(
     dismiss_region_popup(page)
     accept_cookie_banner(page)
 
-    form_type, container = wait_for_popup_with_fields(timeout_ms=12_000, page=page, form_hint="profit")
+    form_type, container = wait_for_popup_with_fields(
+        timeout_ms=browser_timeout(page, 12_000, 16_000),
+        page=page,
+        form_hint="profit",
+    )
     if form_type is None:
         print("  [AUTO-PROFIT] Автопопап не появился — продолжаем обычный цикл")
         allure.attach(
@@ -1705,7 +1756,9 @@ def process_unexpected_auto_profit_popup(
     """
     site_label = base_url.replace("https://", "").replace("http://", "").strip("/")
     form_type, container = wait_for_popup_with_fields(
-        page=page, timeout_ms=2_000, form_hint="profit"
+        page=page,
+        timeout_ms=browser_timeout(page, 2_000, 3_500),
+        form_hint="profit",
     )
     if form_type is None:
         return False, True, ""
@@ -1804,7 +1857,7 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                 retry_btn = btn_locator_fn(page, entry)
                 retry_btn.scroll_into_view_if_needed()
                 retry_btn.click(force=True)
-                page.wait_for_timeout(500)
+                page.wait_for_timeout(popup_click_settle_ms(page))
                 print(f"  [{label}] Возобновляем проверку после AUTO-PROFIT")
                 return "reopened"
             except Exception as e:
@@ -1829,21 +1882,27 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                 retry_btn = btn_locator_fn(page, entry)
                 retry_btn.scroll_into_view_if_needed()
                 retry_btn.click(force=True)
-                page.wait_for_timeout(500)
+                page.wait_for_timeout(popup_click_settle_ms(page))
             except Exception as e:
                 err = str(e).replace("\n", " ")[:180]
                 log_error("click_failed", page, site_label, extra=f"{current_context} | {err}")
                 register_failure("click_failed", f"{current_context} | {err}")
                 return None, None, "failed"
 
-            reopened_form_type, reopened_container = wait_for_popup_with_fields(page, form_hint=form_hint)
+            reopened_form_type, reopened_container = wait_for_popup_with_fields(
+                page,
+                timeout_ms=popup_wait_timeout_ms(page),
+                form_hint=form_hint,
+            )
             if reopened_form_type is None:
                 recover_status_local = recover_from_unexpected_profit(
                     f"{current_context}: ожидание целевого попапа"
                 )
                 if recover_status_local == "reopened":
                     reopened_form_type, reopened_container = wait_for_popup_with_fields(
-                        page, form_hint=form_hint
+                        page,
+                        timeout_ms=popup_wait_timeout_ms(page),
+                        form_hint=form_hint,
                     )
                 elif recover_status_local == "failed":
                     return None, None, "failed"
@@ -1870,17 +1929,25 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
             btn = btn_locator_fn(page, entry)
             btn.scroll_into_view_if_needed()
             btn.click(force=True)
-            page.wait_for_timeout(500)
+            page.wait_for_timeout(popup_click_settle_ms(page))
         except Exception as e:
             log_error("click_failed", page, site_label, extra=str(e)[:150])
             register_failure("click_failed", str(e).replace("\n", " ")[:180])
             continue
 
-        form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
+        form_type, container = wait_for_popup_with_fields(
+            page,
+            timeout_ms=popup_wait_timeout_ms(page),
+            form_hint=form_hint,
+        )
         if form_type is None:
             recover_status = recover_from_unexpected_profit("ожидание целевого попапа")
             if recover_status == "reopened":
-                form_type, container = wait_for_popup_with_fields(page, form_hint=form_hint)
+                form_type, container = wait_for_popup_with_fields(
+                    page,
+                    timeout_ms=popup_wait_timeout_ms(page),
+                    form_hint=form_hint,
+                )
             elif recover_status == "failed":
                 continue
         if form_type is None:
@@ -2041,10 +2108,30 @@ def process_all_popups(page: Page, base_url: str,
         return auto_success, auto_failed, auto_first_fail
 
     def locate(page, entry):
+        index = entry.get("index")
+        if isinstance(index, int) and index >= 0:
+            try:
+                btn = page.locator("button").nth(index)
+                if btn.count() > 0 and btn.is_visible() and btn.is_enabled():
+                    return btn
+            except Exception:
+                pass
+
         css = entry.get("css")
         if css:
-            return page.locator(css).first
-        return page.locator("button").nth(entry["index"])
+            try:
+                css_btns = page.locator(css)
+                for i in range(css_btns.count()):
+                    candidate = css_btns.nth(i)
+                    if candidate.count() > 0 and candidate.is_visible() and candidate.is_enabled():
+                        return candidate
+            except Exception:
+                pass
+
+        text = (entry.get("text") or "").strip()
+        if text:
+            return page.locator("button").filter(has_text=text).first
+        return page.locator("button").first
 
     success, failed, first_fail = _run_popup_cycle(
         page, buttons, base_url, locate, label="POPUP",
