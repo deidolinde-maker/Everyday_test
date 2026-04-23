@@ -1,9 +1,0 @@
-"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
-"URL      : https://mts-home-gpon.ru/
-Навигация: a[href='/moskva/mobilnaya-svyaz#mobile']
-Карточки : .button-mobile-application
-Примечание: Стандартный MTS лендинг. Переход по href на /moskva/mobilnaya-svyaz#mobile. Для CTA допускаем редирект в текущей или новой вкладке.","108673","Мобильные тарифы: MTS mts-home-gpon.ru","tests","Thu Apr 23 12:25:17 UTC 2026","passed","Thu Apr 23 12:27:06 UTC 2026","","test_mobile_tariffs","",""
-"URL      : https://mts-home.online
-Навигация: a[href='/mobilnaya-svyaz']
-Карточки : .button-mobile-application
-Примечание: Переход на /mobilnaya-svyaz. Кнопка имеет несколько классов, используем .button-mobile-application.","106174","Мобильные тарифы: MTS mts-home.online","tests","Thu Apr 23 12:27:06 UTC 2026","passed","Thu Apr 23 12:28:52 UTC 2026","","test_mobile_tariffs","",""
