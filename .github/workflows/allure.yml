@@ -9,7 +9,7 @@ on:
         required: false
         default: ''
       run_place_variants:
-        description: 'Запускать прогон Place-вариантов (для обоих браузеров)'
+        description: 'Запускать прогон Place-вариантов (для включённых браузеров)'
         required: false
         default: true
         type: boolean
@@ -21,7 +21,7 @@ on:
       run_firefox:
         description: 'Запускать clean-прогон в Firefox'
         required: false
-        default: true
+        default: false
         type: boolean
 
   # Запуск автоматически по расписанию (каждый день в 9:00 UTC)
@@ -35,7 +35,7 @@ jobs:
     env:
       PYTHONUNBUFFERED: "1"
       RUN_CHROMIUM: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_chromium == 'true' }}
-      RUN_FIREFOX: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_firefox == 'true' }}
+      RUN_FIREFOX: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_firefox == 'true' }}
       RUN_PLACE_VARIANTS: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_place_variants == 'true' }}
 
     steps:
