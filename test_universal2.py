@@ -2364,12 +2364,23 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
 def process_all_popups(page: Page, base_url: str,
                         has_name_field: bool = False,
                         service_mode: str = SERVICE_MODE_ALL) -> tuple[int, int, str | None]:
-    auto_success, auto_failed, auto_first_fail, auto_tested = process_auto_profit_popup(
+    auto_success, auto_failed, auto_first_fail, _auto_tested = process_auto_profit_popup(
         page, base_url, has_name_field=has_name_field, service_mode=service_mode
     )
 
+    # После auto-profit возвращаемся на базовый URL, чтобы сбор кнопок шёл
+    # с основной страницы, даже если auto-submit привёл на /thanks.
+    nav_ok, nav_critical, nav_reason = safe_goto(page, base_url)
+    if not nav_ok:
+        site_label = base_url.replace("https://", "").replace("http://", "").strip("/")
+        if nav_critical:
+            raise SiteUnavailableError(
+                f"POPUP: сайт недоступен после AUTO-PROFIT ({base_url}) | {nav_reason}"
+            )
+        log_error("navigation_failed", page, site_label, extra=f"after auto-profit | {nav_reason[:180]}")
+
     buttons = collect_popup_buttons(page)
-    if auto_tested and buttons:
+    if auto_success > 0 and buttons:
         before = len(buttons)
         buttons = [b for b in buttons if b.get("form_hint") != "profit"]
         removed = before - len(buttons)
