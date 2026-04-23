@@ -1,1 +1,0 @@
-✅ Шаг 2: Переход в раздел мобильных тарифов — кликнут button.tariffs-switch__tab[data-pane='mobile']
