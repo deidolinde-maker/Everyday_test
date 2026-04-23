@@ -1,0 +1,1 @@
+POPUP 3/3 text='' hint=profit code=no_confirmation url=https://t2-ru.online/moskva | service=без выбора варианта
