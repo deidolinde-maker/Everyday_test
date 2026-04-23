@@ -1668,17 +1668,25 @@ def submit_with_confirmation(
 
     for attempt in range(1, attempts + 1):
         cf7_status = ""
-        network_before = _snapshot_submit_network(page)
+        attempt_network_start = _snapshot_submit_network(page)
+        used_native_fallback = False
         try:
             last_submit.scroll_into_view_if_needed()
-            last_submit.click(force=True)
+            try:
+                # Сначала обычный click: ближе к реальному пользовательскому действию.
+                last_submit.click(timeout=2_500)
+            except Exception:
+                last_submit.click(force=True)
         except Exception:
             # Форма могла перерендериться — пробуем найти submit снова
             last_submit = find_submit(container, form_type)
             if last_submit is None:
                 return False
             last_submit.scroll_into_view_if_needed()
-            last_submit.click(force=True)
+            try:
+                last_submit.click(timeout=2_500)
+            except Exception:
+                last_submit.click(force=True)
 
         cf7_timeout = browser_timeout(page, 1_200, 2_500)
         cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=cf7_timeout)
@@ -1688,24 +1696,34 @@ def submit_with_confirmation(
         if is_firefox_browser(page):
             page.wait_for_timeout(900)
             network_probe = _snapshot_submit_network(page)
-            new_probe_requests = sorted(network_probe - network_before)
+            new_probe_requests = sorted(network_probe - attempt_network_start)
             if new_probe_requests and not _has_non_tracking_requests(new_probe_requests):
                 native_triggered = _trigger_native_form_submit(container)
                 if native_triggered:
+                    used_native_fallback = True
                     print("  [SUBMIT] Firefox fallback: requestSubmit()/native click")
                     page.wait_for_timeout(700)
-                    network_before = _snapshot_submit_network(page)
                     cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=2_000) or cf7_status
 
         ok = wait_for_success_url(page, timeout_ms=timeout_ms)
+
+        network_after = _snapshot_submit_network(page)
+        new_requests = sorted(network_after - attempt_network_start)
+        has_non_tracking_request = _has_non_tracking_requests(new_requests)
+
         if ok:
+            # Защита от ложнопозитива:
+            # если success получен только после Firefox fallback, но без признаков
+            # реальной backend-отправки, не считаем это успешной заявкой.
+            if used_native_fallback and cf7_status != "mail_sent" and not has_non_tracking_request:
+                print("  [SUBMIT] ⚠️ Success URL без backend-сигнала после fallback; считаем попытку неуспешной")
+                return False
             return True
+
         if cf7_status == "mail_sent":
             print("  [SUBMIT] ✅ Подтверждено по CF7 mail_sent (без redirect)")
             return True
 
-        network_after = _snapshot_submit_network(page)
-        new_requests = sorted(network_after - network_before)
         if new_requests:
             preview = " | ".join(_compact_request_url(item) for item in new_requests[:3])
             print(f"  [SUBMIT] New XHR/fetch after submit: {preview}")
