@@ -11,7 +11,7 @@
     pytest test_universal2.py --service-mode=core -s - базовый submit без полного перебора Place
     pytest test_universal2.py --service-mode=variants -s - отдельный прогон только Place-вариантов
 
-Добавить новый сайт — достаточно добавить запись в SITE_CONFIGS.
+Добавить новый сайт — достаточно добавить запись в site_configs.py (SITE_CONFIGS).
 """
 
 import pytest
@@ -24,6 +24,7 @@ import sys
 from urllib.parse import urlsplit
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
+from site_configs import SITE_CONFIGS
 
 try:
     # Avoid UnicodeEncodeError on Windows consoles with cp1251.
@@ -379,179 +380,7 @@ POPUP_BUTTON_CLASSES = {
     "business":           ".business_no_address_button",
 }
 
-# ---------------------------------------------------------------------------
-# Конфигурация сайтов
-# has_checkaddress — есть ли форма "Проверить адрес" на главной
-# has_business     — есть ли страница /business
-# has_city         — есть ли попап смены города и нужно ли его тестировать
-# city_name        — город для теста (None = пропустить тест города)
-# popup_keywords   — тексты кнопок открытия попапов (для connection и др.)
-# ---------------------------------------------------------------------------
-
-SITE_CONFIGS = {
-     "mts-home-gpon.ru": {
-       "base_url":        "https://mts-home-gpon.ru/",
-        "has_checkaddress": True,
-        "has_business":     True,
-        "city_name":        "Москва",
-    },
-    "mts-home.online": {
-        "base_url":        "https://mts-home.online/",
-        "has_checkaddress": False,
-        "has_business":     True,
-        "city_name":        "Москва",
-    },
-    "mts-home-online.ru": {
-        "base_url":        "https://mts-home-online.ru/",
-        "has_checkaddress": False,
-        "has_business":     True,
-        "city_name":        "Москва",
-        "has_name_field": True,
-    },
-    "internet-mts-home.online": {
-        "base_url":        "https://internet-mts-home.online/",
-        "has_checkaddress": False,
-        "has_business":     False,
-        "city_name":        "Москва",
-    },
-    "mts-internet.online": {
-        "base_url":        "https://mts-internet.online/",
-        "has_checkaddress": False,
-        "has_business":     False,
-        "city_name":        "Москва",
-   },
-    "beeline-internet.online": {
-        "base_url":        "https://beeline-internet.online/",
-        "has_checkaddress": False,
-        "has_business":     True,
-        "city_name":        "Москва",
-        "has_region_popup": True,
-    },
-    "beeline-ru.online": {
-        "base_url":        "https://beeline-ru.online/",
-        "has_checkaddress": False,
-        "has_business":     True,
-        "city_name":        "Москва",
-        "has_region_popup": True,
-    },
-    "online-beeline.ru": {
-        "base_url":        "https://online-beeline.ru/",
-        "has_checkaddress": False,
-        "has_business":     True,
-        "city_name":        "Москва",
-        "has_region_popup": True,
-    },
-    "beeline-ru.pro": {
-        "base_url":        "https://beeline-ru.pro/",
-        "has_checkaddress": False,
-        "has_business":     False,
-        "city_name":        "Москва",
-        "has_region_popup": True,
-    },
-    "beeline-home.online": {
-        "base_url":        "https://beeline-home.online/",
-        "has_checkaddress": False,
-        "has_business":     False,
-        "city_name":        "Москва",
-        "has_region_popup": True,
-    },
-    "beelline-internet.ru": {
-        "base_url":        "https://beelline-internet.ru/",
-        "has_checkaddress": False,
-        "has_business":     False,
-        "city_name":        "Москва",
-        "has_region_popup": True,
-    },
-    "rtk-ru.online": {
-        "base_url":        "https://rtk-ru.online/",
-        "has_checkaddress": True,
-        "has_business":     True,
-        "city_name":        "Москва",
-        "has_name_field": True,
-    },
-    "rt-internet.online": {
-        "base_url":        "https://rt-internet.online/",
-        "has_checkaddress": True,
-        "has_business":     False,
-        "city_name":        "Москва",
-        "has_name_field": True,
-    },
-    "rtk-home-internet.ru": {
-        "base_url":        "https://rtk-home-internet.ru/",
-        "has_checkaddress": True,
-        "has_business":     False,
-        "city_name":        "Москва",
-        "has_name_field": True,
-    },
-    "rtk-internet.online": {
-        "base_url":        "https://rtk-internet.online/",
-        "has_checkaddress": True,
-        "has_business":     True,
-        "city_name":        "Москва",
-        "has_name_field": True,
-    },
-    "rtk-home.ru": {
-        "base_url":        "http://rtk-home.ru/",
-        "has_checkaddress": True,
-        "has_business":     True,
-        "city_name":        "Москва",
-        "has_name_field": True,
-    },
-    "dom-provider.online": {
-        "base_url":        "https://dom-provider.online/",
-        "has_checkaddress": False,
-        "has_business":     False,
-         "city_name":        "Москва",
-        "has_name_field": True,
-    },
-    "providerdom.ru": {
-        "base_url":        "https://providerdom.ru/",
-        "has_checkaddress": False,
-        "has_business":     False,
-         "city_name":        "Москва",
-        "has_name_field": True,
-    },
-    "mega-premium.ru": {
-        "base_url":        "https://mega-premium.ru/",
-        "has_checkaddress": True,
-        "has_business":     False,
-        "city_name":        "Москва",
-        "has_name_field": True,
-    },
-    "mega-home-internet.ru": {
-        "base_url":        "https://mega-home-internet.ru/",
-        "has_checkaddress": True,
-        "has_business":     False,
-         "city_name":        "Москва",
-        "has_name_field": True,
-    },
-    "t2-ru.online": {
-        "base_url":        "https://t2-ru.online",
-        "has_checkaddress": False,
-        "has_business":     False,
-        "city_name":        "Москва",
-        "has_name_field": True,
-    },
-    "ttk-internet.ru": {
-        "base_url":        "https://ttk-internet.ru/",
-        "has_checkaddress": False,
-        "has_business":     False,
-        "city_name":        None,   # нет Москвы в списке городов
-    },
-    "ttk-ru.online": {
-        "base_url":        "https://ttk-ru.online/",
-        "has_checkaddress": False,
-        "has_business":     False,
-        "city_name":        None,   # нет Москвы в списке городов
-    },
-    # "stage-project.ru": {
-    #    "base_url":        "https://stage-project.ru/",
-     #   "has_checkaddress": True,
-      #  "has_business":     True,
-       # "city_name":        "Москва",
-        #"has_name_field": True,
-#    },
-}
+# SITE_CONFIGS вынесен в отдельный файл `site_configs.py`.
 
 # ---------------------------------------------------------------------------
 # Константы
@@ -716,6 +545,11 @@ def pytest_generate_tests(metafunc):
         )
 
         if site_arg:
+            if site_arg not in SITE_CONFIGS:
+                available = ", ".join(sorted(SITE_CONFIGS.keys()))
+                raise pytest.UsageError(
+                    f"--site={site_arg!r} не найден в SITE_CONFIGS. Доступно: {available}"
+                )
             selected_items = [(site_arg, SITE_CONFIGS[site_arg])]
         else:
             selected_items = list(SITE_CONFIGS.items())
