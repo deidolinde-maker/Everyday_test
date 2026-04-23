@@ -1382,6 +1382,7 @@ def apply_form_checkboxes(page: Page, container, aggressive: bool = False):
         page, CHECKBOX_ACTION_TIMEOUT_MS, FIREFOX_CHECKBOX_ACTION_TIMEOUT_MS
     )
     checked_optional = 0
+    checked_required_force = 0
     print(
         f"  [FORM] Checkbox scan: total={total}, scan_limit={scan_total}, "
         f"optional_limit={optional_limit}, required_found={required_found}, "
@@ -1396,6 +1397,33 @@ def apply_form_checkboxes(page: Page, container, aggressive: bool = False):
             break
 
         cb = checkboxes.nth(idx)
+        is_required = False
+        try:
+            is_required = bool(
+                cb.evaluate(
+                    """(el) => {
+                        const ariaRequired = String(el.getAttribute('aria-required') || '').toLowerCase();
+                        return !!el.required || ariaRequired === 'true';
+                    }"""
+                )
+            )
+        except Exception:
+            is_required = False
+
+        if is_required:
+            try:
+                if cb.is_checked():
+                    continue
+            except Exception:
+                pass
+            try:
+                cb.check(force=True, timeout=action_timeout)
+                checked_required_force += 1
+                continue
+            except Exception as e:
+                err = str(e).replace("\n", " ")[:160]
+                print(f"  [FORM] Required checkbox force-check skip #{idx + 1}: {err}")
+
         try:
             if not aggressive and not cb.is_visible(timeout=visibility_timeout):
                 continue
@@ -1417,7 +1445,7 @@ def apply_form_checkboxes(page: Page, container, aggressive: bool = False):
 
     print(
         f"  [FORM] Checkbox checked: required={required_checked}, "
-        f"optional={checked_optional}"
+        f"required_force={checked_required_force}, optional={checked_optional}"
     )
 
 
@@ -1739,11 +1767,18 @@ def submit_with_confirmation(
             print("  [SUBMIT] ✅ Подтверждено по CF7 mail_sent (без redirect)")
             return True
 
+        if cf7_status:
+            print(f"  [SUBMIT] CF7 итоговый статус без success-url: '{cf7_status}'")
+
         if new_requests:
             preview = " | ".join(_compact_request_url(item) for item in new_requests[:3])
             print(f"  [SUBMIT] New XHR/fetch after submit: {preview}")
         else:
             print("  [SUBMIT] New XHR/fetch after submit: none")
+
+        invalid_controls = _collect_invalid_controls(container, limit=5)
+        if invalid_controls:
+            print("  [SUBMIT] Invalid controls: " + " || ".join(invalid_controls))
 
         if attempt < attempts:
             print(f"  [SUBMIT] Повторная попытка {attempt + 1}/{attempts}")
