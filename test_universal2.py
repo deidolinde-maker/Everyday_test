@@ -932,27 +932,21 @@ def _trigger_native_form_submit(container) -> bool:
                     const submitEl =
                         root.querySelector("button[type='submit'], input[type='submit'], .wpcf7-submit")
                         || root.querySelector("button, input[type='button']");
-                    const form = root.closest("form") || root.querySelector("form");
-                    if (!form) {
-                        if (submitEl) {
-                            submitEl.click();
-                            return true;
-                        }
-                        return false;
-                    }
-                    if (typeof form.requestSubmit === "function") {
-                        if (submitEl && submitEl.tagName && submitEl.tagName.toLowerCase() === "button") {
-                            form.requestSubmit(submitEl);
-                        } else {
-                            form.requestSubmit();
-                        }
-                        return true;
-                    }
                     if (submitEl) {
                         submitEl.click();
+                    }
+
+                    const form = root.closest("form") || root.querySelector("form");
+                    if (!form) return !!submitEl;
+                    if (typeof form.requestSubmit === "function") {
+                        form.requestSubmit();
                         return true;
                     }
-                    return false;
+                    if (typeof form.submit === "function") {
+                        form.submit();
+                        return true;
+                    }
+                    return !!submitEl;
                 }"""
             )
         )
@@ -1537,83 +1531,49 @@ def submit_with_confirmation(
 
     for attempt in range(1, attempts + 1):
         cf7_status = ""
-        attempt_network_start = _snapshot_submit_network(page)
-        used_native_fallback = False
+        network_before = _snapshot_submit_network(page)
         try:
             last_submit.scroll_into_view_if_needed()
-            try:
-                # Сначала обычный click: ближе к реальному пользовательскому действию.
-                last_submit.click(timeout=2_500)
-            except Exception:
-                last_submit.click(force=True)
+            last_submit.click(force=True)
         except Exception:
             # Форма могла перерендериться — пробуем найти submit снова
             last_submit = find_submit(container, form_type)
             if last_submit is None:
                 return False
             last_submit.scroll_into_view_if_needed()
-            try:
-                last_submit.click(timeout=2_500)
-            except Exception:
-                last_submit.click(force=True)
+            last_submit.click(force=True)
 
         cf7_timeout = browser_timeout(page, 1_200, 2_500)
         cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=cf7_timeout)
         if cf7_status:
             print(f"  [SUBMIT] CF7 feedback status='{cf7_status}'")
 
-        ok = wait_for_success_url(page, timeout_ms=timeout_ms)
-
-        if not ok and is_firefox_browser(page):
+        if is_firefox_browser(page):
             page.wait_for_timeout(900)
             network_probe = _snapshot_submit_network(page)
-            new_probe_requests = sorted(network_probe - attempt_network_start)
-            can_try_native_fallback = (
-                cf7_status != "mail_sent"
-                and new_probe_requests
-                and not _has_non_tracking_requests(new_probe_requests)
-            )
-            if can_try_native_fallback:
+            new_probe_requests = sorted(network_probe - network_before)
+            if new_probe_requests and not _has_non_tracking_requests(new_probe_requests):
                 native_triggered = _trigger_native_form_submit(container)
                 if native_triggered:
-                    used_native_fallback = True
                     print("  [SUBMIT] Firefox fallback: requestSubmit()/native click")
                     page.wait_for_timeout(700)
-                    cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=2_500) or cf7_status
-                    ok = wait_for_success_url(
-                        page,
-                        timeout_ms=browser_timeout(page, 4_000, 6_000),
-                    )
+                    network_before = _snapshot_submit_network(page)
+                    cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=2_000) or cf7_status
 
-        network_after = _snapshot_submit_network(page)
-        new_requests = sorted(network_after - attempt_network_start)
-        has_non_tracking_request = _has_non_tracking_requests(new_requests)
-
+        ok = wait_for_success_url(page, timeout_ms=timeout_ms)
         if ok:
-            # Защита от ложнопозитива:
-            # если success получен только после Firefox fallback, но без признаков
-            # реальной backend-отправки, не считаем это успешной заявкой.
-            if used_native_fallback and cf7_status != "mail_sent" and not has_non_tracking_request:
-                print("  [SUBMIT] ⚠️ Success URL без backend-сигнала после fallback; считаем попытку неуспешной")
-                return False
             return True
-
         if cf7_status == "mail_sent":
             print("  [SUBMIT] ✅ Подтверждено по CF7 mail_sent (без redirect)")
             return True
 
-        if cf7_status:
-            print(f"  [SUBMIT] CF7 итоговый статус без success-url: '{cf7_status}'")
-
+        network_after = _snapshot_submit_network(page)
+        new_requests = sorted(network_after - network_before)
         if new_requests:
             preview = " | ".join(_compact_request_url(item) for item in new_requests[:3])
             print(f"  [SUBMIT] New XHR/fetch after submit: {preview}")
         else:
             print("  [SUBMIT] New XHR/fetch after submit: none")
-
-        invalid_controls = _collect_invalid_controls(container, limit=5)
-        if invalid_controls:
-            print("  [SUBMIT] Invalid controls: " + " || ".join(invalid_controls))
 
         if attempt < attempts:
             print(f"  [SUBMIT] Повторная попытка {attempt + 1}/{attempts}")
