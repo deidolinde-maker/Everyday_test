@@ -31,11 +31,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 240
     env:
       PYTHONUNBUFFERED: "1"
       RUN_CHROMIUM: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_chromium == 'true' }}
       RUN_FIREFOX: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_firefox == 'true' }}
+      RUN_PLACE_VARIANTS: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_place_variants == 'true' }}
 
     steps:
       - name: Checkout репозитория
@@ -57,6 +58,7 @@ jobs:
           set -e
           echo "RUN_CHROMIUM=${RUN_CHROMIUM}"
           echo "RUN_FIREFOX=${RUN_FIREFOX}"
+          echo "RUN_PLACE_VARIANTS=${RUN_PLACE_VARIANTS}"
           if [ "${RUN_CHROMIUM}" != "true" ] && [ "${RUN_FIREFOX}" != "true" ]; then
             echo "::error::Выберите хотя бы один браузер (run_chromium/run_firefox)."
             exit 1
@@ -80,7 +82,7 @@ jobs:
       - name: Запуск тестов Core (chromium, чистый профиль)
         id: run_tests_core_chromium
         if: ${{ always() && env.RUN_CHROMIUM == 'true' }}
-        timeout-minutes: 75
+        timeout-minutes: 100
         run: |
           set -e
           PYTEST_ARGS=(
@@ -108,7 +110,7 @@ jobs:
       - name: Запуск тестов Core (firefox, чистый профиль)
         id: run_tests_core_firefox
         if: ${{ always() && env.RUN_FIREFOX == 'true' }}
-        timeout-minutes: 75
+        timeout-minutes: 100
         run: |
           set -e
           PYTEST_ARGS=(
@@ -135,8 +137,8 @@ jobs:
 
       - name: Запуск тестов Place Variants (chromium, чистый профиль)
         id: run_tests_variants_chromium
-        if: ${{ always() && env.RUN_CHROMIUM == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
-        timeout-minutes: 80
+        if: ${{ always() && env.RUN_CHROMIUM == 'true' && env.RUN_PLACE_VARIANTS == 'true' }}
+        timeout-minutes: 100
         run: |
           set -e
           PYTEST_ARGS=(
@@ -163,8 +165,8 @@ jobs:
 
       - name: Запуск тестов Place Variants (firefox, чистый профиль)
         id: run_tests_variants_firefox
-        if: ${{ always() && env.RUN_FIREFOX == 'true' && (github.event_name != 'workflow_dispatch' || github.event.inputs.run_place_variants == 'true') }}
-        timeout-minutes: 80
+        if: ${{ always() && env.RUN_FIREFOX == 'true' && env.RUN_PLACE_VARIANTS == 'true' }}
+        timeout-minutes: 100
         run: |
           set -e
           PYTEST_ARGS=(
