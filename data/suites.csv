@@ -5,4 +5,4 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","371383","Сайт: https://t2-ru.online [core] [firefox] [none]","","Thu Apr 23 14:41:58 UTC 2026","failed","Thu Apr 23 14:48:10 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","493991","Сайт: https://beeline-internet.online/ [core] [firefox] [none]","","Thu Apr 23 15:13:20 UTC 2026","failed","Thu Apr 23 15:21:34 UTC 2026","service-mode: core","Формы провайдеров","",""
