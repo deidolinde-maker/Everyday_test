@@ -5,4 +5,11 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","147375","Сайт: https://t2-ru.online [core] [webkit] [none]","","Fri Apr 24 14:13:50 UTC 2026","passed","Fri Apr 24 14:16:18 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","549573","Сайт: https://beeline-ru.online/ [variants] [webkit] [none]","","Fri Apr 24 14:42:40 UTC 2026","passed","Fri Apr 24 14:51:50 UTC 2026","service-mode: variants","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","316860","Сайт: https://beeline-ru.online/ [core] [webkit] [none]","","Fri Apr 24 14:37:22 UTC 2026","passed","Fri Apr 24 14:42:39 UTC 2026","service-mode: core","Формы провайдеров","",""
