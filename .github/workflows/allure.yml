@@ -23,6 +23,11 @@ on:
         required: false
         default: false
         type: boolean
+      run_webkit:
+        description: 'Запускать clean-прогон в WebKit'
+        required: false
+        default: false
+        type: boolean
       alert_errors:
         description: 'Telegram: одиночные ошибки (1–5 на лендинг)'
         required: false
@@ -56,6 +61,7 @@ jobs:
       PYTHONUNBUFFERED: "1"
       RUN_CHROMIUM: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_chromium == 'true' }}
       RUN_FIREFOX: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_firefox == 'true' }}
+      RUN_WEBKIT: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_webkit == 'true' }}
       RUN_PLACE_VARIANTS: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.run_place_variants == 'true' }}
       ALERT_ERRORS_ENABLED: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.alert_errors == 'true' }}
       ALERT_AGGREGATES_ENABLED: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.alert_aggregates == 'true' }}
@@ -82,9 +88,10 @@ jobs:
           set -e
           echo "RUN_CHROMIUM=${RUN_CHROMIUM}"
           echo "RUN_FIREFOX=${RUN_FIREFOX}"
+          echo "RUN_WEBKIT=${RUN_WEBKIT}"
           echo "RUN_PLACE_VARIANTS=${RUN_PLACE_VARIANTS}"
-          if [ "${RUN_CHROMIUM}" != "true" ] && [ "${RUN_FIREFOX}" != "true" ]; then
-            echo "::error::Выберите хотя бы один браузер (run_chromium/run_firefox)."
+          if [ "${RUN_CHROMIUM}" != "true" ] && [ "${RUN_FIREFOX}" != "true" ] && [ "${RUN_WEBKIT}" != "true" ]; then
+            echo "::error::Выберите хотя бы один браузер (run_chromium/run_firefox/run_webkit)."
             exit 1
           fi
 
@@ -98,6 +105,10 @@ jobs:
           if [ "${RUN_FIREFOX}" = "true" ]; then
             python -m playwright install firefox
             python -m playwright install-deps firefox
+          fi
+          if [ "${RUN_WEBKIT}" = "true" ]; then
+            python -m playwright install webkit
+            python -m playwright install-deps webkit
           fi
 
       - name: Проверка импорта playwright
@@ -150,6 +161,34 @@ jobs:
             PYTEST_ARGS+=(--site="${SITE_INPUT}")
           fi
           echo "Running CORE (clean profile): firefox + no blockers"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ github.event.inputs.site }}
+        continue-on-error: true
+
+      - name: Запуск тестов Core (webkit, чистый профиль)
+        id: run_tests_core_webkit
+        if: ${{ always() && env.RUN_WEBKIT == 'true' }}
+        timeout-minutes: 100
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-core-webkit
+            --timeout=600
+            -s
+            --service-mode=core
+            --browser=webkit
+            --blocking-profile=none
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running CORE (clean profile): webkit + no blockers"
           echo "Pytest args: ${PYTEST_ARGS[*]}"
           python -m pytest "${PYTEST_ARGS[@]}"
         env:
@@ -215,6 +254,34 @@ jobs:
           SITE_INPUT: ${{ github.event.inputs.site }}
         continue-on-error: true
 
+      - name: Запуск тестов Place Variants (webkit, чистый профиль)
+        id: run_tests_variants_webkit
+        if: ${{ always() && env.RUN_WEBKIT == 'true' && env.RUN_PLACE_VARIANTS == 'true' }}
+        timeout-minutes: 100
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-variants-webkit
+            --timeout=600
+            -s
+            --service-mode=variants
+            --browser=webkit
+            --blocking-profile=none
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running VARIANTS (clean profile): webkit + no blockers"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ github.event.inputs.site }}
+        continue-on-error: true
+
       - name: Объединить результаты Allure
         if: always()
         run: |
@@ -230,6 +297,12 @@ jobs:
           fi
           if [ -d allure-results-variants-firefox ]; then
             cp -R allure-results-variants-firefox/. allure-results/
+          fi
+          if [ -d allure-results-core-webkit ]; then
+            cp -R allure-results-core-webkit/. allure-results/
+          fi
+          if [ -d allure-results-variants-webkit ]; then
+            cp -R allure-results-variants-webkit/. allure-results/
           fi
 
       - name: Сохранить результаты Allure
