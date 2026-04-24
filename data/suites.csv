@@ -5,4 +5,4 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","493991","Сайт: https://beeline-internet.online/ [core] [firefox] [none]","","Thu Apr 23 15:13:20 UTC 2026","failed","Thu Apr 23 15:21:34 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","341434","Сайт: https://beeline-internet.online/ [core] [webkit] [none]","","Fri Apr 24 13:40:05 UTC 2026","passed","Fri Apr 24 13:45:47 UTC 2026","service-mode: core","Формы провайдеров","",""
