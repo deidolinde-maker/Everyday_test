@@ -1,0 +1,41 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"URL      : https://beeline-internet.online/
+Навигация: .cards-block-tab-button-mobile
+Карточки : .card-block__button
+Примечание: Переход через таб-кнопку внутри блока тарифов. CTA ведёт на beeline.ru/customers/products/toptariffs/ с UTM.","99851","Мобильные тарифы: Beeline beeline-internet.online","tests","Fri Apr 24 13:53:23 UTC 2026","passed","Fri Apr 24 13:55:03 UTC 2026","","test_mobile_tariffs","",""
+"URL      : https://mts-home-gpon.ru/
+Навигация: a[href='/moskva/mobilnaya-svyaz#mobile']
+Карточки : .button-mobile-application
+Примечание: Стандартный MTS лендинг. Переход по href на /moskva/mobilnaya-svyaz#mobile. Для CTA допускаем редирект в текущей или новой вкладке.","97964","Мобильные тарифы: MTS mts-home-gpon.ru","tests","Fri Apr 24 13:46:51 UTC 2026","passed","Fri Apr 24 13:48:29 UTC 2026","","test_mobile_tariffs","",""
+"URL      : https://t2-ru.online/moskva
+Навигация: .click-mobile-trigger
+Карточки : .card-new__button
+Примечание: Навигация через .click-mobile-trigger. CTA ведёт на t2.ru с UTM-параметрами.","43821","Мобильные тарифы: T2 t2-ru.online","tests","Fri Apr 24 14:01:11 UTC 2026","passed","Fri Apr 24 14:01:55 UTC 2026","","test_mobile_tariffs","",""
+"URL      : https://mts-home.online
+Навигация: a[href='/mobilnaya-svyaz']
+Карточки : .button-mobile-application
+Примечание: Переход на /mobilnaya-svyaz. Кнопка имеет несколько классов, используем .button-mobile-application.","100460","Мобильные тарифы: MTS mts-home.online","tests","Fri Apr 24 13:48:29 UTC 2026","passed","Fri Apr 24 13:50:10 UTC 2026","","test_mobile_tariffs","",""
+"URL      : https://internet-mts-home.online
+Навигация: a[href='#mobile']
+Карточки : .button-mobile-application
+Примечание: URL в ТЗ без протокола, используем https://. Навигация по якорю #mobile.","97687","Мобильные тарифы: MTS internet-mts-home.online","tests","Fri Apr 24 13:51:46 UTC 2026","passed","Fri Apr 24 13:53:23 UTC 2026","","test_mobile_tariffs","",""
+"URL      : https://mega-premium.ru
+Навигация: button.tariffs-switch__tab[data-pane='mobile']
+Карточки : .card-mobile__button
+Примечание: Переход через button с data-pane='mobile'. CTA ведёт на 101internet.ru/megafon.","89905","Мобильные тарифы: Megafon mega-premium.ru","tests","Fri Apr 24 13:58:10 UTC 2026","passed","Fri Apr 24 13:59:40 UTC 2026","","test_mobile_tariffs","",""
+"URL      : https://online-beeline.ru/
+Навигация: .cards-block-tab-button-mobile
+Карточки : a.card-block__button
+Примечание: Мобильные карточки имеют селектор a.card-block__button (с href). Кнопки без href открывают модалку — не проверяем.","89069","Мобильные тарифы: Beeline online-beeline.ru","tests","Fri Apr 24 13:56:40 UTC 2026","passed","Fri Apr 24 13:58:10 UTC 2026","","test_mobile_tariffs","",""
+"URL      : https://mega-home-internet.ru
+Навигация: button.tariffs-switch__tab[data-pane='mobile']
+Карточки : .card-mobile__button
+Примечание: Структура аналогична mega-premium.ru.","90962","Мобильные тарифы: Megafon mega-home-internet.ru","tests","Fri Apr 24 13:59:40 UTC 2026","passed","Fri Apr 24 14:01:11 UTC 2026","","test_mobile_tariffs","",""
+"URL      : https://mts-home-online.ru/
+Навигация: a[href='/moskva/mobilnaya-svyaz#mobile']
+Карточки : .button-mobile-application
+Примечание: Аналог mts-home-gpon.ru, тот же селектор навигации.","95682","Мобильные тарифы: MTS mts-home-online.ru","tests","Fri Apr 24 13:50:10 UTC 2026","passed","Fri Apr 24 13:51:46 UTC 2026","","test_mobile_tariffs","",""
+"URL      : https://beeline-ru.online/
+Навигация: .cards-block-tab-button-mobile
+Карточки : .card-block__button
+Примечание: Структура аналогична beeline-internet.online.","96800","Мобильные тарифы: Beeline beeline-ru.online","tests","Fri Apr 24 13:55:03 UTC 2026","broken","Fri Apr 24 13:56:40 UTC 2026","","test_mobile_tariffs","",""
