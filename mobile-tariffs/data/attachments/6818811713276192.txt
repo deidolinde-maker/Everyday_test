@@ -1,0 +1,7 @@
+Карточка #1
+────────────────────────────────────────
+  href          : #
+  URL до клика  : https://mts-home-online.ru/moskva/mobilnaya-svyaz#mobile
+  URL после     : https://moskva.mts.ru/personal/mobilnaya-svyaz/tarifi/vse-tarifi/red/?utm_source=mtspn&utm_medium=cpa&utm_content=&oid=841483&utm_campaign=c_mtspn_s_101internet_r_rf_f_mix_pl_%D0%9B%D0%B5%D0%BD%D0%B4%D0%B8%D0%BD%D0%B3%203-_t_cpa_a_broad_k_promo&clickid=4db9a050-903c-4ce3-82c8-5a3157e09de6&erid=
+  Тип перехода  : same_tab
+  Результат     : ✅ PASSED
