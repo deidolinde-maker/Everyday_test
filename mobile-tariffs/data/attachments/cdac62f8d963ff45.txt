@@ -1,0 +1,33 @@
+[MTS mts-home-gpon.ru] === СТАРТ ТЕСТА: MTS mts-home-gpon.ru ===
+[MTS mts-home-gpon.ru] URL: https://mts-home-gpon.ru/
+[MTS mts-home-gpon.ru] ✅ Шаг 1: Открыть сайт — текущий URL: https://mts-home-gpon.ru/
+[MTS mts-home-gpon.ru] Попап региона не обнаружен — продолжаем
+[MTS mts-home-gpon.ru] Баннер куки не обнаружен — продолжаем
+[MTS mts-home-gpon.ru] Элемент навигации найден: a[href='/moskva/mobilnaya-svyaz#mobile'] (3 в DOM, используем видимый)
+[MTS mts-home-gpon.ru] Текст навигации: 'Мобильная связь'
+[MTS mts-home-gpon.ru] ✅ Текст навигации — 'Мобильная связь'
+[MTS mts-home-gpon.ru] ✅ Шаг 2: Переход в раздел мобильных тарифов — кликнут a[href='/moskva/mobilnaya-svyaz#mobile']
+[MTS mts-home-gpon.ru] ✅ Шаг 3: Скриншот — MTS_mts-home-gpon.ru_mobile_tariffs_opened
+[MTS mts-home-gpon.ru] Карточки: 7 для проверки (в DOM: 7, после фильтра классов: 7, видимых: 7)
+[MTS mts-home-gpon.ru] ✅ Шаг 4: Наличие блока мобильных тарифов — найдено 7 карточек мобильных тарифов
+[MTS mts-home-gpon.ru] Проверяем 3 из 7 карточек (smoke)
+[MTS mts-home-gpon.ru] Карточка #1: href='#', URL='https://mts-home-gpon.ru/moskva/mobilnaya-svyaz#mobile'
+[MTS mts-home-gpon.ru] ✅ Карточка #1: кнопка «Подключить» — редирект в текущей вкладке → https://moskva.mts.ru/personal/mobilnaya-svyaz/tarifi/vse-tarifi/red/?utm_source=mtspn&utm_medium=cpa&utm_content=&oid=841483&utm_campaign=c_mtspn_s_101internet_r_rf_f_mix_pl_%D0%9B%D0%B5%D0%BD%D0%B4%D0%B8%D0%BD%D0%B3%202-_t_cpa_a_broad_k_promo&clickid=2d9ed753-bc3f-4303-8634-5f3f8a2c7e8e&erid=
+[MTS mts-home-gpon.ru] Возврат назад после редиректа в текущей вкладке
+[MTS mts-home-gpon.ru] Попап региона не обнаружен — продолжаем
+[MTS mts-home-gpon.ru] Баннер куки не обнаружен — продолжаем
+[MTS mts-home-gpon.ru] Мобильный раздел повторно открыт после возврата
+[MTS mts-home-gpon.ru] Карточка #2: href='#', URL='https://mts-home-gpon.ru/moskva/mobilnaya-svyaz#mobile'
+[MTS mts-home-gpon.ru] ✅ Карточка #2: кнопка «Подключить» — редирект в текущей вкладке → https://moskva.mts.ru/personal/mobilnaya-svyaz/tarifi/vse-tarifi/riil/?utm_source=mtspn&utm_medium=cpa&utm_content=&oid=841483&utm_campaign=c_mtspn_s_101internet_r_rf_f_mix_pl_%D0%9B%D0%B5%D0%BD%D0%B4%D0%B8%D0%BD%D0%B3%202-_t_cpa_a_broad_k_promo&clickid=1739b7f3-d091-497d-b666-78798bad81d7&erid=
+[MTS mts-home-gpon.ru] Возврат назад после редиректа в текущей вкладке
+[MTS mts-home-gpon.ru] Попап региона не обнаружен — продолжаем
+[MTS mts-home-gpon.ru] Баннер куки не обнаружен — продолжаем
+[MTS mts-home-gpon.ru] Мобильный раздел повторно открыт после возврата
+[MTS mts-home-gpon.ru] Карточка #3: href='#', URL='https://mts-home-gpon.ru/moskva/mobilnaya-svyaz#mobile'
+[MTS mts-home-gpon.ru] ✅ Карточка #3: кнопка «Подключить» — редирект в текущей вкладке → https://moskva.mts.ru/personal/mobilnaya-svyaz/tarifi/vse-tarifi/mobile?utm_source=mtspn&utm_medium=cpa&utm_content=&oid=841483&utm_campaign=c_mtspn_s_101internet_r_rf_f_mix_pl_%D0%9B%D0%B5%D0%BD%D0%B4%D0%B8%D0%BD%D0%B3%202-_t_cpa_a_broad_k_promo&clickid=69119cff-1f8a-4dc0-a577-d0a8a650f229&clickid=69119cff-1f8a-4dc0-a577-d0a8a650f229&erid=
+[MTS mts-home-gpon.ru] Возврат назад после редиректа в текущей вкладке
+[MTS mts-home-gpon.ru] Попап региона не обнаружен — продолжаем
+[MTS mts-home-gpon.ru] Баннер куки не обнаружен — продолжаем
+[MTS mts-home-gpon.ru] Мобильный раздел повторно открыт после возврата
+[MTS mts-home-gpon.ru] ✅ Шаги 5-7: Кнопки «Подключить» — проверено 3/3, все редиректы успешны
+[MTS mts-home-gpon.ru] === ТЕСТ ПРОЙДЕН: MTS mts-home-gpon.ru ===
