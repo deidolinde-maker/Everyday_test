@@ -1,8 +1,0 @@
-BUSINESS 1/8 text='подробнее' hint=None code=thanks_return_failed url=https://mts-home-online.ru/ | service=без выбора варианта | возврат на другой путь ( вместо /business)
-BUSINESS 2/8 text='подробнее' hint=None code=thanks_return_failed url=https://mts-home-online.ru/ | service=без выбора варианта | возврат на другой путь ( вместо /business)
-BUSINESS 3/8 text='подробнее' hint=None code=thanks_return_failed url=https://mts-home-online.ru/ | service=без выбора варианта | возврат на другой путь ( вместо /business)
-BUSINESS 4/8 text='подробнее' hint=None code=thanks_return_failed url=https://mts-home-online.ru/ | service=без выбора варианта | возврат на другой путь ( вместо /business)
-BUSINESS 5/8 text='подробнее' hint=None code=thanks_return_failed url=https://mts-home-online.ru/ | service=без выбора варианта | возврат на другой путь ( вместо /business)
-BUSINESS 6/8 text='подробнее' hint=None code=thanks_return_failed url=https://mts-home-online.ru/ | service=без выбора варианта | возврат на другой путь ( вместо /business)
-BUSINESS 7/8 text='подробнее' hint=None code=thanks_return_failed url=https://mts-home-online.ru/ | service=без выбора варианта | возврат на другой путь ( вместо /business)
-BUSINESS 8/8 text='подробнее' hint=None code=thanks_return_failed url=https://mts-home-online.ru/ | service=без выбора варианта | возврат на другой путь ( вместо /business)

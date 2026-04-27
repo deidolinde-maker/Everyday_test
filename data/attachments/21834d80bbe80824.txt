@@ -1,0 +1,8 @@
+🚨 Критическая ошибка автотеста формы
+
+🕒 Время: 2026-04-27 11:26:04 (MSK)
+🌐 Лендинг: mega-home-internet.ru
+🔗 URL: https://mega-home-internet.ru/
+❌ Ошибка: Не выполнен шаг "форма checkaddress"
+🔎 Детали: не удалось открыть https://mega-home-internet.ru/ | HTTP 502
+🔗 Отчёт: https://github.com/deidolinde-maker/Everyday_test/actions/runs/24982471121

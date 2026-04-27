@@ -5,158 +5,158 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","62062","Сайт: https://ttk-ru.online/ [core] [chromium] [none]","","Sun Apr 26 08:24:47 UTC 2026","passed","Sun Apr 26 08:25:49 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","130352","Сайт: https://t2-ru.online [core] [chromium] [none]","","Mon Apr 27 08:26:05 UTC 2026","passed","Mon Apr 27 08:28:15 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","133279","Сайт: https://t2-ru.online [core] [chromium] [none]","","Sun Apr 26 08:21:28 UTC 2026","passed","Sun Apr 26 08:23:42 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","16970","Сайт: https://ttk-internet.ru/ [core] [chromium] [none]","","Mon Apr 27 08:28:15 UTC 2026","skipped","Mon Apr 27 08:28:32 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","314769","Сайт: http://rtk-home.ru/ [core] [chromium] [none]","","Sun Apr 26 08:01:08 UTC 2026","passed","Sun Apr 26 08:06:23 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","16852","Сайт: https://dom-provider.online/ [core] [chromium] [none]","","Mon Apr 27 08:21:47 UTC 2026","skipped","Mon Apr 27 08:22:04 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","229705","Сайт: https://rtk-ru.online/ [core] [chromium] [none]","","Sun Apr 26 07:44:40 UTC 2026","passed","Sun Apr 26 07:48:30 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","16577","Сайт: https://mega-home-internet.ru/ [core] [chromium] [none]","","Mon Apr 27 08:25:48 UTC 2026","skipped","Mon Apr 27 08:26:05 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","224086","Сайт: https://rt-internet.online/ [core] [chromium] [none]","","Sun Apr 26 07:48:30 UTC 2026","passed","Sun Apr 26 07:52:14 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","16757","Сайт: https://rtk-ru.online/ [core] [chromium] [none]","","Mon Apr 27 08:20:22 UTC 2026","skipped","Mon Apr 27 08:20:39 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","224061","Сайт: https://rtk-home-internet.ru/ [core] [chromium] [none]","","Sun Apr 26 07:52:14 UTC 2026","passed","Sun Apr 26 07:55:58 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","185697","Сайт: https://mts-home-online.ru/ [core] [chromium] [none]","","Mon Apr 27 07:46:12 UTC 2026","failed","Mon Apr 27 07:49:18 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","182707","Сайт: https://mts-internet.online/ [core] [chromium] [none]","","Sun Apr 26 07:15:35 UTC 2026","passed","Sun Apr 26 07:18:38 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","214872","Сайт: https://beeline-home.online/ [core] [chromium] [none]","","Mon Apr 27 08:13:12 UTC 2026","passed","Mon Apr 27 08:16:47 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","224122","Сайт: https://beelline-internet.ru/ [core] [chromium] [none]","","Sun Apr 26 07:40:56 UTC 2026","passed","Sun Apr 26 07:44:40 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","16855","Сайт: https://ttk-ru.online/ [core] [chromium] [none]","","Mon Apr 27 08:28:32 UTC 2026","skipped","Mon Apr 27 08:28:49 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","64897","Сайт: https://ttk-internet.ru/ [core] [chromium] [none]","","Sun Apr 26 08:23:42 UTC 2026","passed","Sun Apr 26 08:24:47 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","263162","Сайт: https://beeline-ru.online/ [core] [chromium] [none]","","Mon Apr 27 08:00:09 UTC 2026","passed","Mon Apr 27 08:04:32 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","234426","Сайт: https://mega-home-internet.ru/ [core] [chromium] [none]","","Sun Apr 26 08:17:34 UTC 2026","passed","Sun Apr 26 08:21:28 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","207503","Сайт: https://mega-premium.ru/ [core] [chromium] [none]","","Mon Apr 27 08:22:21 UTC 2026","passed","Mon Apr 27 08:25:48 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","203658","Сайт: https://mts-home.online/ [core] [chromium] [none]","","Sun Apr 26 07:06:56 UTC 2026","passed","Sun Apr 26 07:10:20 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","225185","Сайт: https://beeline-ru.pro/ [core] [chromium] [none]","","Mon Apr 27 08:09:26 UTC 2026","failed","Mon Apr 27 08:13:12 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","309902","Сайт: https://rtk-internet.online/ [core] [chromium] [none]","","Sun Apr 26 07:55:58 UTC 2026","passed","Sun Apr 26 08:01:08 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","302771","Сайт: https://mts-home-gpon.ru/ [core] [chromium] [none]","","Mon Apr 27 07:37:55 UTC 2026","passed","Mon Apr 27 07:42:58 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","223929","Сайт: https://beeline-home.online/ [core] [chromium] [none]","","Sun Apr 26 07:37:12 UTC 2026","passed","Sun Apr 26 07:40:56 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","194306","Сайт: https://mts-home.online/ [core] [chromium] [none]","","Mon Apr 27 07:42:58 UTC 2026","passed","Mon Apr 27 07:46:12 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","314652","Сайт: https://online-beeline.ru/ [core] [chromium] [none]","","Sun Apr 26 07:28:12 UTC 2026","passed","Sun Apr 26 07:33:27 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","183945","Сайт: https://internet-mts-home.online/ [core] [chromium] [none]","","Mon Apr 27 07:49:18 UTC 2026","passed","Mon Apr 27 07:52:22 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","301209","Сайт: https://beeline-internet.online/ [core] [chromium] [none]","","Sun Apr 26 07:18:38 UTC 2026","passed","Sun Apr 26 07:23:39 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","16933","Сайт: https://rtk-home-internet.ru/ [core] [chromium] [none]","","Mon Apr 27 08:20:56 UTC 2026","skipped","Mon Apr 27 08:21:13 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","215713","Сайт: https://mega-premium.ru/ [core] [chromium] [none]","","Sun Apr 26 08:13:58 UTC 2026","passed","Sun Apr 26 08:17:34 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","17003","Сайт: https://providerdom.ru/ [core] [chromium] [none]","","Mon Apr 27 08:22:04 UTC 2026","skipped","Mon Apr 27 08:22:21 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","127092","Сайт: https://mts-home-online.ru/ [core] [chromium] [none]","","Sun Apr 26 07:10:20 UTC 2026","failed","Sun Apr 26 07:12:27 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","215333","Сайт: https://beelline-internet.ru/ [core] [chromium] [none]","","Mon Apr 27 08:16:47 UTC 2026","passed","Mon Apr 27 08:20:22 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","272495","Сайт: https://beeline-ru.online/ [core] [chromium] [none]","","Sun Apr 26 07:23:39 UTC 2026","passed","Sun Apr 26 07:28:12 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","16838","Сайт: https://rtk-internet.online/ [core] [chromium] [none]","","Mon Apr 27 08:21:13 UTC 2026","skipped","Mon Apr 27 08:21:30 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","217413","Сайт: https://dom-provider.online/ [core] [chromium] [none]","","Sun Apr 26 08:06:23 UTC 2026","passed","Sun Apr 26 08:10:00 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","294489","Сайт: https://online-beeline.ru/ [core] [chromium] [none]","","Mon Apr 27 08:04:32 UTC 2026","passed","Mon Apr 27 08:09:26 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","225143","Сайт: https://beeline-ru.pro/ [core] [chromium] [none]","","Sun Apr 26 07:33:27 UTC 2026","passed","Sun Apr 26 07:37:12 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","290298","Сайт: https://beeline-internet.online/ [core] [chromium] [none]","","Mon Apr 27 07:55:18 UTC 2026","passed","Mon Apr 27 08:00:09 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","187801","Сайт: https://internet-mts-home.online/ [core] [chromium] [none]","","Sun Apr 26 07:12:27 UTC 2026","passed","Sun Apr 26 07:15:35 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","175961","Сайт: https://mts-internet.online/ [core] [chromium] [none]","","Mon Apr 27 07:52:22 UTC 2026","passed","Mon Apr 27 07:55:18 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","319495","Сайт: https://mts-home-gpon.ru/ [core] [chromium] [none]","","Sun Apr 26 07:01:37 UTC 2026","passed","Sun Apr 26 07:06:56 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","16795","Сайт: http://rtk-home.ru/ [core] [chromium] [none]","","Mon Apr 27 08:21:30 UTC 2026","skipped","Mon Apr 27 08:21:47 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","237893","Сайт: https://providerdom.ru/ [core] [chromium] [none]","","Sun Apr 26 08:10:00 UTC 2026","passed","Sun Apr 26 08:13:58 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","16850","Сайт: https://rt-internet.online/ [core] [chromium] [none]","","Mon Apr 27 08:20:39 UTC 2026","skipped","Mon Apr 27 08:20:56 UTC 2026","service-mode: core","Формы провайдеров","",""

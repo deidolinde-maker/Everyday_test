@@ -1,0 +1,8 @@
+🚨 Критическая ошибка автотеста формы
+
+🕒 Время: 2026-04-27 11:21:46 (MSK)
+🌐 Лендинг: rtk-home.ru
+🔗 URL: http://rtk-home.ru/
+❌ Ошибка: Не выполнен шаг "форма checkaddress"
+🔎 Детали: не удалось открыть http://rtk-home.ru/ | HTTP 502
+🔗 Отчёт: https://github.com/deidolinde-maker/Everyday_test/actions/runs/24982471121

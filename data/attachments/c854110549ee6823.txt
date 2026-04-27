@@ -1,0 +1,8 @@
+🚨 Критическая ошибка автотеста формы
+
+🕒 Время: 2026-04-27 11:22:20 (MSK)
+🌐 Лендинг: providerdom.ru
+🔗 URL: https://providerdom.ru/
+❌ Ошибка: Не выполнен шаг "попапы главной"
+🔎 Детали: не удалось открыть https://providerdom.ru/ | HTTP 502
+🔗 Отчёт: https://github.com/deidolinde-maker/Everyday_test/actions/runs/24982471121
