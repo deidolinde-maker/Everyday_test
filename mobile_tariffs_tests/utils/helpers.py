@@ -37,12 +37,38 @@ class RunLogger:
 
 
 def allure_attach_screenshot(page: Page, name: str) -> None:
-    screenshot_bytes = page.screenshot(full_page=True)
-    allure.attach(
-        screenshot_bytes,
-        name=name,
-        attachment_type=allure.attachment_type.PNG,
-    )
+    """
+    Attach screenshot without masking the original test failure.
+
+    Some external redirect pages can make full-page screenshots flaky in CI.
+    If that happens, retry with viewport-only screenshot and finally attach a
+    text diagnostic instead of raising from the reporting helper.
+    """
+    try:
+        screenshot_bytes = page.screenshot(full_page=True, timeout=10_000)
+        allure.attach(
+            screenshot_bytes,
+            name=name,
+            attachment_type=allure.attachment_type.PNG,
+        )
+        return
+    except Exception as full_page_exc:
+        print(f"[SCREENSHOT] full_page failed for {name}: {full_page_exc}")
+
+    try:
+        screenshot_bytes = page.screenshot(full_page=False, timeout=5_000)
+        allure.attach(
+            screenshot_bytes,
+            name=f"{name}_viewport",
+            attachment_type=allure.attachment_type.PNG,
+        )
+    except Exception as viewport_exc:
+        print(f"[SCREENSHOT] viewport failed for {name}: {viewport_exc}")
+        allure.attach(
+            f"Screenshot skipped: {viewport_exc}",
+            name=f"{name}_screenshot_error",
+            attachment_type=allure.attachment_type.TEXT,
+        )
 
 
 def step_ok(logger: RunLogger, step: str, detail: str = "") -> None:

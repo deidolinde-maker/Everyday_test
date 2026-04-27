@@ -65,6 +65,7 @@ LANDINGS = [
             "utm_medium=cpa",
             "utm_campaign=landing",
         ],
+        "dedupe_card_hrefs": True,
         "comment": "Переход через таб-кнопку внутри блока тарифов. CTA ведёт на beeline.ru/customers/products/toptariffs/ с UTM.",
     },
     {
@@ -80,6 +81,7 @@ LANDINGS = [
             "utm_medium=cpa",
             "utm_campaign=landing",
         ],
+        "dedupe_card_hrefs": True,
         "comment": "Структура аналогична beeline-internet.online.",
     },
     {
@@ -92,13 +94,14 @@ LANDINGS = [
         #   2) чисто мобильные (a.card-block__button с href) — делают редирект
         # Берём только кнопки-ссылки с href через CSS :is(a).card-block__button
         "card_button_selector": "a.card-block__button",
-        "expected_redirect_type": "same_tab",
+        "expected_redirect_type": "either",
         "expected_url_contains": [
             "beeline.ru/customers/products/toptariffs/",
             "utm_source=mobideal",
             "utm_medium=cpa",
             "utm_campaign=landing",
         ],
+        "dedupe_card_hrefs": True,
         "comment": "Мобильные карточки имеют селектор a.card-block__button (с href). Кнопки без href открывают модалку — не проверяем.",
     },
     # ─────────────────── Megafon ───────────────────

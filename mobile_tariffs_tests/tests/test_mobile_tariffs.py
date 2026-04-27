@@ -229,6 +229,42 @@ def _wait_for_cards(page: Page, landing: dict, logger: RunLogger) -> list:
     return cards
 
 
+def _select_card_indices_for_smoke(cards: list, landing: dict, limit: int, logger: RunLogger) -> list[int]:
+    """Return card indexes for smoke run, optionally skipping duplicate hrefs."""
+    if not landing.get("dedupe_card_hrefs"):
+        return list(range(min(limit, len(cards))))
+
+    selected: list[int] = []
+    seen_hrefs: set[str] = set()
+
+    for idx, card in enumerate(cards):
+        if len(selected) >= limit:
+            break
+        try:
+            href = (card.get_attribute("href") or "").strip()
+        except Exception:
+            href = ""
+
+        href_key = href or f"no-href:{idx}"
+        if href and href_key in seen_hrefs:
+            logger.log(f"Карточка #{idx + 1}: SKIP duplicate href='{href}'")
+            continue
+
+        seen_hrefs.add(href_key)
+        selected.append(idx)
+
+    if not selected:
+        selected = list(range(min(limit, len(cards))))
+
+    if len(selected) < min(limit, len(cards)):
+        logger.log(
+            f"Smoke dedupe: выбрано {len(selected)} уникальных карточек "
+            f"из лимита {min(limit, len(cards))}"
+        )
+
+    return selected
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Редирект
 # ─────────────────────────────────────────────────────────────────────────────
@@ -482,7 +518,8 @@ def test_mobile_tariffs(landing: dict, browser_context: BrowserContext) -> None:
 
         # ── ШАГИ 5-7: Кнопки «Подключить» ────────────────────────────────────
         limit = SMOKE_CARD_LIMIT if SMOKE_CARD_LIMIT else total_cards
-        cards_to_check = min(limit, total_cards)
+        card_indices_to_check = _select_card_indices_for_smoke(cards, landing, limit, logger)
+        cards_to_check = len(card_indices_to_check)
 
         logger.log(
             f"Проверяем {cards_to_check} из {total_cards} карточек "
@@ -494,8 +531,8 @@ def test_mobile_tariffs(landing: dict, browser_context: BrowserContext) -> None:
             f"({'smoke' if SMOKE_CARD_LIMIT else 'full'})"
         ):
             passed = 0
-            for idx in range(cards_to_check):
-                with allure.step(f"Карточка #{idx + 1} из {cards_to_check}"):
+            for idx in card_indices_to_check:
+                with allure.step(f"Карточка #{idx + 1} из {total_cards}"):
                     _check_card_button(
                         page, browser_context, landing, idx, logger
                     )
