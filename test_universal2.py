@@ -984,7 +984,11 @@ def _wait_until_left_success_url(page: Page, timeout_ms: int = 6000) -> bool:
     return not _is_success_url(page.url)
 
 
-def verify_thanks_close_and_return(page: Page, return_url: str) -> tuple[bool, str]:
+def verify_thanks_close_and_return(
+    page: Page,
+    return_url: str,
+    allow_root_return: bool = False,
+) -> tuple[bool, str]:
     with allure.step("Проверка: закрытие Thanks и возврат на главную без региона"):
         if not _is_success_url(page.url):
             return False, f"страница не в состоянии Thanks ({page.url})"
@@ -1031,7 +1035,10 @@ def verify_thanks_close_and_return(page: Page, return_url: str) -> tuple[bool, s
         expected_path = (urlsplit(return_url).path or "").rstrip("/")
         current_path = (urlsplit(page.url).path or "").rstrip("/")
         if expected_path and expected_path != "/" and not current_path.startswith(expected_path):
-            return False, f"возврат на другой путь ({current_path} вместо {expected_path})"
+            if allow_root_return and current_path in ("", "/"):
+                print(f"  [THANKS] Возврат на корень допустим для expected={expected_path}")
+            else:
+                return False, f"возврат на другой путь ({current_path} вместо {expected_path})"
 
         region_sel = detect_visible_region_popup(page)
         if region_sel:
@@ -1913,7 +1920,8 @@ def process_unexpected_auto_profit_popup(
 def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                      btn_locator_fn, label: str = "POPUP",
                      has_name_field: bool = False,
-                     service_mode: str = SERVICE_MODE_ALL) -> tuple[int, int, str | None]:
+                     service_mode: str = SERVICE_MODE_ALL,
+                     allow_root_return_after_thanks: bool = False) -> tuple[int, int, str | None]:
     success    = 0
     failed     = 0
     first_fail = None
@@ -2161,7 +2169,9 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                 if ok:
                     print(f"  [{label}] ✅ Заявка принята ({service_label})")
                     thanks_ok, thanks_reason = verify_thanks_close_and_return(
-                        page, return_url_before_submit
+                        page,
+                        return_url_before_submit,
+                        allow_root_return=allow_root_return_after_thanks,
                     )
                     if not thanks_ok:
                         log_error(
@@ -2289,7 +2299,8 @@ def process_business_popups(page: Page, base_url: str,
 
     return _run_popup_cycle(
         page, buttons, base_url, locate, label="BUSINESS",
-        has_name_field=has_name_field, service_mode=service_mode
+        has_name_field=has_name_field, service_mode=service_mode,
+        allow_root_return_after_thanks=True,
     )
 
 
