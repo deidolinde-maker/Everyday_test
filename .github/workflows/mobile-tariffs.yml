@@ -8,13 +8,14 @@ on:
         required: false
         default: ""
 
+  # Автозапуск только после успешного ПЛАНОВОГО (schedule) рана основного workflow.
   workflow_run:
     workflows: ["Playwright Tests"]
     types: [completed]
 
 jobs:
   mobile_tariffs:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'schedule' && github.event.workflow_run.head_branch == 'master') }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
 
