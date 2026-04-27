@@ -1,8 +1,0 @@
-🚨 Критическая ошибка автотеста формы
-
-🕒 Время: 2026-04-27 11:28:49 (MSK)
-🌐 Лендинг: ttk-ru.online
-🔗 URL: https://ttk-ru.online/
-❌ Ошибка: Не выполнен шаг "попапы главной"
-🔎 Детали: не удалось открыть https://ttk-ru.online/ | HTTP 502
-🔗 Отчёт: https://github.com/deidolinde-maker/Everyday_test/actions/runs/24982471121

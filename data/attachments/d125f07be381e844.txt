@@ -1,0 +1,1 @@
+[t2-ru.online] Шаг 3: попапы /business — неприменим (service_mode=variants)

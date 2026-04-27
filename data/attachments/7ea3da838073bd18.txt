@@ -1,8 +1,0 @@
-🚨 Критическая ошибка автотеста формы
-
-🕒 Время: 2026-04-27 11:22:03 (MSK)
-🌐 Лендинг: dom-provider.online
-🔗 URL: https://dom-provider.online/
-❌ Ошибка: Не выполнен шаг "попапы главной"
-🔎 Детали: не удалось открыть https://dom-provider.online/ | HTTP 502
-🔗 Отчёт: https://github.com/deidolinde-maker/Everyday_test/actions/runs/24982471121
