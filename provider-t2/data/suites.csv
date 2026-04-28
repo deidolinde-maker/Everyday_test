@@ -1,0 +1,22 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","193150","Сайт: https://t2-ru.online [core] [firefox] [none]","","Tue Apr 28 14:49:49 UTC 2026","passed","Tue Apr 28 14:53:02 UTC 2026","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","152857","Сайт: https://t2-ru.online [core] [webkit] [none]","","Tue Apr 28 14:53:07 UTC 2026","passed","Tue Apr 28 14:55:40 UTC 2026","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","135094","Сайт: https://t2-ru.online [core] [chromium] [none]","","Tue Apr 28 14:47:32 UTC 2026","passed","Tue Apr 28 14:49:47 UTC 2026","service-mode: core","Формы провайдеров","",""
