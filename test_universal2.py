@@ -1778,6 +1778,7 @@ def process_auto_profit_popup(
     base_url: str,
     has_name_field: bool = False,
     service_mode: str = SERVICE_MODE_ALL,
+    allow_root_return_after_thanks: bool = False,
 ) -> tuple[int, int, str | None, bool]:
     """
     Проверяет автопоявляющийся profit-попап как полноценную форму:
@@ -1843,7 +1844,11 @@ def process_auto_profit_popup(
         )
         if ok:
             print("  [AUTO-PROFIT] ✅ Заявка принята")
-            thanks_ok, thanks_reason = verify_thanks_close_and_return(page, return_url_before_submit)
+            thanks_ok, thanks_reason = verify_thanks_close_and_return(
+                page,
+                return_url_before_submit,
+                allow_root_return=allow_root_return_after_thanks,
+            )
             if not thanks_ok:
                 log_error("thanks_return_failed", page, site_label, extra=f"auto profit popup | {thanks_reason}")
                 return 0, 1, "AUTO-PROFIT code=thanks_return_failed"[:220], True
@@ -1862,6 +1867,7 @@ def process_unexpected_auto_profit_popup(
     base_url: str,
     has_name_field: bool = False,
     context: str = "",
+    allow_root_return_after_thanks: bool = False,
 ) -> tuple[bool, bool, str]:
     """
     Подстраховка: если auto-profit всплыл во время проверки другой формы,
@@ -1898,7 +1904,11 @@ def process_unexpected_auto_profit_popup(
         if not ok:
             log_error("no_confirmation", page, site_label, extra=f"auto profit during {context}")
             return True, False, "no_confirmation"
-        thanks_ok, thanks_reason = verify_thanks_close_and_return(page, return_url_before_submit)
+        thanks_ok, thanks_reason = verify_thanks_close_and_return(
+            page,
+            return_url_before_submit,
+            allow_root_return=allow_root_return_after_thanks,
+        )
         if not thanks_ok:
             log_error("thanks_return_failed", page, site_label, extra=f"auto profit during {context} | {thanks_reason}")
             return True, False, "thanks_return_failed"
@@ -1962,6 +1972,7 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                 base_url,
                 has_name_field=has_name_field,
                 context=current_context,
+                allow_root_return_after_thanks=allow_root_return_after_thanks,
             )
             if not handled:
                 return "none"
@@ -2209,9 +2220,14 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
 
 def process_all_popups(page: Page, base_url: str,
                         has_name_field: bool = False,
-                        service_mode: str = SERVICE_MODE_ALL) -> tuple[int, int, str | None]:
+                        service_mode: str = SERVICE_MODE_ALL,
+                        allow_root_return_after_thanks: bool = False) -> tuple[int, int, str | None]:
     auto_success, auto_failed, auto_first_fail, _auto_tested = process_auto_profit_popup(
-        page, base_url, has_name_field=has_name_field, service_mode=service_mode
+        page,
+        base_url,
+        has_name_field=has_name_field,
+        service_mode=service_mode,
+        allow_root_return_after_thanks=allow_root_return_after_thanks,
     )
 
     # После auto-profit возвращаемся на базовый URL, чтобы сбор кнопок шёл
@@ -2265,7 +2281,9 @@ def process_all_popups(page: Page, base_url: str,
 
     success, failed, first_fail = _run_popup_cycle(
         page, buttons, base_url, locate, label="POPUP",
-        has_name_field=has_name_field, service_mode=service_mode
+        has_name_field=has_name_field,
+        service_mode=service_mode,
+        allow_root_return_after_thanks=allow_root_return_after_thanks,
     )
     total_success = auto_success + success
     total_failed = auto_failed + failed
@@ -2661,7 +2679,11 @@ def run_site_scenario(page: Page, cfg: dict):
             close_overlays(page)
             try:
                 s, f, first_fail = process_all_popups(
-                    page, city_base, has_name_field=has_name_field, service_mode=service_mode
+                    page,
+                    city_base,
+                    has_name_field=has_name_field,
+                    service_mode=service_mode,
+                    allow_root_return_after_thanks=True,
                 )
             except SiteUnavailableError as e:
                 skip_site_due_unavailability(site_label, "4a", "попапы главной города", str(e), page)
