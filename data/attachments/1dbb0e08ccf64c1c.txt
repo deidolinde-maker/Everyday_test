@@ -1,0 +1,1 @@
+POPUP 5/5 text='' hint=profit code=no_confirmation url=https://online-beeline.ru/moskva | service=без выбора варианта

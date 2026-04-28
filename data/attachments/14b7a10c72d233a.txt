@@ -1,0 +1,3 @@
+POPUP 1/3 text='подключить' hint=None code=thanks_return_failed url=https://mts-home-online.ru/ | service=без выбора варианта | возврат на другой путь ( вместо /moskva)
+POPUP 2/3 text='подключить' hint=None code=thanks_return_failed url=https://mts-home-online.ru/ | service=без выбора варианта | возврат на другой путь ( вместо /moskva)
+POPUP 3/3 text='подключить' hint=None code=thanks_return_failed url=https://mts-home-online.ru/ | service=без выбора варианта | возврат на другой путь ( вместо /moskva)

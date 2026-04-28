@@ -1,4 +1,7 @@
 {
-  "updated_at_utc": "2026-04-27T11:11:57.770828+00:00",
-  "failed_sites": []
+  "updated_at_utc": "2026-04-28T08:56:50.577169+00:00",
+  "failed_sites": [
+    "mts-home-online.ru",
+    "online-beeline.ru"
+  ]
 }
