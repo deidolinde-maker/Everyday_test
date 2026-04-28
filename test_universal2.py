@@ -5,13 +5,14 @@
     pytest -s --headed --site=mts-home-gpon.ru
 
 Запуск для всех сайтов последовательно:
-    pytest -s --headed  (прогоняет все сайты из SITE_CONFIGS)
+    pytest -s --headed  (прогоняет все сайты из provider-конфигов)
     pytest test_universal2.py --alluredir=allure-results -s - все сайты с аллюр
     pytest test_universal2.py --site=mts-home-gpon.ru --alluredir=allure-results -s - конкретный сайт с аллюр
+    pytest test_universal2.py --provider=mts -s - только сайты провайдера
     pytest test_universal2.py --service-mode=core -s - базовый submit без полного перебора Place
     pytest test_universal2.py --service-mode=variants -s - отдельный прогон только Place-вариантов
 
-Добавить новый сайт — достаточно добавить запись в site_configs.py (SITE_CONFIGS).
+Добавить новый сайт — добавить запись в config/providers/<provider>.py.
 """
 
 import pytest
@@ -24,7 +25,7 @@ import sys
 from urllib.parse import urlsplit
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
-from site_configs import SITE_CONFIGS
+from site_configs import select_site_configs
 
 try:
     # Avoid UnicodeEncodeError on Windows consoles with cp1251.
@@ -380,7 +381,7 @@ POPUP_BUTTON_CLASSES = {
     "business":           ".business_no_address_button",
 }
 
-# SITE_CONFIGS вынесен в отдельный файл `site_configs.py`.
+# Конфиги сайтов подаются через provider-loader (config/providers + config/loader.py).
 
 # ---------------------------------------------------------------------------
 # Константы
@@ -527,33 +528,23 @@ def popup_click_settle_ms(page: Page | None) -> int:
 
 
 # ---------------------------------------------------------------------------
-# pytest: параметр --site
+# pytest: параметризация сайтов
 # ---------------------------------------------------------------------------
-
-def pytest_addoption(parser):
-    parser.addoption(
-        "--site", action="store", default=None,
-        help="Домен сайта из SITE_CONFIGS, например: mts-home-gpon.ru"
-    )
-
 
 def pytest_generate_tests(metafunc):
     """Параметризует фикстуру site_cfg — один прогон на каждый сайт."""
     if "site_cfg" in metafunc.fixturenames:
+        provider_arg = metafunc.config.getoption("--provider", default=None)
         site_arg = metafunc.config.getoption("--site", default=None)
         service_mode = normalize_service_mode(
             metafunc.config.getoption("--service-mode", default=SERVICE_MODE_ALL)
         )
-
-        if site_arg:
-            if site_arg not in SITE_CONFIGS:
-                available = ", ".join(sorted(SITE_CONFIGS.keys()))
-                raise pytest.UsageError(
-                    f"--site={site_arg!r} не найден в SITE_CONFIGS. Доступно: {available}"
-                )
-            selected_items = [(site_arg, SITE_CONFIGS[site_arg])]
-        else:
-            selected_items = list(SITE_CONFIGS.items())
+        try:
+            selected_items = list(
+                select_site_configs(provider=provider_arg, site=site_arg).items()
+            )
+        except ValueError as exc:
+            raise pytest.UsageError(str(exc)) from exc
 
         configs = []
         ids = []

@@ -1,0 +1,224 @@
+name: Provider Orchestrator
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_place_variants:
+        description: 'Run Place variants checks for each provider'
+        required: false
+        default: false
+        type: boolean
+      run_chromium:
+        description: 'Run clean profile in Chromium'
+        required: false
+        default: true
+        type: boolean
+      run_firefox:
+        description: 'Run clean profile in Firefox'
+        required: false
+        default: false
+        type: boolean
+      run_webkit:
+        description: 'Run clean profile in WebKit'
+        required: false
+        default: false
+        type: boolean
+      blocking_profile:
+        description: 'Blocking profile for all providers'
+        required: false
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - adblock-mvp
+      alert_errors:
+        description: 'Telegram: single-site errors (1-5 per site)'
+        required: false
+        default: true
+        type: boolean
+      alert_aggregates:
+        description: 'Telegram: aggregate/mass alerts'
+        required: false
+        default: true
+        type: boolean
+      alert_summary:
+        description: 'Telegram: run summary'
+        required: false
+        default: true
+        type: boolean
+      alert_recovered:
+        description: 'Telegram: recovered sites block'
+        required: false
+        default: true
+        type: boolean
+      provider_alert_summary:
+        description: 'Provider-level summary messages (recommended: false in orchestrator)'
+        required: false
+        default: false
+        type: boolean
+      provider_alert_recovered:
+        description: 'Provider-level recovered block (recommended: false in orchestrator)'
+        required: false
+        default: false
+        type: boolean
+      send_final_summary:
+        description: 'Send final orchestrator summary to Telegram'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  mts:
+    name: MTS
+    uses: ./.github/workflows/provider-mts.yml
+    with:
+      site: ''
+      run_place_variants: ${{ inputs.run_place_variants }}
+      run_chromium: ${{ inputs.run_chromium }}
+      run_firefox: ${{ inputs.run_firefox }}
+      run_webkit: ${{ inputs.run_webkit }}
+      blocking_profile: ${{ inputs.blocking_profile }}
+      alert_errors: ${{ inputs.alert_errors }}
+      alert_aggregates: ${{ inputs.alert_aggregates }}
+      alert_summary: ${{ inputs.provider_alert_summary }}
+      alert_recovered: ${{ inputs.provider_alert_recovered }}
+    secrets: inherit
+
+  beeline:
+    name: Beeline
+    needs: [mts]
+    if: always()
+    uses: ./.github/workflows/provider-beeline.yml
+    with:
+      site: ''
+      run_place_variants: ${{ inputs.run_place_variants }}
+      run_chromium: ${{ inputs.run_chromium }}
+      run_firefox: ${{ inputs.run_firefox }}
+      run_webkit: ${{ inputs.run_webkit }}
+      blocking_profile: ${{ inputs.blocking_profile }}
+      alert_errors: ${{ inputs.alert_errors }}
+      alert_aggregates: ${{ inputs.alert_aggregates }}
+      alert_summary: ${{ inputs.provider_alert_summary }}
+      alert_recovered: ${{ inputs.provider_alert_recovered }}
+    secrets: inherit
+
+  megafon:
+    name: Megafon
+    needs: [beeline]
+    if: always()
+    uses: ./.github/workflows/provider-megafon.yml
+    with:
+      site: ''
+      run_place_variants: ${{ inputs.run_place_variants }}
+      run_chromium: ${{ inputs.run_chromium }}
+      run_firefox: ${{ inputs.run_firefox }}
+      run_webkit: ${{ inputs.run_webkit }}
+      blocking_profile: ${{ inputs.blocking_profile }}
+      alert_errors: ${{ inputs.alert_errors }}
+      alert_aggregates: ${{ inputs.alert_aggregates }}
+      alert_summary: ${{ inputs.provider_alert_summary }}
+      alert_recovered: ${{ inputs.provider_alert_recovered }}
+    secrets: inherit
+
+  t2:
+    name: T2
+    needs: [megafon]
+    if: always()
+    uses: ./.github/workflows/provider-t2.yml
+    with:
+      site: ''
+      run_place_variants: ${{ inputs.run_place_variants }}
+      run_chromium: ${{ inputs.run_chromium }}
+      run_firefox: ${{ inputs.run_firefox }}
+      run_webkit: ${{ inputs.run_webkit }}
+      blocking_profile: ${{ inputs.blocking_profile }}
+      alert_errors: ${{ inputs.alert_errors }}
+      alert_aggregates: ${{ inputs.alert_aggregates }}
+      alert_summary: ${{ inputs.provider_alert_summary }}
+      alert_recovered: ${{ inputs.provider_alert_recovered }}
+    secrets: inherit
+
+  rostelecom:
+    name: Rostelecom
+    needs: [t2]
+    if: always()
+    uses: ./.github/workflows/provider-rostelecom.yml
+    with:
+      site: ''
+      run_place_variants: ${{ inputs.run_place_variants }}
+      run_chromium: ${{ inputs.run_chromium }}
+      run_firefox: ${{ inputs.run_firefox }}
+      run_webkit: ${{ inputs.run_webkit }}
+      blocking_profile: ${{ inputs.blocking_profile }}
+      alert_errors: ${{ inputs.alert_errors }}
+      alert_aggregates: ${{ inputs.alert_aggregates }}
+      alert_summary: ${{ inputs.provider_alert_summary }}
+      alert_recovered: ${{ inputs.provider_alert_recovered }}
+    secrets: inherit
+
+  domru:
+    name: Domru
+    needs: [rostelecom]
+    if: always()
+    uses: ./.github/workflows/provider-domru.yml
+    with:
+      site: ''
+      run_place_variants: ${{ inputs.run_place_variants }}
+      run_chromium: ${{ inputs.run_chromium }}
+      run_firefox: ${{ inputs.run_firefox }}
+      run_webkit: ${{ inputs.run_webkit }}
+      blocking_profile: ${{ inputs.blocking_profile }}
+      alert_errors: ${{ inputs.alert_errors }}
+      alert_aggregates: ${{ inputs.alert_aggregates }}
+      alert_summary: ${{ inputs.provider_alert_summary }}
+      alert_recovered: ${{ inputs.provider_alert_recovered }}
+    secrets: inherit
+
+  final_summary:
+    name: Final Summary
+    needs: [mts, beeline, megafon, t2, rostelecom, domru]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build orchestrator summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "Provider orchestrator summary"
+            echo ""
+            echo "Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "Blocking profile: ${{ inputs.blocking_profile }}"
+            echo "Browsers: chromium=${{ inputs.run_chromium }}, firefox=${{ inputs.run_firefox }}, webkit=${{ inputs.run_webkit }}"
+            echo "Place variants: ${{ inputs.run_place_variants }}"
+            echo ""
+            echo "Provider results:"
+            echo "- MTS: ${{ needs.mts.result }}"
+            echo "- Beeline: ${{ needs.beeline.result }}"
+            echo "- Megafon: ${{ needs.megafon.result }}"
+            echo "- T2: ${{ needs.t2.result }}"
+            echo "- Rostelecom: ${{ needs.rostelecom.result }}"
+            echo "- Domru: ${{ needs.domru.result }}"
+            echo ""
+            echo "Published reports:"
+            echo "- MTS: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/provider-mts/"
+            echo "- Beeline: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/provider-beeline/"
+            echo "- Megafon: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/provider-megafon/"
+            echo "- T2: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/provider-t2/"
+            echo "- Rostelecom: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/provider-rostelecom/"
+            echo "- Domru: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/provider-domru/"
+          } > orchestrator_summary.txt
+          cat orchestrator_summary.txt
+
+      - name: Send final Telegram summary
+        if: ${{ inputs.send_final_summary }}
+        shell: bash
+        run: |
+          set -e
+          if [ -z "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] || [ -z "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+            echo "Telegram secrets are not configured. Skip."
+            exit 0
+          fi
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "text@orchestrator_summary.txt"

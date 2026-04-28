@@ -19,10 +19,16 @@ ADBLOCK_MVP_BLOCKLIST = (
 
 def pytest_addoption(parser):
     parser.addoption(
+        "--provider",
+        action="store",
+        default=None,
+        help="Имя провайдера из config/providers (например: mts, beeline, megafon, t2).",
+    )
+    parser.addoption(
         "--site",
         action="store",
         default=None,
-        help="Домен сайта из SITE_CONFIGS, например: mts-home-gpon.ru",
+        help="Домен сайта (site_id), например: mts-home-gpon.ru",
     )
     parser.addoption(
         "--service-mode",

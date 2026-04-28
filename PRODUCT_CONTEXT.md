@@ -1,5 +1,5 @@
 # PRODUCT_CONTEXT
-Обновлено: 2026-04-22
+Обновлено: 2026-04-28
 
 ## 1. Общее описание продукта
 - Продукт: репозиторий автотестов `Everyday_test` для проверки лендингов интернет-провайдеров.
@@ -17,7 +17,7 @@
 - Давать операционные сигналы через step/tech/critical alert.
 
 ## 3. Основные сущности
-- `Site` (Suite A): запись в `SITE_CONFIGS` (домен + флаги сценария).
+- `Site` (Suite A): запись в провайдерном конфиге `config/providers/*.py` (домен + флаги сценария).
 - `Landing` (Suite B): запись в `LANDINGS` (url, nav/card селекторы, ожидаемый redirect type).
 - `Form type` (Suite A): `checkaddress`, `connection`, `profit`, `express-connection`, `business`.
 - `Popup cycle`: последовательный прогон кнопок, открывающих формы.
@@ -42,6 +42,12 @@
 
 ## 5. Бизнес-логика
 - Suite A (`test_universal2.py`):
+  - конфиги сайтов загружаются через provider-loader:
+    - источник: `config/providers/*.py`,
+    - runtime-слой совместимости: `site_configs.py` (`SITE_CONFIGS = load_site_configs()`),
+    - запуск по провайдеру: `--provider=<name>`,
+    - запуск по одному сайту: `--site=<domain>`,
+    - поддерживается комбинация `--provider + --site` с валидацией принадлежности сайта к провайдеру;
   - поддерживаются режимы прогона `--service-mode`:
     - `core`: для форм с `Place` выполняется один базовый submit (первый доступный вариант, обычно `В квартиру`);
     - `variants`: выполняются только проверки вариантов `Place` (формы без `Place`, а также `profit` и `business`, пропускаются как неприменимые);
@@ -79,6 +85,7 @@
 
 ## 6. Ключевые пользовательские сценарии
 - Локальный прогон всех сайтов Suite A.
+- Локальный прогон сайтов одного провайдера Suite A через `--provider=<name>`.
 - Локальный прогон одного сайта Suite A через `--site=<domain>`.
 - Локальный/CI прогон mobile suite полностью или с `landing_filter`.
 - Анализ падения:
@@ -86,7 +93,7 @@
   - Allure attachments,
   - step/tech/critical сообщения в Telegram.
 - Добавление нового домена/лендинга:
-  - Suite A: обновление `SITE_CONFIGS` (+ селекторы при необходимости),
+  - Suite A: обновление `config/providers/<provider>.py` (+ селекторы при необходимости),
   - Suite B: обновление `LANDINGS`.
 
 ## 7. Интерфейсы и разделы продукта
@@ -113,13 +120,16 @@
   - Suite A: step/tech/critical и summary;
   - Suite B: step-alert и summary.
 - GitHub Actions + GitHub Pages (публикация отчета).
-- Внешние домены провайдеров (из `SITE_CONFIGS` и `LANDINGS`).
+- Внешние домены провайдеров (из `config/providers/*.py` и `LANDINGS`).
 - Интеграция с Advizer в коде: `Не определено` (используется как ручная сверка процесса).
 
 ## 9. Технические особенности
 - Язык: Python.
 - Основной test-suite A:
-  - конфиг доменов: `SITE_CONFIGS` (23 сайта на 2026-04-13),
+  - конфиг доменов: `config/providers/*.py` (+ runtime-совместимость через `site_configs.py`),
+  - валидация конфигов: `config/schema.py` (поля, типы, дубли доменов между провайдерами),
+  - загрузчик: `config/loader.py` (фильтрация `--provider`, `--site`, вычисление `city_name` из `cities`/`DEFAULT_CITY`),
+  - параметр запуска: `--provider` (фильтр по провайдеру),
   - параметр запуска: `--service-mode` (`all` по умолчанию, также `core`, `variants`),
   - параметр запуска: `--blocking-profile` (`none` по умолчанию, `adblock-mvp` для MVP-режима блокировщиков),
   - мультибраузерный запуск: `pytest-playwright` `--browser` (локально и в CI),

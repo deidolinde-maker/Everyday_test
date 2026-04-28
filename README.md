@@ -10,7 +10,10 @@
 ## 1. Структура репозитория
 
 - `test_universal2.py` - основной e2e-тест форм (главная, popups, `/business`, городские сценарии).
-- `conftest.py` - параметр `--site`, вложения в Allure при падении.
+- `conftest.py` - параметры `--provider`, `--site`, `--service-mode`, `--blocking-profile`, вложения в Allure при падении.
+- `config/providers/*.py` - провайдерные конфиги сайтов для Suite A.
+- `config/loader.py` - объединение провайдерных конфигов в runtime-формат для теста.
+- `config/schema.py` - валидация схемы конфигов и защита от дублей доменов.
 - `notify_from_allure.py` - итоговый summary по `allure-results` для Telegram.
 - `mobile_tariffs_tests/tests/test_mobile_tariffs.py` - тест блока мобильных тарифов.
 - `mobile_tariffs_tests/config/landing_data.py` - список лендингов mobile suite.
@@ -18,7 +21,19 @@
 - `mobile_tariffs_tests/utils/helpers.py` - шаговые алерты/утилиты mobile suite.
 - `mobile_tariffs_tests/notify_from_allure_mobile.py` - итоговый mobile summary в Telegram.
 - `.github/workflows/allure.yml` - CI формы.
+- `.github/workflows/provider-mts.yml` - ручной провайдерный прогон MTS.
+- `.github/workflows/provider-beeline.yml` - ручной провайдерный прогон Beeline.
+- `.github/workflows/provider-megafon.yml` - ручной провайдерный прогон Megafon.
+- `.github/workflows/provider-t2.yml` - ручной провайдерный прогон T2.
+- `.github/workflows/provider-rostelecom.yml` - ручной провайдерный прогон Rostelecom.
+- `.github/workflows/provider-domru.yml` - ручной провайдерный прогон Domru.
+- `.github/workflows/provider-orchestrator.yml` - последовательный оркестратор прогонов по провайдерам (MTS -> Beeline -> Megafon -> T2 -> Rostelecom -> Domru).
 - `.github/workflows/mobile-tariffs.yml` - CI mobile suite.
+
+Примечание по Telegram для оркестратора:
+- в `provider-orchestrator.yml` по умолчанию отключены `provider_alert_summary` и `provider_alert_recovered`, чтобы успешные провайдерные шаги не создавали лишний шум;
+- при этом провайдерные ошибки (`alert_errors` / `alert_aggregates`) остаются включаемыми;
+- итоговый единый summary отправляется отдельным `final_summary` job оркестратора.
 
 ## 2. Suite A: Формы заявок (`test_universal2.py`)
 
@@ -28,7 +43,7 @@
 
 ### 2.2 Пошаговый сценарий `run_site_scenario`
 
-Для каждого сайта из `SITE_CONFIGS`:
+Для каждого сайта из провайдерных конфигов (`config/providers/*.py`):
 
 1. Шаг 1 - `checkaddress` (если `has_checkaddress=True`):
    - переход на `base_url`,
@@ -92,14 +107,17 @@
 
 ### 2.6 Ключевые конфиги Suite A
 
-- `SITE_CONFIGS`:
-  - ключ: домен (используется в `--site`),
-  - значения:
-    - `base_url`,
-    - `has_checkaddress`,
-    - `has_business`,
-    - `city_name`,
-    - `has_name_field` (опционально).
+- Провайдерные конфиги (`config/providers/*.py`):
+  - `PROVIDER` (имя провайдера),
+  - `DEFAULT_CITY`,
+  - `SITES` (список сайтов).
+- Поля сайта в `SITES`:
+  - обязательные: `base_url`, `has_checkaddress`, `has_business`,
+  - опциональные: `cities`, `city_name`, `has_name_field`, `has_region_popup`.
+- Runtime-слой (`config/loader.py`) строит совместимый `SITE_CONFIGS`:
+  - ключ: домен (`site_id`, используется в `--site`),
+  - добавляет `city_name` (из `cities[0]` или `DEFAULT_CITY`),
+  - добавляет служебное поле `_provider`.
 - `FORM_CONFIGS` - CSS-селекторы полей и submit по типам форм.
 - `POPUP_CONTAINER_SELECTORS`, `SUGGESTION_SELECTORS` - fallback-локаторы для нестабильной верстки.
 
@@ -237,22 +255,22 @@ Run: <RUN_URL>    # если задан
 
 ### 6.1 Добавить сайт в Suite A (формы)
 
-1. Открыть `test_universal2.py`, блок `SITE_CONFIGS`.
-2. Добавить новый ключ-домен и конфиг:
+1. Открыть файл нужного провайдера в `config/providers/` (или создать новый provider-модуль).
+2. Добавить сайт в список `SITES`:
 
 ```python
-"example-site.ru": {
+{
     "base_url": "https://example-site.ru/",
     "has_checkaddress": False,
     "has_business": True,
-    "city_name": "Москва",      # или None
+    "cities": ["Москва"],       # или "city_name": None
     "has_name_field": False,    # опционально
 },
 ```
 
 3. Правила по полям:
    - `base_url` всегда с протоколом `https://`.
-   - ключ словаря должен совпадать с тем, что будете передавать в `--site`.
+   - `site_id` для `--site` берётся из домена `base_url` (если явно не задано поле `site_id`).
    - если на сайте нет городского режима: `city_name=None`.
    - если нет `/business`: `has_business=False`.
 4. Если у форм нестандартные классы:
@@ -269,7 +287,7 @@ Run: <RUN_URL>    # если задан
 
 В GitHub Actions -> `Playwright Tests` -> `Run workflow`:
 
-1. В поле `site` указать домен-ключ из `SITE_CONFIGS` (например, `example-site.ru`).
+1. В поле `site` указать домен-сайт (`site_id`, например, `example-site.ru`).
 2. Пустое поле `site` = прогон всех сайтов.
 
 ### 6.3 Добавить лендинг в Suite B (mobile)

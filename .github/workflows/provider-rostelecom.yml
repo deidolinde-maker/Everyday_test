@@ -1,0 +1,422 @@
+name: Provider Rostelecom Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: 'Site domain inside provider (leave empty to run all provider sites)'
+        required: false
+        default: ''
+      run_place_variants:
+        description: 'Run Place variants checks'
+        required: false
+        default: false
+        type: boolean
+      run_chromium:
+        description: 'Run clean profile in Chromium'
+        required: false
+        default: true
+        type: boolean
+      run_firefox:
+        description: 'Run clean profile in Firefox'
+        required: false
+        default: false
+        type: boolean
+      run_webkit:
+        description: 'Run clean profile in WebKit'
+        required: false
+        default: false
+        type: boolean
+      blocking_profile:
+        description: 'Blocking profile'
+        required: false
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - adblock-mvp
+      alert_errors:
+        description: 'Telegram: single-site errors (1-5 per site)'
+        required: false
+        default: true
+        type: boolean
+      alert_aggregates:
+        description: 'Telegram: aggregate/mass alerts'
+        required: false
+        default: true
+        type: boolean
+      alert_summary:
+        description: 'Telegram: run summary'
+        required: false
+        default: true
+        type: boolean
+      alert_recovered:
+        description: 'Telegram: recovered sites block'
+        required: false
+        default: true
+        type: boolean
+
+  workflow_call:
+    inputs:
+      site:
+        required: false
+        type: string
+        default: ''
+      run_place_variants:
+        required: false
+        type: boolean
+        default: false
+      run_chromium:
+        required: false
+        type: boolean
+        default: true
+      run_firefox:
+        required: false
+        type: boolean
+        default: false
+      run_webkit:
+        required: false
+        type: boolean
+        default: false
+      blocking_profile:
+        required: false
+        type: string
+        default: 'none'
+      alert_errors:
+        required: false
+        type: boolean
+        default: true
+      alert_aggregates:
+        required: false
+        type: boolean
+        default: true
+      alert_summary:
+        required: false
+        type: boolean
+        default: true
+      alert_recovered:
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      TELEGRAM_BOT_TOKEN:
+        required: false
+      TELEGRAM_CHAT_ID:
+        required: false
+
+jobs:
+  provider_test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      PROVIDER_NAME: rostelecom
+      RUN_CHROMIUM: ${{ inputs.run_chromium && 'true' || 'false' }}
+      RUN_FIREFOX: ${{ inputs.run_firefox && 'true' || 'false' }}
+      RUN_WEBKIT: ${{ inputs.run_webkit && 'true' || 'false' }}
+      BLOCKING_PROFILE: ${{ inputs.blocking_profile || 'none' }}
+      RUN_PLACE_VARIANTS: ${{ inputs.run_place_variants && 'true' || 'false' }}
+      ALERT_ERRORS_ENABLED: ${{ inputs.alert_errors && 'true' || 'false' }}
+      ALERT_AGGREGATES_ENABLED: ${{ inputs.alert_aggregates && 'true' || 'false' }}
+      ALERT_SUMMARY_ENABLED: ${{ inputs.alert_summary && 'true' || 'false' }}
+      ALERT_RECOVERED_ENABLED: ${{ inputs.alert_recovered && 'true' || 'false' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest playwright pytest-playwright allure-pytest pytest-timeout requests
+          python -m pip show playwright
+
+      - name: Validate selected browsers
+        run: |
+          set -e
+          echo "RUN_CHROMIUM=${RUN_CHROMIUM}"
+          echo "RUN_FIREFOX=${RUN_FIREFOX}"
+          echo "RUN_WEBKIT=${RUN_WEBKIT}"
+          echo "BLOCKING_PROFILE=${BLOCKING_PROFILE}"
+          if [ "${RUN_CHROMIUM}" != "true" ] && [ "${RUN_FIREFOX}" != "true" ] && [ "${RUN_WEBKIT}" != "true" ]; then
+            echo "::error::Select at least one browser (run_chromium/run_firefox/run_webkit)."
+            exit 1
+          fi
+
+      - name: Install Playwright browsers
+        run: |
+          set -e
+          if [ "${RUN_CHROMIUM}" = "true" ]; then
+            python -m playwright install chromium
+            python -m playwright install-deps chromium
+          fi
+          if [ "${RUN_FIREFOX}" = "true" ]; then
+            python -m playwright install firefox
+            python -m playwright install-deps firefox
+          fi
+          if [ "${RUN_WEBKIT}" = "true" ]; then
+            python -m playwright install webkit
+            python -m playwright install-deps webkit
+          fi
+
+      - name: Run Core tests (chromium)
+        id: run_core_chromium
+        if: ${{ always() && env.RUN_CHROMIUM == 'true' }}
+        timeout-minutes: 90
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-core-chromium
+            --timeout=600
+            -s
+            --service-mode=core
+            --browser=chromium
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running CORE: provider=${PROVIDER_NAME}, browser=chromium"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ inputs.site }}
+        continue-on-error: true
+
+      - name: Run Core tests (firefox)
+        id: run_core_firefox
+        if: ${{ always() && env.RUN_FIREFOX == 'true' }}
+        timeout-minutes: 90
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-core-firefox
+            --timeout=600
+            -s
+            --service-mode=core
+            --browser=firefox
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running CORE: provider=${PROVIDER_NAME}, browser=firefox"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ inputs.site }}
+        continue-on-error: true
+
+      - name: Run Core tests (webkit)
+        id: run_core_webkit
+        if: ${{ always() && env.RUN_WEBKIT == 'true' }}
+        timeout-minutes: 90
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-core-webkit
+            --timeout=600
+            -s
+            --service-mode=core
+            --browser=webkit
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running CORE: provider=${PROVIDER_NAME}, browser=webkit"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ inputs.site }}
+        continue-on-error: true
+
+      - name: Run Place Variants tests (chromium)
+        id: run_variants_chromium
+        if: ${{ always() && env.RUN_CHROMIUM == 'true' && env.RUN_PLACE_VARIANTS == 'true' }}
+        timeout-minutes: 90
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-variants-chromium
+            --timeout=600
+            -s
+            --service-mode=variants
+            --browser=chromium
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running VARIANTS: provider=${PROVIDER_NAME}, browser=chromium"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ inputs.site }}
+        continue-on-error: true
+
+      - name: Run Place Variants tests (firefox)
+        id: run_variants_firefox
+        if: ${{ always() && env.RUN_FIREFOX == 'true' && env.RUN_PLACE_VARIANTS == 'true' }}
+        timeout-minutes: 90
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-variants-firefox
+            --timeout=600
+            -s
+            --service-mode=variants
+            --browser=firefox
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running VARIANTS: provider=${PROVIDER_NAME}, browser=firefox"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ inputs.site }}
+        continue-on-error: true
+
+      - name: Run Place Variants tests (webkit)
+        id: run_variants_webkit
+        if: ${{ always() && env.RUN_WEBKIT == 'true' && env.RUN_PLACE_VARIANTS == 'true' }}
+        timeout-minutes: 90
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-variants-webkit
+            --timeout=600
+            -s
+            --service-mode=variants
+            --browser=webkit
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running VARIANTS: provider=${PROVIDER_NAME}, browser=webkit"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ inputs.site }}
+        continue-on-error: true
+
+      - name: Merge Allure results
+        if: always()
+        run: |
+          mkdir -p allure-results
+          if [ -d allure-results-core-chromium ]; then
+            cp -R allure-results-core-chromium/. allure-results/
+          fi
+          if [ -d allure-results-variants-chromium ]; then
+            cp -R allure-results-variants-chromium/. allure-results/
+          fi
+          if [ -d allure-results-core-firefox ]; then
+            cp -R allure-results-core-firefox/. allure-results/
+          fi
+          if [ -d allure-results-variants-firefox ]; then
+            cp -R allure-results-variants-firefox/. allure-results/
+          fi
+          if [ -d allure-results-core-webkit ]; then
+            cp -R allure-results-core-webkit/. allure-results/
+          fi
+          if [ -d allure-results-variants-webkit ]; then
+            cp -R allure-results-variants-webkit/. allure-results/
+          fi
+
+      - name: Upload Allure results artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-provider-rostelecom
+          path: allure-results/
+          retention-days: 30
+
+      - name: Build Allure report
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        with:
+          allure_results: allure-results
+          allure_report: allure-report
+          allure_history: allure-history
+
+      - name: Build Telegram summary message
+        if: always()
+        run: python notify_from_allure.py
+        env:
+          ALLURE_RESULTS_DIR: allure-results
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ALLURE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/provider-rostelecom/
+          SITE_HINT: ${{ inputs.site || 'provider:rostelecom' }}
+          NOTIFY_STATE_FILE: notify_state.json
+          NOTIFY_STATE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/provider-rostelecom/notify_state.json
+          ALERT_ERRORS_ENABLED: ${{ env.ALERT_ERRORS_ENABLED }}
+          ALERT_AGGREGATES_ENABLED: ${{ env.ALERT_AGGREGATES_ENABLED }}
+          ALERT_SUMMARY_ENABLED: ${{ env.ALERT_SUMMARY_ENABLED }}
+          ALERT_RECOVERED_ENABLED: ${{ env.ALERT_RECOVERED_ENABLED }}
+
+      - name: Check if Telegram message should be sent
+        if: always()
+        id: telegram_check
+        run: echo "should_send=$(cat telegram_should_send.txt)" >> $GITHUB_OUTPUT
+
+      - name: Send Telegram message
+        if: ${{ always() && steps.telegram_check.outputs.should_send == '1' }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage"             -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}"             --data-urlencode "text@telegram_message.txt"
+
+      - name: Prepare pages publish directory
+        if: always()
+        run: |
+          mkdir -p allure-publish
+          if [ -d allure-report ]; then
+            cp -R allure-report/. allure-publish/
+          fi
+          if [ -f notify_state.json ]; then
+            cp notify_state.json allure-publish/notify_state.json || true
+          fi
+
+      - name: Publish report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-publish
+          destination_dir: provider-rostelecom

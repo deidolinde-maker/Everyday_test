@@ -1,193 +1,36 @@
 """
-Конфигурация лендингов для test_universal2.py.
+Compatibility layer for legacy imports.
 
-ИНСТРУКЦИЯ ПО РЕДАКТИРОВАНИЮ
-1. Добавление нового сайта:
-   - добавьте новый ключ верхнего уровня в SITE_CONFIGS (обычно домен, например "example.ru");
-   - заполните обязательные поля:
-       * base_url (str, полный URL с http/https),
-       * has_checkaddress (bool),
-       * has_business (bool),
-       * city_name (str | None).
-2. Не переименовывайте существующие ключи сайта без необходимости:
-   - параметр CLI --site использует именно ключ словаря (site_id).
-3. Дополнительные флаги:
-   - has_name_field (bool),
-   - has_region_popup (bool).
-4. Допускаются и другие специфичные поля (для будущих задач), но
-   обязательные поля и их типы должны оставаться валидными.
-5. Перед пушем:
-   - проверьте точечно: pytest -s --site=<site_id> --service-mode=core
+Primary source of truth is now provider configs under `config/providers/`.
+This module keeps `SITE_CONFIGS` available in the old shape so legacy scripts
+can continue working during PB3 rollout.
 """
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 
-SITE_CONFIGS = {
-    "mts-home-gpon.ru": {
-        "base_url": "https://mts-home-gpon.ru/",
-        "has_checkaddress": True,
-        "has_business": True,
-        "city_name": "Москва",
-    },
-    "mts-home.online": {
-        "base_url": "https://mts-home.online/",
-        "has_checkaddress": False,
-        "has_business": True,
-        "city_name": "Москва",
-    },
-    "mts-home-online.ru": {
-        "base_url": "https://mts-home-online.ru/",
-        "has_checkaddress": False,
-        "has_business": True,
-        "city_name": "Москва",
-        "has_name_field": True,
-    },
-    "internet-mts-home.online": {
-        "base_url": "https://internet-mts-home.online/",
-        "has_checkaddress": False,
-        "has_business": False,
-        "city_name": "Москва",
-    },
-    "mts-internet.online": {
-        "base_url": "https://mts-internet.online/",
-        "has_checkaddress": False,
-        "has_business": False,
-        "city_name": "Москва",
-    },
-    "beeline-internet.online": {
-        "base_url": "https://beeline-internet.online/",
-        "has_checkaddress": False,
-        "has_business": True,
-        "city_name": "Москва",
-        "has_region_popup": True,
-    },
-    "beeline-ru.online": {
-        "base_url": "https://beeline-ru.online/",
-        "has_checkaddress": False,
-        "has_business": True,
-        "city_name": "Москва",
-        "has_region_popup": True,
-    },
-    "online-beeline.ru": {
-        "base_url": "https://online-beeline.ru/",
-        "has_checkaddress": False,
-        "has_business": True,
-        "city_name": "Москва",
-        "has_region_popup": True,
-    },
-    "beeline-ru.pro": {
-        "base_url": "https://beeline-ru.pro/",
-        "has_checkaddress": False,
-        "has_business": False,
-        "city_name": "Москва",
-        "has_region_popup": True,
-    },
-    "beeline-home.online": {
-        "base_url": "https://beeline-home.online/",
-        "has_checkaddress": False,
-        "has_business": False,
-        "city_name": "Москва",
-        "has_region_popup": True,
-    },
-    "beelline-internet.ru": {
-        "base_url": "https://beelline-internet.ru/",
-        "has_checkaddress": False,
-        "has_business": False,
-        "city_name": "Москва",
-        "has_region_popup": True,
-    },
-    "rtk-ru.online": {
-        "base_url": "https://rtk-ru.online/",
-        "has_checkaddress": True,
-        "has_business": True,
-        "city_name": "Москва",
-        "has_name_field": True,
-    },
-    "rt-internet.online": {
-        "base_url": "https://rt-internet.online/",
-        "has_checkaddress": True,
-        "has_business": False,
-        "city_name": "Москва",
-        "has_name_field": True,
-    },
-    "rtk-home-internet.ru": {
-        "base_url": "https://rtk-home-internet.ru/",
-        "has_checkaddress": True,
-        "has_business": False,
-        "city_name": "Москва",
-        "has_name_field": True,
-    },
-    "rtk-internet.online": {
-        "base_url": "https://rtk-internet.online/",
-        "has_checkaddress": True,
-        "has_business": True,
-        "city_name": "Москва",
-        "has_name_field": True,
-    },
-    "rtk-home.ru": {
-        "base_url": "http://rtk-home.ru/",
-        "has_checkaddress": True,
-        "has_business": True,
-        "city_name": "Москва",
-        "has_name_field": True,
-    },
-    "dom-provider.online": {
-        "base_url": "https://dom-provider.online/",
-        "has_checkaddress": False,
-        "has_business": False,
-        "city_name": "Москва",
-        "has_name_field": True,
-    },
-    "providerdom.ru": {
-        "base_url": "https://providerdom.ru/",
-        "has_checkaddress": False,
-        "has_business": False,
-        "city_name": "Москва",
-        "has_name_field": True,
-    },
-    "mega-premium.ru": {
-        "base_url": "https://mega-premium.ru/",
-        "has_checkaddress": True,
-        "has_business": False,
-        "city_name": "Москва",
-        "has_name_field": True,
-    },
-    "mega-home-internet.ru": {
-        "base_url": "https://mega-home-internet.ru/",
-        "has_checkaddress": True,
-        "has_business": False,
-        "city_name": "Москва",
-        "has_name_field": True,
-    },
-    "t2-ru.online": {
-        "base_url": "https://t2-ru.online",
-        "has_checkaddress": False,
-        "has_business": False,
-        "city_name": "Москва",
-        "has_name_field": True,
-    },
-    "ttk-internet.ru": {
-        "base_url": "https://ttk-internet.ru/",
-        "has_checkaddress": False,
-        "has_business": False,
-        "city_name": None,  # нет Москвы в списке городов
-    },
-    "ttk-ru.online": {
-        "base_url": "https://ttk-ru.online/",
-        "has_checkaddress": False,
-        "has_business": False,
-        "city_name": None,  # нет Москвы в списке городов
-    },
-    # "stage-project.ru": {
-    #     "base_url": "https://stage-project.ru/",
-    #     "has_checkaddress": True,
-    #     "has_business": True,
-    #     "city_name": "Москва",
-    #     "has_name_field": True,
-    # },
-}
+_ROOT_DIR = Path(__file__).resolve().parent
+if str(_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(_ROOT_DIR))
 
+# Защита от конфликта имен пакетов:
+# mobile_tariffs_tests/config может быть импортирован как `config` раньше,
+# поэтому гарантируем, что дальше загрузится корневой `config`.
+existing_config = sys.modules.get("config")
+if existing_config is not None:
+    existing_file = getattr(existing_config, "__file__", "") or ""
+    if existing_file:
+        existing_path = Path(existing_file).resolve()
+        expected_config_dir = (_ROOT_DIR / "config").resolve()
+        if not str(existing_path).startswith(str(expected_config_dir)):
+            del sys.modules["config"]
+
+from config.loader import available_providers, load_site_configs, select_site_configs
+
+
+SITE_CONFIGS = load_site_configs()
 
 _REQUIRED_KEYS = ("base_url", "has_checkaddress", "has_business", "city_name")
 _BOOL_KEYS = ("has_checkaddress", "has_business", "has_name_field", "has_region_popup")
@@ -232,3 +75,10 @@ def validate_site_configs(site_configs: dict[str, dict]) -> None:
 
 validate_site_configs(SITE_CONFIGS)
 
+__all__ = [
+    "SITE_CONFIGS",
+    "available_providers",
+    "load_site_configs",
+    "select_site_configs",
+    "validate_site_configs",
+]
