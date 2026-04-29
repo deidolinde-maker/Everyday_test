@@ -1,0 +1,15 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","218036","Сайт: https://mega-premium.ru/ [core] [chromium] [none]","","Wed Apr 29 07:40:38 UTC 2026","passed","Wed Apr 29 07:44:16 UTC 2026","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","234555","Сайт: https://mega-home-internet.ru/ [core] [chromium] [none]","","Wed Apr 29 07:44:16 UTC 2026","passed","Wed Apr 29 07:48:10 UTC 2026","service-mode: core","Формы провайдеров","",""
