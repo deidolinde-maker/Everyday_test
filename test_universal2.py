@@ -925,20 +925,12 @@ def wait_for_success_url(page: Page, timeout_ms: int = SUBMIT_CONFIRM_TIMEOUT_MS
     return False
 
 
-def wait_for_cf7_feedback_status(page: Page, timeout_ms: int = 2_000) -> str:
-    """
-    Пытается поймать AJAX-ответ Contact Form 7 feedback.
-    Возвращает status (например, mail_sent/validation_failed) или "".
-    """
-    try:
-        response = page.wait_for_response(
-            lambda r: "/wp-json/contact-form-7/" in (r.url or "").lower()
-            and "/feedback" in (r.url or "").lower(),
-            timeout=timeout_ms,
-        )
-    except Exception:
-        return ""
+def _is_cf7_feedback_url(url: str) -> bool:
+    normalized = (url or "").lower()
+    return "/wp-json/contact-form-7/" in normalized and "/feedback" in normalized
 
+
+def _extract_cf7_feedback_status(response) -> str:
     try:
         payload = response.json()
     except Exception:
@@ -950,6 +942,22 @@ def wait_for_cf7_feedback_status(page: Page, timeout_ms: int = 2_000) -> str:
         if not status and isinstance(payload.get("data"), dict):
             status = str(payload["data"].get("status") or "").strip().lower()
     return status
+
+
+def wait_for_cf7_feedback_status(page: Page, timeout_ms: int = 2_000) -> str:
+    """
+    Пытается поймать AJAX-ответ Contact Form 7 feedback.
+    Возвращает status (например, mail_sent/validation_failed) или "".
+    """
+    try:
+        response = page.wait_for_response(
+            lambda r: _is_cf7_feedback_url(r.url),
+            timeout=timeout_ms,
+        )
+    except Exception:
+        return ""
+
+    return _extract_cf7_feedback_status(response)
 
 
 def _snapshot_submit_network(page: Page) -> set[str]:
@@ -1662,62 +1670,94 @@ def submit_with_confirmation(
     if last_submit is None:
         return False
 
-    for attempt in range(1, attempts + 1):
-        cf7_status = ""
-        network_before = _snapshot_submit_network(page)
+    cf7_seen_statuses: list[str] = []
+
+    def _cf7_response_listener(response):
         try:
-            last_submit.scroll_into_view_if_needed()
-            last_submit.click(force=True)
+            if not _is_cf7_feedback_url(response.url):
+                return
+            status = _extract_cf7_feedback_status(response)
+            if status:
+                cf7_seen_statuses.append(status)
         except Exception:
-            # Форма могла перерендериться — пробуем найти submit снова
-            last_submit = find_submit(container, form_type)
-            if last_submit is None:
-                return False
-            last_submit.scroll_into_view_if_needed()
-            last_submit.click(force=True)
+            pass
 
-        cf7_timeout = browser_timeout(page, 1_200, 2_500)
-        cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=cf7_timeout)
-        if cf7_status:
-            print(f"  [SUBMIT] CF7 feedback status='{cf7_status}'")
+    listener_attached = False
+    try:
+        try:
+            page.on("response", _cf7_response_listener)
+            listener_attached = True
+        except Exception:
+            listener_attached = False
 
-        if is_firefox_browser(page):
-            page.wait_for_timeout(900)
-            network_probe = _snapshot_submit_network(page)
-            new_probe_requests = sorted(network_probe - network_before)
-            if new_probe_requests and not _has_non_tracking_requests(new_probe_requests):
-                native_triggered = _trigger_native_form_submit(container)
-                if native_triggered:
-                    print("  [SUBMIT] Firefox fallback: requestSubmit()/native click")
-                    page.wait_for_timeout(700)
-                    network_before = _snapshot_submit_network(page)
-                    cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=2_000) or cf7_status
-
-        ok = wait_for_success_url(page, timeout_ms=timeout_ms)
-        if ok:
-            return True
-        if cf7_status == "mail_sent":
-            print("  [SUBMIT] ✅ Подтверждено по CF7 mail_sent (без redirect)")
-            return True
-
-        network_after = _snapshot_submit_network(page)
-        new_requests = sorted(network_after - network_before)
-        if new_requests:
-            preview = " | ".join(_compact_request_url(item) for item in new_requests[:3])
-            print(f"  [SUBMIT] New XHR/fetch after submit: {preview}")
-        else:
-            print("  [SUBMIT] New XHR/fetch after submit: none")
-
-        if attempt < attempts:
-            print(f"  [SUBMIT] Повторная попытка {attempt + 1}/{attempts}")
+        for attempt in range(1, attempts + 1):
+            cf7_status = ""
+            network_before = _snapshot_submit_network(page)
             try:
-                print("  [SUBMIT] Стабилизация формы перед retry")
-                retry_notes = _stabilize_form_before_retry(page, container, form_type)
-                if retry_notes:
-                    print(f"  [SUBMIT] Retry diagnostics: {retry_notes}")
+                last_submit.scroll_into_view_if_needed()
+                last_submit.click(force=True)
             except Exception:
-                pass
-            page.wait_for_timeout(1200)
+                # Форма могла перерендериться — пробуем найти submit снова
+                last_submit = find_submit(container, form_type)
+                if last_submit is None:
+                    return False
+                last_submit.scroll_into_view_if_needed()
+                last_submit.click(force=True)
+
+            cf7_timeout = browser_timeout(page, 1_200, 2_500)
+            cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=cf7_timeout)
+            if not cf7_status and cf7_seen_statuses:
+                cf7_status = cf7_seen_statuses[-1]
+                print(f"  [SUBMIT] CF7 feedback status='{cf7_status}' (listener)")
+            elif cf7_status:
+                print(f"  [SUBMIT] CF7 feedback status='{cf7_status}'")
+
+            if is_firefox_browser(page):
+                page.wait_for_timeout(900)
+                network_probe = _snapshot_submit_network(page)
+                new_probe_requests = sorted(network_probe - network_before)
+                if new_probe_requests and not _has_non_tracking_requests(new_probe_requests):
+                    native_triggered = _trigger_native_form_submit(container)
+                    if native_triggered:
+                        print("  [SUBMIT] Firefox fallback: requestSubmit()/native click")
+                        page.wait_for_timeout(700)
+                        network_before = _snapshot_submit_network(page)
+                        cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=2_000) or cf7_status
+
+            ok = wait_for_success_url(page, timeout_ms=timeout_ms)
+            if ok:
+                return True
+            if cf7_status == "mail_sent":
+                print("  [SUBMIT] ✅ Подтверждено по CF7 mail_sent (без redirect)")
+                return True
+
+            network_after = _snapshot_submit_network(page)
+            new_requests = sorted(network_after - network_before)
+            if new_requests:
+                preview = " | ".join(_compact_request_url(item) for item in new_requests[:3])
+                print(f"  [SUBMIT] New XHR/fetch after submit: {preview}")
+            else:
+                print("  [SUBMIT] New XHR/fetch after submit: none")
+
+            if attempt < attempts:
+                print(f"  [SUBMIT] Повторная попытка {attempt + 1}/{attempts}")
+                try:
+                    print("  [SUBMIT] Стабилизация формы перед retry")
+                    retry_notes = _stabilize_form_before_retry(page, container, form_type)
+                    if retry_notes:
+                        print(f"  [SUBMIT] Retry diagnostics: {retry_notes}")
+                except Exception:
+                    pass
+                page.wait_for_timeout(1200)
+    finally:
+        if listener_attached:
+            try:
+                page.remove_listener("response", _cf7_response_listener)
+            except Exception:
+                try:
+                    page.off("response", _cf7_response_listener)
+                except Exception:
+                    pass
 
     return False
 
