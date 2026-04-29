@@ -1,0 +1,29 @@
+[Beeline beeline-ru.online] === СТАРТ ТЕСТА: Beeline beeline-ru.online ===
+[Beeline beeline-ru.online] URL: https://beeline-ru.online/
+[Beeline beeline-ru.online] ✅ Шаг 1: Открыть сайт — текущий URL: https://beeline-ru.online/
+[Beeline beeline-ru.online] Попап региона закрыт: «Да» (#yesButton)
+[Beeline beeline-ru.online] Баннер куки не обнаружен — продолжаем
+[Beeline beeline-ru.online] Элемент навигации найден: .cards-block-tab-button-mobile (1 в DOM, используем видимый)
+[Beeline beeline-ru.online] Текст навигации: 'Мобильная связь'
+[Beeline beeline-ru.online] ✅ Текст навигации — 'Мобильная связь'
+[Beeline beeline-ru.online] ✅ Шаг 2: Переход в раздел мобильных тарифов — кликнут .cards-block-tab-button-mobile
+[Beeline beeline-ru.online] ✅ Шаг 3: Скриншот — Beeline_beeline-ru.online_mobile_tariffs_opened
+[Beeline beeline-ru.online] Карточки: 8 для проверки (в DOM: 30, после фильтра классов: 30, видимых: 8)
+[Beeline beeline-ru.online] ✅ Шаг 4: Наличие блока мобильных тарифов — найдено 8 карточек мобильных тарифов
+[Beeline beeline-ru.online] Карточка #2: SKIP duplicate href='https://beeline.ru/customers/products/toptariffs/?utm_source=mobideal&utm_medium=cpa&utm_campaign=landing'
+[Beeline beeline-ru.online] Карточка #3: SKIP duplicate href='https://beeline.ru/customers/products/toptariffs/?utm_source=mobideal&utm_medium=cpa&utm_campaign=landing'
+[Beeline beeline-ru.online] Карточка #4: SKIP duplicate href='https://beeline.ru/customers/products/toptariffs/?utm_source=mobideal&utm_medium=cpa&utm_campaign=landing'
+[Beeline beeline-ru.online] Карточка #5: SKIP duplicate href='https://beeline.ru/customers/products/toptariffs/?utm_source=mobideal&utm_medium=cpa&utm_campaign=landing'
+[Beeline beeline-ru.online] Карточка #6: SKIP duplicate href='https://beeline.ru/customers/products/toptariffs/?utm_source=mobideal&utm_medium=cpa&utm_campaign=landing'
+[Beeline beeline-ru.online] Карточка #7: SKIP duplicate href='https://beeline.ru/customers/products/toptariffs/?utm_source=mobideal&utm_medium=cpa&utm_campaign=landing'
+[Beeline beeline-ru.online] Карточка #8: SKIP duplicate href='https://beeline.ru/customers/products/toptariffs/?utm_source=mobideal&utm_medium=cpa&utm_campaign=landing'
+[Beeline beeline-ru.online] Smoke dedupe: выбрано 1 уникальных карточек из лимита 3
+[Beeline beeline-ru.online] Проверяем 1 из 8 карточек (smoke)
+[Beeline beeline-ru.online] Карточка #1: href='https://beeline.ru/customers/products/toptariffs/?utm_source=mobideal&utm_medium=cpa&utm_campaign=landing', URL='https://beeline-ru.online/'
+[Beeline beeline-ru.online] ✅ Карточка #1: кнопка «Подключить» — редирект в текущей вкладке → https://moskva.beeline.ru/customers/products/toptariffs/?utm_source=mobideal&utm_medium=cpa&utm_campaign=landing
+[Beeline beeline-ru.online] Возврат назад после редиректа в текущей вкладке
+[Beeline beeline-ru.online] Попап региона не обнаружен — продолжаем
+[Beeline beeline-ru.online] Баннер куки не обнаружен — продолжаем
+[Beeline beeline-ru.online] Мобильный раздел повторно открыт после возврата
+[Beeline beeline-ru.online] ✅ Шаги 5-7: Кнопки «Подключить» — проверено 1/1, все редиректы успешны
+[Beeline beeline-ru.online] === ТЕСТ ПРОЙДЕН: Beeline beeline-ru.online ===

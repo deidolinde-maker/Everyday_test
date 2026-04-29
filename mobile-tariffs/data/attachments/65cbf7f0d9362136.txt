@@ -1,0 +1,5 @@
+Лендинг       : MTS mts-home-online.ru
+URL           : https://mts-home-online.ru/
+Карточек всего: 7
+Проверено     : 3
+Результат     : ✅ ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ

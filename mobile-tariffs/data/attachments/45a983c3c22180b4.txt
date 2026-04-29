@@ -1,0 +1,33 @@
+[Megafon mega-home-internet.ru] === СТАРТ ТЕСТА: Megafon mega-home-internet.ru ===
+[Megafon mega-home-internet.ru] URL: https://mega-home-internet.ru
+[Megafon mega-home-internet.ru] ✅ Шаг 1: Открыть сайт — текущий URL: https://mega-home-internet.ru/
+[Megafon mega-home-internet.ru] Попап региона не обнаружен — продолжаем
+[Megafon mega-home-internet.ru] Баннер куки не обнаружен — продолжаем
+[Megafon mega-home-internet.ru] Элемент навигации найден: button.tariffs-switch__tab[data-pane='mobile'] (1 в DOM, используем видимый)
+[Megafon mega-home-internet.ru] Текст навигации: 'Мобильные тарифы'
+[Megafon mega-home-internet.ru] ✅ Текст навигации — 'Мобильные тарифы'
+[Megafon mega-home-internet.ru] ✅ Шаг 2: Переход в раздел мобильных тарифов — кликнут button.tariffs-switch__tab[data-pane='mobile']
+[Megafon mega-home-internet.ru] ✅ Шаг 3: Скриншот — Megafon_mega-home-internet.ru_mobile_tariffs_opened
+[Megafon mega-home-internet.ru] Карточки: 6 для проверки (в DOM: 19, после фильтра классов: 19, видимых: 6)
+[Megafon mega-home-internet.ru] ✅ Шаг 4: Наличие блока мобильных тарифов — найдено 6 карточек мобильных тарифов
+[Megafon mega-home-internet.ru] Проверяем 3 из 6 карточек (smoke)
+[Megafon mega-home-internet.ru] Карточка #1: href='https://mobile.101internet.ru/megafon', URL='https://mega-home-internet.ru/'
+[Megafon mega-home-internet.ru] ✅ Карточка #1: кнопка «Подключить» — редирект в текущей вкладке → https://mobile.101internet.ru/megafon
+[Megafon mega-home-internet.ru] Возврат назад после редиректа в текущей вкладке
+[Megafon mega-home-internet.ru] Попап региона не обнаружен — продолжаем
+[Megafon mega-home-internet.ru] Баннер куки не обнаружен — продолжаем
+[Megafon mega-home-internet.ru] Мобильный раздел повторно открыт после возврата
+[Megafon mega-home-internet.ru] Карточка #2: href='https://mobile.101internet.ru/megafon', URL='https://mega-home-internet.ru/'
+[Megafon mega-home-internet.ru] ✅ Карточка #2: кнопка «Подключить» — редирект в текущей вкладке → https://mobile.101internet.ru/megafon
+[Megafon mega-home-internet.ru] Возврат назад после редиректа в текущей вкладке
+[Megafon mega-home-internet.ru] Попап региона не обнаружен — продолжаем
+[Megafon mega-home-internet.ru] Баннер куки не обнаружен — продолжаем
+[Megafon mega-home-internet.ru] Мобильный раздел повторно открыт после возврата
+[Megafon mega-home-internet.ru] Карточка #3: href='https://mobile.101internet.ru/megafon', URL='https://mega-home-internet.ru/'
+[Megafon mega-home-internet.ru] ✅ Карточка #3: кнопка «Подключить» — редирект в текущей вкладке → https://mobile.101internet.ru/megafon
+[Megafon mega-home-internet.ru] Возврат назад после редиректа в текущей вкладке
+[Megafon mega-home-internet.ru] Попап региона не обнаружен — продолжаем
+[Megafon mega-home-internet.ru] Баннер куки не обнаружен — продолжаем
+[Megafon mega-home-internet.ru] Мобильный раздел повторно открыт после возврата
+[Megafon mega-home-internet.ru] ✅ Шаги 5-7: Кнопки «Подключить» — проверено 3/3, все редиректы успешны
+[Megafon mega-home-internet.ru] === ТЕСТ ПРОЙДЕН: Megafon mega-home-internet.ru ===

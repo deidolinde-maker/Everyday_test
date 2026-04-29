@@ -1,0 +1,5 @@
+Лендинг       : Beeline beeline-ru.online
+URL           : https://beeline-ru.online/
+Карточек всего: 8
+Проверено     : 1
+Результат     : ✅ ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ

@@ -1,0 +1,7 @@
+Карточка #2
+────────────────────────────────────────
+  href          : https://t2.ru/shop/checkout?simplePurchase=true&utm_source=webdealer&utm_medium=leads&utm_campaign=webdealer_ooo_online-services_300000012029
+  URL до клика  : https://t2-ru.online/moskva/mobilnaya-svyaz
+  URL после     : https://msk.t2.ru/shop/checkout?simplePurchase=true&utm_campaign=webdealer_ooo_online-services_300000012029&utm_medium=leads&utm_source=webdealer&pageParams=askForRegion%3Dtrue
+  Тип перехода  : new_tab
+  Результат     : ✅ PASSED
