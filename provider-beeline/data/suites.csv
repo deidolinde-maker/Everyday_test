@@ -1,0 +1,43 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","291577","Сайт: https://beeline-internet.online/ [core] [chromium] [none]","","Wed Apr 29 07:14:10 UTC 2026","passed","Wed Apr 29 07:19:01 UTC 2026","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","219026","Сайт: https://beeline-ru.pro/ [core] [chromium] [none]","","Wed Apr 29 07:28:32 UTC 2026","passed","Wed Apr 29 07:32:11 UTC 2026","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","302523","Сайт: https://online-beeline.ru/ [core] [chromium] [none]","","Wed Apr 29 07:23:30 UTC 2026","passed","Wed Apr 29 07:28:32 UTC 2026","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","224187","Сайт: https://beeline-home.online/ [core] [chromium] [none]","","Wed Apr 29 07:32:11 UTC 2026","passed","Wed Apr 29 07:35:56 UTC 2026","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","268290","Сайт: https://beeline-ru.online/ [core] [chromium] [none]","","Wed Apr 29 07:19:01 UTC 2026","passed","Wed Apr 29 07:23:30 UTC 2026","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","216787","Сайт: https://beelline-internet.ru/ [core] [chromium] [none]","","Wed Apr 29 07:35:56 UTC 2026","passed","Wed Apr 29 07:39:32 UTC 2026","service-mode: core","Формы провайдеров","",""
