@@ -1,0 +1,1 @@
+POPUP 4/4 text='как подключить мтс интернет в москве?' hint=None code=no_confirmation url=https://moskva.mts-home.online/thanks | service=без выбора варианта
