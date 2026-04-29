@@ -1,5 +1,5 @@
 # PRODUCT_CONTEXT
-Обновлено: 2026-04-28
+Обновлено: 2026-04-29
 
 ## 1. Общее описание продукта
 - Продукт: репозиторий автотестов `Everyday_test` для проверки лендингов интернет-провайдеров.
@@ -163,16 +163,16 @@
   - `2b0659f`: обновление городских настроек и домена T2,
   - `a9d1a58`: отключен `/business` для `rt-internet.online` и `rtk-home-internet.ru`.
 - CI:
-  - `allure.yml` (формы): schedule `0 5 * * *`, workflow_dispatch (без автозапуска по push).
+  - основной контур Suite A: `provider-orchestrator.yml` + ручные `provider-<name>.yml` (MTS/Beeline/Megafon/T2/Rostelecom/Domru), запуск через `workflow_dispatch`;
+  - `allure.yml` (формы): legacy/fallback workflow, только `workflow_dispatch` (без cron и без автозапуска по push).
   - `allure.yml` выполняет clean multi-browser запуск:
     - для ручного запуска поддержаны флаги `run_chromium` / `run_firefox` (можно прогонять только выбранные браузеры);
-    - в расписании выполняется полный clean multi-browser (`chromium` + `firefox`);
     - `core/variants` запускаются только для выбранных браузеров, `variants` управляется `run_place_variants`;
     - firefox-прогон не зависит от успешности chromium-прогона (ограничение "только после успешного шага" снято).
     - для `core/variants` заданы step-timeout в workflow для ограничения длительных зависаний.
   - adblock-профиль вынесен в отдельный ручной workflow `allure-adblock.yml` (`firefox` + `blocking_profile=adblock-mvp`).
   - `allure.yml` сохраняет state агрегированных алертов в `notify_state.json` (публикуется в `gh-pages`) для детекции восстановления между прогонами.
-  - `mobile-tariffs.yml`: workflow_dispatch + workflow_run после `Playwright Tests`, публикация Allure в `gh-pages/mobile-tariffs`.
+  - `mobile-tariffs.yml`: только `workflow_dispatch`, публикация Allure в `gh-pages/mobile-tariffs`.
 - Количество конфигов на 2026-04-13:
   - Suite A: 23 сайта,
   - Suite B: 10 лендингов.

@@ -20,7 +20,7 @@
 - `mobile_tariffs_tests/conftest.py` - фикстуры и параметризация по `LANDINGS`.
 - `mobile_tariffs_tests/utils/helpers.py` - шаговые алерты/утилиты mobile suite.
 - `mobile_tariffs_tests/notify_from_allure_mobile.py` - итоговый mobile summary в Telegram.
-- `.github/workflows/allure.yml` - CI формы.
+- `.github/workflows/allure.yml` - legacy/fallback CI формы (ручной запуск).
 - `.github/workflows/provider-mts.yml` - ручной провайдерный прогон MTS.
 - `.github/workflows/provider-beeline.yml` - ручной провайдерный прогон Beeline.
 - `.github/workflows/provider-megafon.yml` - ручной провайдерный прогон Megafon.
@@ -196,11 +196,11 @@ Run: <RUN_URL>    # если задан
 
 ## 5. CI/CD (GitHub Actions)
 
-### 5.1 Формы: `.github/workflows/allure.yml`
+### 5.1 Формы (legacy/fallback): `.github/workflows/allure.yml`
 
 Триггеры:
 - `workflow_dispatch` (входные параметры `site`, `run_place_variants`, `run_chromium`, `run_firefox`),
-- `schedule: 0 5 * * *`.
+- без cron-автозапуска.
 
 Что делает:
 1. Ставит Python и зависимости.
@@ -231,8 +231,7 @@ Run: <RUN_URL>    # если задан
 ### 5.3 Mobile: `.github/workflows/mobile-tariffs.yml`
 
 Триггеры:
-- `workflow_dispatch` (входной параметр `landing_filter`),
-- `workflow_run` после успешного `Playwright Tests`.
+- `workflow_dispatch` (входной параметр `landing_filter`).
 
 Что делает:
 1. Ставит зависимости `mobile_tariffs_tests`.
@@ -241,15 +240,11 @@ Run: <RUN_URL>    # если задан
 4. Отправляет Telegram summary.
 5. Финально роняет job, если тесты упали.
 
-### 5.4 Во сколько запускается на сервере
+### 5.4 Автозапуск
 
-- GitHub Actions работает в UTC.
-- Автозапуск `allure.yml` по cron `0 5 * * *`:
-  - `05:00 UTC` каждый день,
-  - `08:00` по Москве (MSK).
-- `mobile-tariffs.yml` не имеет собственного cron:
-  - запускается вручную,
-  - или после успешного завершения workflow `Playwright Tests`.
+- В текущей конфигурации автозапуск legacy workflow отключён.
+- Основной запуск Suite A выполняется вручную через `provider-orchestrator.yml` (или точечно через `provider-<name>.yml`).
+- Legacy `allure.yml` и `mobile-tariffs.yml` запускаются только вручную (`workflow_dispatch`).
 
 ## 6. Как добавить новый URL (подробно)
 
@@ -285,7 +280,16 @@ Run: <RUN_URL>    # если задан
 
 ### 6.2 Добавить URL в ручной запуск CI для Suite A
 
-В GitHub Actions -> `Playwright Tests` -> `Run workflow`:
+Рекомендуемый путь:
+
+В GitHub Actions -> `Provider Orchestrator` -> `Run workflow`:
+
+1. Для полного прогона оставить `site` пустым.
+2. Для точечного прогона указать `site` (домен `site_id`, например, `example-site.ru`).
+
+Точечный провайдерный путь:
+
+В GitHub Actions -> `provider-<name>` -> `Run workflow`:
 
 1. В поле `site` указать домен-сайт (`site_id`, например, `example-site.ru`).
 2. Пустое поле `site` = прогон всех сайтов.
