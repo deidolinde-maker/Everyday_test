@@ -453,6 +453,20 @@ REGION_POPUP_DETECT_SELECTORS = [
     ".popup-select-region__content-wrapper .popup__close",
 ]
 
+MTS_MOBILE_BURGER_HOSTS = {
+    "mts-home-gpon.ru",
+    "mts-home.online",
+    "mts-home-online.ru",
+    "moskva.mts-home-online.ru",
+    "moskva.mts-home.online",
+}
+
+MTS_MOBILE_BURGER_TOGGLE = "input#burger-nav"
+MTS_MOBILE_BURGER_OPEN_SELECTORS = [
+    "nav.burger-nav__menu",
+    "ul.burger-nav__list",
+]
+
 THANKS_RETURN_SELECTORS = [
     "a:has-text('На главную')",
     "button:has-text('На главную')",
@@ -689,6 +703,7 @@ def close_overlays(page: Page):
 
     # Шаг 2: баннер согласия на cookies (РТК и другие)
     accept_cookie_banner(page)
+    close_mobile_burger_menu(page)
 
     try:
         ok = page.get_by_role("button", name="ОК", exact=True)
@@ -710,6 +725,65 @@ def close_overlays(page: Page):
             pass
     try:
         page.keyboard.press("Escape")
+    except Exception:
+        pass
+
+
+def close_mobile_burger_menu(page: Page):
+    """
+    Mobile pre-step: закрывает MTS burger menu/overlay, если он открыт.
+    Безопасно для desktop: при отсутствии селекторов ничего не делает.
+    """
+    try:
+        vp = page.viewport_size or {}
+        width = int(vp.get("width") or 0)
+        if not (0 < width <= 480):
+            return
+    except Exception:
+        return
+
+    try:
+        host = (urlsplit(page.url).netloc or "").lower()
+    except Exception:
+        host = ""
+
+    if not any(host.endswith(h) for h in MTS_MOBILE_BURGER_HOSTS):
+        return
+
+    toggle = page.locator(MTS_MOBILE_BURGER_TOGGLE).first
+
+    is_open_by_menu = False
+    for sel in MTS_MOBILE_BURGER_OPEN_SELECTORS:
+        try:
+            loc = page.locator(sel).first
+            if loc.count() > 0 and loc.is_visible():
+                is_open_by_menu = True
+                break
+        except Exception:
+            pass
+
+    is_open_by_toggle = False
+    try:
+        if toggle.count() > 0 and toggle.is_visible():
+            is_open_by_toggle = toggle.is_checked()
+    except Exception:
+        is_open_by_toggle = False
+
+    if not (is_open_by_menu or is_open_by_toggle):
+        return
+
+    try:
+        if toggle.count() > 0 and toggle.is_visible():
+            toggle.click(force=True)
+            page.wait_for_timeout(150)
+            print("  [MOBILE] Burger menu closed via #burger-nav toggle")
+    except Exception:
+        pass
+
+    # Safety net: dismiss residual menu overlays if any.
+    try:
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(120)
     except Exception:
         pass
 
@@ -1411,6 +1485,50 @@ def fill_form(page: Page, container, form_type: str,
         choose_first_suggestion(page, timeout_ms=suggest_timeout, field=street_local)
         return True
 
+    def try_mobile_house_tap_and_fill(house_field) -> bool:
+        # Mobile fallback for checkaddress: some layouts keep the house input
+        # visually usable but it does not flip to "enabled" in time.
+        if form_type != "checkaddress":
+            return False
+        print("  [FORM] House activation fallback: tap/input for checkaddress")
+
+        try:
+            house_field.scroll_into_view_if_needed()
+            house_field.click(force=True)
+            page.wait_for_timeout(120)
+
+            try:
+                box = house_field.bounding_box()
+                if box:
+                    page.touchscreen.tap(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+                    page.wait_for_timeout(120)
+            except Exception:
+                pass
+
+            try:
+                house_field.fill("1")
+            except Exception:
+                try:
+                    house_field.press_sequentially("1", delay=20)
+                except Exception:
+                    try:
+                        page.keyboard.type("1", delay=20)
+                    except Exception:
+                        pass
+
+            try:
+                current_house = (house_field.input_value() or "").strip()
+            except Exception:
+                current_house = ""
+
+            if current_house:
+                print("  [FORM] Mobile fallback: house entered via tap/input")
+                return True
+        except Exception as e:
+            print(f"  [FORM] Mobile fallback for house failed: {e}")
+
+        return False
+
     # Address / Street
     if not fill_street_and_pick():
         return False
@@ -1446,6 +1564,9 @@ def fill_form(page: Page, container, form_type: str,
                         break
                     except Exception as e:
                         print(f"  [FORM] House field did not activate: {e}")
+                        if try_mobile_house_tap_and_fill(house):
+                            house_ready = True
+                            break
 
                 if house_attempt == 1:
                     print("  [FORM] Retry with full refill...")
@@ -1808,6 +1929,7 @@ def process_auto_profit_popup(
     # Для корректного ожидания авто-попапа закрываем только region/cookie.
     dismiss_region_popup(page)
     accept_cookie_banner(page)
+    close_mobile_burger_menu(page)
 
     form_type, container = wait_for_popup_with_fields(
         timeout_ms=browser_timeout(page, 12_000, 16_000),
@@ -2006,6 +2128,7 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                 return None, None, "failed"
 
             accept_cookie_banner(page)
+            close_mobile_burger_menu(page)
             try:
                 retry_btn = btn_locator_fn(page, entry)
                 retry_btn.scroll_into_view_if_needed()
@@ -2052,6 +2175,7 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
             register_failure("navigation_failed", nav_reason[:180])
             continue
         accept_cookie_banner(page)
+        close_mobile_burger_menu(page)
 
         try:
             btn = btn_locator_fn(page, entry)
