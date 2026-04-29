@@ -1,3 +1,5 @@
+import os
+
 import pytest
 import allure
 
@@ -99,6 +101,15 @@ def blocking_profile(pytestconfig):
 @pytest.fixture(scope="session")
 def execution_profile(pytestconfig):
     return pytestconfig.getoption("--execution-profile", default="desktop")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def expose_execution_profile_to_process_env(execution_profile):
+    """
+    Экспортируем execution profile в env, чтобы runtime-логика теста
+    могла строго разделять desktop/mobile поведение.
+    """
+    os.environ["PYTEST_EXECUTION_PROFILE"] = execution_profile
 
 
 @pytest.fixture(scope="session", autouse=True)

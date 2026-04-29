@@ -506,6 +506,14 @@ SERVICE_MODE_VARIANTS = "variants"
 SERVICE_MODE_CHOICES = {SERVICE_MODE_ALL, SERVICE_MODE_CORE, SERVICE_MODE_VARIANTS}
 
 
+def get_execution_profile_name() -> str:
+    return (os.getenv("PYTEST_EXECUTION_PROFILE") or "desktop").strip().lower()
+
+
+def is_mobile_execution_profile() -> bool:
+    return get_execution_profile_name().startswith("mobile-")
+
+
 def normalize_service_mode(value: str | None) -> str:
     mode = (value or SERVICE_MODE_ALL).strip().lower()
     if mode not in SERVICE_MODE_CHOICES:
@@ -734,6 +742,9 @@ def close_mobile_burger_menu(page: Page):
     Mobile pre-step: закрывает MTS burger menu/overlay, если он открыт.
     Безопасно для desktop: при отсутствии селекторов ничего не делает.
     """
+    if not is_mobile_execution_profile():
+        return
+
     try:
         vp = page.viewport_size or {}
         width = int(vp.get("width") or 0)
@@ -1486,6 +1497,9 @@ def fill_form(page: Page, container, form_type: str,
         return True
 
     def try_mobile_house_tap_and_fill(house_field) -> bool:
+        if not is_mobile_execution_profile():
+            return False
+
         # Mobile fallback for checkaddress: some layouts keep the house input
         # visually usable but it does not flip to "enabled" in time.
         if form_type != "checkaddress":
