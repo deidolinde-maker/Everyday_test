@@ -5,4 +5,32 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","197637","Сайт: https://mts-home.online/ [core] [chromium] [none]","","2026-04-29","passed","2026-04-29","service-mode: core","Формы провайдеров","",""
+    ","187884","Сайт: https://mts-internet.online/ [core] [chromium] [none]","","2026-04-29","passed","2026-04-29","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","211433","Сайт: https://mts-home.online/ [core] [chromium] [none]","","2026-04-29","passed","2026-04-29","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","190207","Сайт: https://internet-mts-home.online/ [core] [chromium] [none]","","2026-04-29","passed","2026-04-29","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","329716","Сайт: https://mts-home-gpon.ru/ [core] [chromium] [none]","","2026-04-29","passed","2026-04-29","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","318141","Сайт: https://mts-home-online.ru/ [core] [chromium] [none]","","2026-04-29","passed","2026-04-29","service-mode: core","Формы провайдеров","",""
