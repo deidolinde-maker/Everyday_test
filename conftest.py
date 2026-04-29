@@ -16,6 +16,17 @@ ADBLOCK_MVP_BLOCKLIST = (
     "banner",
 )
 
+EXECUTION_PROFILE_ALLOWED_BROWSERS = {
+    "desktop": {"chromium", "firefox", "webkit"},
+    "mobile-chromium": {"chromium"},
+    "mobile-webkit": {"webkit"},
+}
+
+EXECUTION_PROFILE_DEVICE_PRESET = {
+    "mobile-chromium": "Pixel 5",
+    "mobile-webkit": "iPhone 12",
+}
+
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -48,8 +59,11 @@ def pytest_addoption(parser):
         "--execution-profile",
         action="store",
         default="desktop",
-        choices=("desktop", "mobile-chromium"),
-        help="Профиль исполнения: desktop (по умолчанию) или mobile-chromium (эмуляция мобильного браузера).",
+        choices=("desktop", "mobile-chromium", "mobile-webkit"),
+        help=(
+            "Профиль исполнения: desktop (по умолчанию), "
+            "mobile-chromium или mobile-webkit (эмуляция мобильного браузера)."
+        ),
     )
 
 
@@ -91,21 +105,27 @@ def execution_profile(pytestconfig):
 def validate_execution_profile(pytestconfig):
     profile = pytestconfig.getoption("--execution-profile", default="desktop")
     browsers = _normalize_browser_option(pytestconfig.getoption("--browser", default=None))
-    if profile == "mobile-chromium" and browsers and any(b != "chromium" for b in browsers):
+    allowed = EXECUTION_PROFILE_ALLOWED_BROWSERS.get(profile, set())
+
+    if browsers and any(b not in allowed for b in browsers):
+        allowed_list = ", ".join(sorted(allowed)) if allowed else "<none>"
+        actual_list = ", ".join(browsers)
         raise pytest.UsageError(
-            "--execution-profile=mobile-chromium поддерживает только --browser chromium."
+            f"--execution-profile={profile} поддерживает только --browser: {allowed_list}. "
+            f"Получено: {actual_list}."
         )
 
 
 @pytest.fixture(scope="session")
 def browser_context_args(browser_context_args, playwright, execution_profile):
-    if execution_profile != "mobile-chromium":
+    device_preset_name = EXECUTION_PROFILE_DEVICE_PRESET.get(execution_profile)
+    if not device_preset_name:
         return browser_context_args
 
-    pixel_5 = playwright.devices["Pixel 5"]
+    device_preset = playwright.devices[device_preset_name]
     return {
         **browser_context_args,
-        **pixel_5,
+        **device_preset,
     }
 
 
