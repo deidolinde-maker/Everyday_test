@@ -44,6 +44,22 @@ def pytest_addoption(parser):
         choices=("none", "adblock-mvp"),
         help="Профиль блокировщиков: none (по умолчанию) или adblock-mvp.",
     )
+    parser.addoption(
+        "--execution-profile",
+        action="store",
+        default="desktop",
+        choices=("desktop", "mobile-chromium"),
+        help="Профиль исполнения: desktop (по умолчанию) или mobile-chromium (эмуляция мобильного браузера).",
+    )
+
+
+def _normalize_browser_option(browser_opt) -> list[str]:
+    if browser_opt is None:
+        return []
+    if isinstance(browser_opt, (list, tuple)):
+        return [str(x).strip().lower() for x in browser_opt if str(x).strip()]
+    value = str(browser_opt).strip().lower()
+    return [value] if value else []
 
 
 def _should_block_request(url: str, resource_type: str) -> bool:
@@ -64,6 +80,33 @@ def _should_block_request(url: str, resource_type: str) -> bool:
 @pytest.fixture
 def blocking_profile(pytestconfig):
     return pytestconfig.getoption("--blocking-profile", default="none")
+
+
+@pytest.fixture(scope="session")
+def execution_profile(pytestconfig):
+    return pytestconfig.getoption("--execution-profile", default="desktop")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def validate_execution_profile(pytestconfig):
+    profile = pytestconfig.getoption("--execution-profile", default="desktop")
+    browsers = _normalize_browser_option(pytestconfig.getoption("--browser", default=None))
+    if profile == "mobile-chromium" and browsers and any(b != "chromium" for b in browsers):
+        raise pytest.UsageError(
+            "--execution-profile=mobile-chromium поддерживает только --browser chromium."
+        )
+
+
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args, playwright, execution_profile):
+    if execution_profile != "mobile-chromium":
+        return browser_context_args
+
+    pixel_5 = playwright.devices["Pixel 5"]
+    return {
+        **browser_context_args,
+        **pixel_5,
+    }
 
 
 @pytest.fixture(autouse=True)

@@ -1,0 +1,138 @@
+name: Provider MTS Mobile Pilot
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: 'Site domain inside provider (leave empty to run all provider sites)'
+        required: false
+        default: ''
+      run_place_variants:
+        description: 'Run Place variants checks'
+        required: false
+        default: false
+        type: boolean
+      blocking_profile:
+        description: 'Blocking profile'
+        required: false
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - adblock-mvp
+
+jobs:
+  provider_mobile_test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      PROVIDER_NAME: mts
+      EXECUTION_PROFILE: mobile-chromium
+      BLOCKING_PROFILE: ${{ inputs.blocking_profile || 'none' }}
+      RUN_PLACE_VARIANTS: ${{ inputs.run_place_variants && 'true' || 'false' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest playwright pytest-playwright allure-pytest pytest-timeout requests
+          python -m pip show playwright
+
+      - name: Install Chromium
+        run: |
+          python -m playwright install chromium
+          python -m playwright install-deps chromium
+
+      - name: Run Core tests (mobile chromium)
+        timeout-minutes: 120
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-core-mobile-chromium
+            --timeout=600
+            -s
+            --service-mode=core
+            --browser=chromium
+            --execution-profile="${EXECUTION_PROFILE}"
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running CORE MOBILE: provider=${PROVIDER_NAME}, browser=chromium, profile=${EXECUTION_PROFILE}"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          SITE_INPUT: ${{ inputs.site }}
+
+      - name: Run Place Variants tests (mobile chromium)
+        if: ${{ always() && env.RUN_PLACE_VARIANTS == 'true' }}
+        timeout-minutes: 120
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-variants-mobile-chromium
+            --timeout=600
+            -s
+            --service-mode=variants
+            --browser=chromium
+            --execution-profile="${EXECUTION_PROFILE}"
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running VARIANTS MOBILE: provider=${PROVIDER_NAME}, browser=chromium, profile=${EXECUTION_PROFILE}"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          SITE_INPUT: ${{ inputs.site }}
+
+      - name: Merge Allure results
+        if: always()
+        run: |
+          mkdir -p allure-results
+          if [ -d allure-results-core-mobile-chromium ]; then
+            cp -R allure-results-core-mobile-chromium/. allure-results/
+          fi
+          if [ -d allure-results-variants-mobile-chromium ]; then
+            cp -R allure-results-variants-mobile-chromium/. allure-results/
+          fi
+
+      - name: Upload Allure results artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-provider-mts-mobile
+          path: allure-results/
+          retention-days: 30
+
+      - name: Build Allure report
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        with:
+          allure_results: allure-results
+          allure_report: allure-report
+          allure_history: allure-history
+
+      - name: Publish report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-report
+          destination_dir: provider-mts-mobile
+          keep_files: true
