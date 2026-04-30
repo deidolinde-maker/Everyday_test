@@ -190,3 +190,18 @@
 - результат (pass/fail);
 - остаточный риск;
 - следующий шаг.
+
+## Статус на 2026-04-30
+- `P4-R1`-`P4-R7`: выполнено.
+- `P4-R8`: частично выполнено.
+  - `core` mobile: подтверждён green по провайдерам.
+  - `variants` mobile: подтверждён green (включая нестабильные `domru`, `t2`).
+  - `adblock-mvp` mobile: отложено по решению команды в отдельный follow-up.
+- `P4-R10`: выполнено частично (README обновлён по mobile provider workflows и запуску matrix).
+
+Принятое решение:
+- Не блокировать rollout mobile-контуром `adblock-mvp`.
+- Вернуться к mobile adblock после stability-soak текущего clean-контура.
+
+Следующий шаг:
+- `P4-R9` (release guardrails и rollback-механика) + финальная фиксация `P4-R10`.
