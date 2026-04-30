@@ -1,0 +1,1 @@
+[providerdom.ru] Шаг 1: форма checkaddress — неприменим (has_checkaddress=False)
