@@ -247,44 +247,7 @@ Run: <RUN_URL>    # если задан
 - Основной запуск Suite A выполняется вручную через `provider-orchestrator.yml` (или точечно через `provider-<name>.yml`).
 - Legacy `allure.yml` и `mobile-tariffs.yml` запускаются только вручную (`workflow_dispatch`).
 
-### 5.5 Mobile provider workflows (`provider-*-mobile-*.yml`)
-
-Триггеры:
-- `workflow_dispatch` (входные параметры `site`, `run_place_variants`, `blocking_profile`).
-
-Что делает:
-1. Запускает `core` в mobile execution profile:
-   - `provider-<name>-mobile-chromium.yml` -> `--browser=chromium --execution-profile=mobile-chromium`;
-   - `provider-<name>-mobile-webkit.yml` -> `--browser=webkit --execution-profile=mobile-webkit`.
-2. Опционально запускает `variants` (если `run_place_variants=true`).
-3. Поддерживает blocking-профиль через `blocking_profile`:
-   - `none` (clean),
-   - `adblock-mvp`.
-4. Публикует отдельный Allure report в `gh-pages/provider-<name>-mobile-<browser>/`.
-
-Практический режим запуска:
-1. Стабилизация mobile `core`: `run_place_variants=false`, `blocking_profile=none`.
-2. Расширение матрицы (`P4-R8`): `run_place_variants=true`.
-3. Проверка adblock на mobile: `blocking_profile=adblock-mvp` (+ при необходимости `run_place_variants=true`).
-
-### 5.6 Mobile rollback и guardrails
-
-Во всех `provider-*-mobile*.yml` включён feature-gate:
-- input `mobile_rollout_enabled` (уровень одного запуска workflow),
-- repository variable `MOBILE_ROLLOUT_ENABLED` (глобальный gate для всех mobile provider workflow).
-
-Быстрый rollback без изменения desktop:
-1. Global stop:
-   - GitHub -> `Settings` -> `Secrets and variables` -> `Actions` -> `Variables`.
-   - Установить `MOBILE_ROLLOUT_ENABLED=false`.
-   - После этого mobile provider workflow будут переходить в `mobile_rollout_disabled` job и пропускать тестовый job.
-2. Точечный stop для одного запуска:
-   - при `Run workflow` выставить `mobile_rollout_enabled=false`.
-3. Возврат к normal mode:
-   - вернуть `MOBILE_ROLLOUT_ENABLED=true` (или удалить переменную),
-   - запускать workflow с `mobile_rollout_enabled=true`.
-
-### 5.7 Mobile orchestrator: `.github/workflows/provider-mobile-orchestrator.yml`
+### 5.5 Mobile orchestrator: `.github/workflows/provider-mobile-orchestrator.yml`
 
 Триггеры:
 - `workflow_dispatch` (входные параметры `provider_scope`, `site`, `run_chromium`, `run_webkit`, `run_place_variants`, `blocking_profile`).
@@ -302,6 +265,28 @@ Run: <RUN_URL>    # если задан
 5. Поддерживает те же rollout guardrails:
    - input `mobile_rollout_enabled`;
    - repository variable `MOBILE_ROLLOUT_ENABLED`.
+
+Практический режим запуска:
+1. Стабилизация mobile `core`: `run_place_variants=false`, `blocking_profile=none`.
+2. Расширение матрицы (`P4-R8`): `run_place_variants=true`.
+3. Проверка adblock на mobile: `blocking_profile=adblock-mvp` (+ при необходимости `run_place_variants=true`).
+
+### 5.6 Mobile rollback и guardrails
+
+В `provider-mobile-orchestrator.yml` включён feature-gate:
+- input `mobile_rollout_enabled` (уровень одного запуска workflow),
+- repository variable `MOBILE_ROLLOUT_ENABLED` (глобальный gate).
+
+Быстрый rollback без изменения desktop:
+1. Global stop:
+   - GitHub -> `Settings` -> `Secrets and variables` -> `Actions` -> `Variables`.
+   - Установить `MOBILE_ROLLOUT_ENABLED=false`.
+   - После этого mobile orchestrator будет переходить в `mobile_rollout_disabled` job и пропускать матричный тестовый job.
+2. Точечный stop для одного запуска:
+   - при `Run workflow` выставить `mobile_rollout_enabled=false`.
+3. Возврат к normal mode:
+   - вернуть `MOBILE_ROLLOUT_ENABLED=true` (или удалить переменную),
+   - запускать workflow с `mobile_rollout_enabled=true`.
 
 ## 6. Как добавить новый URL (подробно)
 

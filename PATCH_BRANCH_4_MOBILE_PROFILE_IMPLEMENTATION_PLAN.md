@@ -211,6 +211,7 @@
   - добавлен `.github/workflows/provider-mobile-orchestrator.yml`;
   - централизованный `workflow_dispatch` для mobile matrix (`smoke/all`, `chromium/webkit`, `core/variants`);
   - дефолтный clean-контур `blocking_profile=none` сохранён.
+  - временные provider-specific mobile pilot workflow удалены как дублирующие.
 
 Принятое решение:
 - Не блокировать rollout mobile-контуром `adblock-mvp`.
