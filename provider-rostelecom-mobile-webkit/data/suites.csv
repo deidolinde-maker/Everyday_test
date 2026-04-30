@@ -1,0 +1,36 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","294462","Сайт: https://rt-internet.online/ [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","292394","Сайт: https://rtk-home-internet.ru/ [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","418535","Сайт: https://rtk-internet.online/ [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","341226","Сайт: http://rtk-home.ru/ [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","281598","Сайт: https://rtk-ru.online/ [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
