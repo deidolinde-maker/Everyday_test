@@ -5,4 +5,4 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","16484","Сайт: https://mega-home-internet.ru/ [core] [webkit] [none]","","2026-04-30","skipped","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","236027","Сайт: https://mega-home-internet.ru/ [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
