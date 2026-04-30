@@ -5,102 +5,32 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","197989","Сайт: https://mts-internet.online/ [core] [webkit] [none]","","Wed Apr 29 11:18:35 UTC 2026","passed","Wed Apr 29 11:21:53 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","184372","Сайт: https://internet-mts-home.online/ [core] [chromium] [none]","","Thu Apr 30 06:23:36 UTC 2026","passed","Thu Apr 30 06:26:40 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","284102","Сайт: https://mts-home.online/ [core] [firefox] [none]","","Wed Apr 29 10:39:19 UTC 2026","passed","Wed Apr 29 10:44:03 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","252745","Сайт: https://mts-home-online.ru/ [core] [chromium] [none]","","Thu Apr 30 06:19:23 UTC 2026","passed","Thu Apr 30 06:23:36 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","316312","Сайт: https://mts-home-gpon.ru/ [core] [chromium] [none]","","Wed Apr 29 10:11:33 UTC 2026","passed","Wed Apr 29 10:16:49 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","178904","Сайт: https://mts-internet.online/ [core] [chromium] [none]","","Thu Apr 30 06:26:40 UTC 2026","passed","Thu Apr 30 06:29:39 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","225171","Сайт: https://mts-home.online/ [core] [webkit] [none]","","Wed Apr 29 11:06:25 UTC 2026","passed","Wed Apr 29 11:10:10 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","311208","Сайт: https://mts-home-gpon.ru/ [core] [chromium] [none]","","Thu Apr 30 06:10:52 UTC 2026","passed","Thu Apr 30 06:16:03 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","312217","Сайт: https://mts-home-online.ru/ [core] [chromium] [none]","","Wed Apr 29 10:20:10 UTC 2026","passed","Wed Apr 29 10:25:23 UTC 2026","service-mode: core","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","186435","Сайт: https://internet-mts-home.online/ [core] [chromium] [none]","","Wed Apr 29 10:25:23 UTC 2026","passed","Wed Apr 29 10:28:29 UTC 2026","service-mode: core","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","284128","Сайт: https://internet-mts-home.online/ [core] [firefox] [none]","","Wed Apr 29 10:50:55 UTC 2026","passed","Wed Apr 29 10:55:39 UTC 2026","service-mode: core","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","361388","Сайт: https://mts-home-gpon.ru/ [core] [webkit] [none]","","Wed Apr 29 11:00:23 UTC 2026","passed","Wed Apr 29 11:06:25 UTC 2026","service-mode: core","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","201275","Сайт: https://mts-home.online/ [core] [chromium] [none]","","Wed Apr 29 10:16:49 UTC 2026","passed","Wed Apr 29 10:20:10 UTC 2026","service-mode: core","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","281585","Сайт: https://mts-internet.online/ [core] [firefox] [none]","","Wed Apr 29 10:55:39 UTC 2026","passed","Wed Apr 29 11:00:21 UTC 2026","service-mode: core","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","180009","Сайт: https://mts-internet.online/ [core] [chromium] [none]","","Wed Apr 29 10:28:29 UTC 2026","passed","Wed Apr 29 10:31:29 UTC 2026","service-mode: core","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","467373","Сайт: https://mts-home-gpon.ru/ [core] [firefox] [none]","","Wed Apr 29 10:31:31 UTC 2026","passed","Wed Apr 29 10:39:18 UTC 2026","service-mode: core","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","201267","Сайт: https://internet-mts-home.online/ [core] [webkit] [none]","","Wed Apr 29 11:15:14 UTC 2026","passed","Wed Apr 29 11:18:35 UTC 2026","service-mode: core","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","411876","Сайт: https://mts-home-online.ru/ [core] [firefox] [none]","","Wed Apr 29 10:44:03 UTC 2026","passed","Wed Apr 29 10:50:55 UTC 2026","service-mode: core","Формы провайдеров","",""
-"
-    Запуск для одного сайта:
-        pytest -s --headed --site=mts-home-gpon.ru
-
-    Запуск для всех сайтов:
-        pytest -s --headed
-    ","303295","Сайт: https://mts-home-online.ru/ [core] [webkit] [none]","","Wed Apr 29 11:10:10 UTC 2026","passed","Wed Apr 29 11:15:14 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","199504","Сайт: https://mts-home.online/ [core] [chromium] [none]","","Thu Apr 30 06:16:03 UTC 2026","passed","Thu Apr 30 06:19:23 UTC 2026","service-mode: core","Формы провайдеров","",""

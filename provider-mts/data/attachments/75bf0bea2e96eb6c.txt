@@ -1,1 +1,0 @@
-[internet-mts-home.online] Шаг 4b: попапы /business города — неприменим (has_business=False)
