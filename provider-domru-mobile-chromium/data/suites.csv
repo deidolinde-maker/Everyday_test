@@ -5,11 +5,11 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","77826","Сайт: https://providerdom.ru/ [core] [chromium] [none]","","2026-04-30","failed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","79833","Сайт: https://dom-provider.online/ [core] [chromium] [none]","","2026-04-30","failed","2026-04-30","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","90019","Сайт: https://dom-provider.online/ [core] [chromium] [none]","","2026-04-30","failed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","79722","Сайт: https://providerdom.ru/ [core] [chromium] [none]","","2026-04-30","failed","2026-04-30","service-mode: core","Формы провайдеров","",""
