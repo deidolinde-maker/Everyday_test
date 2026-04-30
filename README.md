@@ -28,6 +28,7 @@
 - `.github/workflows/provider-rostelecom.yml` - ручной провайдерный прогон Rostelecom.
 - `.github/workflows/provider-domru.yml` - ручной провайдерный прогон Domru.
 - `.github/workflows/provider-orchestrator.yml` - последовательный оркестратор прогонов по провайдерам (MTS -> Beeline -> Megafon -> T2 -> Rostelecom -> Domru).
+- `.github/workflows/provider-mobile-orchestrator.yml` - оркестратор mobile прогонов (smoke/all, chromium/webkit, core/variants).
 - `.github/workflows/mobile-tariffs.yml` - CI mobile suite.
 
 Примечание по Telegram для оркестратора:
@@ -283,6 +284,25 @@ Run: <RUN_URL>    # если задан
    - вернуть `MOBILE_ROLLOUT_ENABLED=true` (или удалить переменную),
    - запускать workflow с `mobile_rollout_enabled=true`.
 
+### 5.7 Mobile orchestrator: `.github/workflows/provider-mobile-orchestrator.yml`
+
+Триггеры:
+- `workflow_dispatch` (входные параметры `provider_scope`, `site`, `run_chromium`, `run_webkit`, `run_place_variants`, `blocking_profile`).
+
+Что делает:
+1. Формирует matrix mobile-прогонов:
+   - `provider_scope=smoke` -> `domru`, `t2`;
+   - `provider_scope=all` -> `mts`, `beeline`, `megafon`, `t2`, `rostelecom`, `domru`.
+2. Запускает для каждой комбинации provider/browser:
+   - `core` (`--service-mode=core`);
+   - `variants` опционально (`run_place_variants=true`).
+3. По умолчанию работает в clean-контуре (`blocking_profile=none`), adblock остаётся опциональным.
+4. Собирает артефакты всех matrix-job и публикует единый отчёт:
+   - `gh-pages/provider-mobile-orchestrator/`.
+5. Поддерживает те же rollout guardrails:
+   - input `mobile_rollout_enabled`;
+   - repository variable `MOBILE_ROLLOUT_ENABLED`.
+
 ## 6. Как добавить новый URL (подробно)
 
 ### 6.1 Добавить сайт в Suite A (формы)
@@ -330,6 +350,15 @@ Run: <RUN_URL>    # если задан
 
 1. В поле `site` указать домен-сайт (`site_id`, например, `example-site.ru`).
 2. Пустое поле `site` = прогон всех сайтов.
+
+Mobile-оркестрация (новый путь):
+
+В GitHub Actions -> `Provider Mobile Orchestrator` -> `Run workflow`:
+
+1. Для быстрых нестабильных проверок выбрать `provider_scope=smoke` (domru+t2).
+2. Для полного mobile-прохода выбрать `provider_scope=all`.
+3. Держать `blocking_profile=none` как дефолтный стабильный режим.
+4. Включать `run_place_variants=true` только когда нужен полный matrix по Place.
 
 ### 6.3 Добавить лендинг в Suite B (mobile)
 

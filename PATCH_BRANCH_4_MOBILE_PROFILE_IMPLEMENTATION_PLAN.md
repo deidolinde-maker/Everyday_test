@@ -202,11 +202,20 @@
     - input `mobile_rollout_enabled`,
     - глобальный `vars.MOBILE_ROLLOUT_ENABLED`,
     - отдельный `mobile_rollout_disabled` job для явного skip-сигнала.
-- `P4-R10`: выполнено частично (README обновлён по mobile provider workflows, запуску matrix и rollback-процедуре).
+- `P4-R10`: выполнено.
+  - README доведён до рабочего runbook по mobile-контуру:
+    - provider-specific mobile workflows;
+    - rollback/guardrails;
+    - запуск через mobile orchestrator.
+- Пост-плановое расширение (после `P4-R10`): выполнено.
+  - добавлен `.github/workflows/provider-mobile-orchestrator.yml`;
+  - централизованный `workflow_dispatch` для mobile matrix (`smoke/all`, `chromium/webkit`, `core/variants`);
+  - дефолтный clean-контур `blocking_profile=none` сохранён.
 
 Принятое решение:
 - Не блокировать rollout mobile-контуром `adblock-mvp`.
 - Вернуться к mobile adblock после stability-soak текущего clean-контура.
 
 Следующий шаг:
-- финальная фиксация `P4-R10` и формализация follow-up по mobile `adblock-mvp`.
+- stability-soak mobile orchestrator в clean-режиме (`blocking_profile=none`).
+- отдельный follow-up по `adblock-mvp` для mobile (неблокирующий текущий rollout).

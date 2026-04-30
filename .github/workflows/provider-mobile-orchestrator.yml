@@ -1,0 +1,297 @@
+name: Provider Mobile Orchestrator
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: 'Site domain inside provider (leave empty to run all provider sites)'
+        required: false
+        default: ''
+      provider_scope:
+        description: 'Provider scope for mobile run'
+        required: false
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - all
+      run_place_variants:
+        description: 'Run Place variants checks'
+        required: false
+        default: false
+        type: boolean
+      run_chromium:
+        description: 'Run mobile-chromium'
+        required: false
+        default: true
+        type: boolean
+      run_webkit:
+        description: 'Run mobile-webkit'
+        required: false
+        default: true
+        type: boolean
+      blocking_profile:
+        description: 'Blocking profile for mobile runs'
+        required: false
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - adblock-mvp
+      mobile_rollout_enabled:
+        description: 'Emergency mobile rollout switch (true=run mobile tests, false=skip workflow)'
+        required: false
+        default: true
+        type: boolean
+      send_final_summary:
+        description: 'Send final orchestrator summary to Telegram'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  mobile_rollout_disabled:
+    if: ${{ !inputs.mobile_rollout_enabled || vars.MOBILE_ROLLOUT_ENABLED == 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mobile rollout gate
+        run: |
+          echo "Mobile rollout is disabled by input or repository variable."
+          echo "input.mobile_rollout_enabled=${{ inputs.mobile_rollout_enabled }}"
+          echo "vars.MOBILE_ROLLOUT_ENABLED=${{ vars.MOBILE_ROLLOUT_ENABLED }}"
+
+  build_matrix:
+    if: ${{ inputs.mobile_rollout_enabled && vars.MOBILE_ROLLOUT_ENABLED != 'false' }}
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      combos_count: ${{ steps.matrix.outputs.combos_count }}
+    steps:
+      - name: Build mobile matrix
+        id: matrix
+        shell: bash
+        env:
+          PROVIDER_SCOPE: ${{ inputs.provider_scope }}
+          RUN_CHROMIUM: ${{ inputs.run_chromium }}
+          RUN_WEBKIT: ${{ inputs.run_webkit }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          scope = (os.getenv("PROVIDER_SCOPE") or "smoke").strip()
+          run_chromium = (os.getenv("RUN_CHROMIUM", "false").lower() == "true")
+          run_webkit = (os.getenv("RUN_WEBKIT", "false").lower() == "true")
+
+          providers_by_scope = {
+              "smoke": ["domru", "t2"],
+              "all": ["mts", "beeline", "megafon", "t2", "rostelecom", "domru"],
+          }
+          providers = providers_by_scope.get(scope, providers_by_scope["smoke"])
+
+          combos = []
+          for provider in providers:
+              if run_chromium:
+                  combos.append({
+                      "provider": provider,
+                      "browser": "chromium",
+                      "execution_profile": "mobile-chromium",
+                      "allure_suffix": "mobile-chromium",
+                  })
+              if run_webkit:
+                  combos.append({
+                      "provider": provider,
+                      "browser": "webkit",
+                      "execution_profile": "mobile-webkit",
+                      "allure_suffix": "mobile-webkit",
+                  })
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"matrix={json.dumps(combos, ensure_ascii=False)}\n")
+              fh.write(f"combos_count={len(combos)}\n")
+          PY
+
+  provider_mobile_matrix:
+    if: ${{ inputs.mobile_rollout_enabled && vars.MOBILE_ROLLOUT_ENABLED != 'false' && needs.build_matrix.outputs.combos_count != '0' }}
+    needs: [build_matrix]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.build_matrix.outputs.matrix) }}
+    env:
+      PROVIDER_NAME: ${{ matrix.provider }}
+      BROWSER_NAME: ${{ matrix.browser }}
+      EXECUTION_PROFILE: ${{ matrix.execution_profile }}
+      ALLURE_SUFFIX: ${{ matrix.allure_suffix }}
+      BLOCKING_PROFILE: ${{ inputs.blocking_profile || 'none' }}
+      RUN_PLACE_VARIANTS: ${{ inputs.run_place_variants && 'true' || 'false' }}
+      SITE_INPUT: ${{ inputs.site }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest playwright pytest-playwright allure-pytest pytest-timeout requests
+          python -m pip show playwright
+
+      - name: Install browser
+        run: |
+          python -m playwright install "${BROWSER_NAME}"
+          python -m playwright install-deps "${BROWSER_NAME}"
+
+      - name: Run Core tests (mobile matrix)
+        timeout-minutes: 120
+        shell: bash
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir="allure-results-core-${ALLURE_SUFFIX}"
+            --timeout=600
+            -s
+            --service-mode=core
+            --browser="${BROWSER_NAME}"
+            --execution-profile="${EXECUTION_PROFILE}"
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running CORE MOBILE: provider=${PROVIDER_NAME}, browser=${BROWSER_NAME}, profile=${EXECUTION_PROFILE}"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+
+      - name: Run Place Variants tests (mobile matrix)
+        if: ${{ always() && env.RUN_PLACE_VARIANTS == 'true' }}
+        timeout-minutes: 120
+        shell: bash
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir="allure-results-variants-${ALLURE_SUFFIX}"
+            --timeout=600
+            -s
+            --service-mode=variants
+            --browser="${BROWSER_NAME}"
+            --execution-profile="${EXECUTION_PROFILE}"
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running VARIANTS MOBILE: provider=${PROVIDER_NAME}, browser=${BROWSER_NAME}, profile=${EXECUTION_PROFILE}"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+
+      - name: Merge Allure results
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p allure-results
+          if [ -d "allure-results-core-${ALLURE_SUFFIX}" ]; then
+            cp -R "allure-results-core-${ALLURE_SUFFIX}"/. allure-results/
+          fi
+          if [ -d "allure-results-variants-${ALLURE_SUFFIX}" ]; then
+            cp -R "allure-results-variants-${ALLURE_SUFFIX}"/. allure-results/
+          fi
+
+      - name: Upload Allure results artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-provider-${{ matrix.provider }}-${{ matrix.allure_suffix }}
+          path: allure-results/
+          retention-days: 30
+
+  publish_mobile_orchestrator_report:
+    name: Publish Mobile Orchestrator Report
+    if: ${{ always() && inputs.mobile_rollout_enabled && vars.MOBILE_ROLLOUT_ENABLED != 'false' && needs.build_matrix.outputs.combos_count != '0' }}
+    needs: [build_matrix, provider_mobile_matrix]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download matrix artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: allure-results-provider-*
+          merge-multiple: true
+          path: allure-results
+
+      - name: Setup Node.js (for Allure CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Allure report (npm CLI)
+        shell: bash
+        run: |
+          set -e
+          if [ ! -d allure-results ] || [ -z "$(ls -A allure-results)" ]; then
+            echo "No allure-results found from mobile matrix."
+            mkdir -p allure-results
+          fi
+          npm install -g allure-commandline --no-audit --no-fund
+          allure generate allure-results --clean -o allure-report
+
+      - name: Publish report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-report
+          destination_dir: provider-mobile-orchestrator
+          keep_files: true
+
+  final_summary:
+    name: Mobile Final Summary
+    if: always()
+    needs: [build_matrix, provider_mobile_matrix, publish_mobile_orchestrator_report]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "Provider mobile orchestrator summary"
+            echo ""
+            echo "Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "Provider scope: ${{ inputs.provider_scope }}"
+            echo "Site filter: ${{ inputs.site }}"
+            echo "Blocking profile: ${{ inputs.blocking_profile }}"
+            echo "Run chromium: ${{ inputs.run_chromium }}"
+            echo "Run webkit: ${{ inputs.run_webkit }}"
+            echo "Place variants: ${{ inputs.run_place_variants }}"
+            echo "Matrix combos: ${{ needs.build_matrix.outputs.combos_count }}"
+            echo ""
+            echo "Matrix job result: ${{ needs.provider_mobile_matrix.result }}"
+            echo "Report publish result: ${{ needs.publish_mobile_orchestrator_report.result }}"
+            echo ""
+            echo "Report URL:"
+            echo "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/provider-mobile-orchestrator/"
+          } > mobile_orchestrator_summary.txt
+          cat mobile_orchestrator_summary.txt
+
+      - name: Send final Telegram summary
+        if: ${{ inputs.send_final_summary }}
+        shell: bash
+        run: |
+          set -e
+          if [ -z "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] || [ -z "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+            echo "Telegram secrets are not configured. Skip."
+            exit 0
+          fi
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "text@mobile_orchestrator_summary.txt"
