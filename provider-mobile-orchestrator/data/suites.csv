@@ -5,39 +5,81 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","188870","Сайт: https://providerdom.ru/ [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","176914","Сайт: https://providerdom.ru/ [variants] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","108189","Сайт: https://t2-ru.online [core] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","191733","Сайт: https://dom-provider.online/ [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","165509","Сайт: https://providerdom.ru/ [core] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","124743","Сайт: https://t2-ru.online [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","184785","Сайт: https://dom-provider.online/ [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","307630","Сайт: https://providerdom.ru/ [variants] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","113743","Сайт: https://t2-ru.online [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","150184","Сайт: https://dom-provider.online/ [core] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","156780","Сайт: https://dom-provider.online/ [core] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","164989","Сайт: https://dom-provider.online/ [variants] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","41291","Сайт: https://t2-ru.online [variants] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","112657","Сайт: https://t2-ru.online [core] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","194902","Сайт: https://providerdom.ru/ [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","37670","Сайт: https://t2-ru.online [variants] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","275787","Сайт: https://dom-provider.online/ [variants] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","156764","Сайт: https://providerdom.ru/ [core] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
