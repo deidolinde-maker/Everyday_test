@@ -1,0 +1,7 @@
+🚨 Критическая ошибка автотеста формы
+
+🕒 Время: 2026-04-30 14:23:21 (MSK)
+🌐 Лендинг: mega-home-internet.ru
+🔗 URL: https://mega-home-internet.ru/
+❌ Ошибка: Не выполнен шаг "форма checkaddress"
+🔎 Детали: не удалось открыть https://mega-home-internet.ru/ | HTTP 502
