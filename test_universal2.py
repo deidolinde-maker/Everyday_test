@@ -820,16 +820,27 @@ def is_domru_mobile_city_context(page: Page) -> bool:
     try:
         vp = page.viewport_size or {}
         width = int(vp.get("width") or 0)
-        if not (0 < width <= 480):
+        # In CI mobile emulation viewport can be unavailable (0/None).
+        # Reject only clearly desktop-like widths.
+        if width > 900:
             return False
     except Exception:
-        return False
+        pass
 
     try:
         host = (urlsplit(page.url).netloc or "").lower()
     except Exception:
         host = ""
-    return any(host.endswith(h) for h in DOMRU_MOBILE_CITY_HOSTS)
+    if any(host.endswith(h) for h in DOMRU_MOBILE_CITY_HOSTS):
+        return True
+
+    # Fallback: detect by DOM structure if hostname is not informative.
+    try:
+        if page.locator("input#burger-nav").count() > 0 and page.locator(".header__city--mobile").count() > 0:
+            return True
+    except Exception:
+        pass
+    return False
 
 
 def open_domru_mobile_city_burger(page: Page) -> bool:
@@ -854,14 +865,31 @@ def open_domru_mobile_city_burger(page: Page) -> bool:
         return True
 
     toggle = page.locator("input#burger-nav").first
-    if toggle.count() == 0:
-        return False
+
+    try:
+        if toggle.count() > 0:
+            changed = toggle.evaluate(
+                """el => {
+                  el.checked = true;
+                  el.dispatchEvent(new Event('change', { bubbles: true }));
+                  return true;
+                }"""
+            )
+            if changed:
+                page.wait_for_timeout(220)
+                if city_trigger_visible():
+                    print("  [MOBILE][CITY] Burger opened via toggle evaluate")
+                    return True
+    except Exception:
+        pass
 
     # 1) Предпочитаем label-триггер (классический burger UX).
     for open_sel in ["label[for='burger-nav']", "input#burger-nav"]:
         try:
             opener = page.locator(open_sel).first
-            if opener.count() > 0 and opener.is_visible():
+            if opener.count() > 0:
+                if open_sel != "input#burger-nav" and not opener.is_visible():
+                    continue
                 opener.click(force=True)
                 page.wait_for_timeout(180)
                 if city_trigger_visible():
@@ -2646,8 +2674,10 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
 
     city_button_selectors = list(CITY_BUTTON_SELECTORS)
     if domru_mobile_burger_opened or is_domru_mobile_city_context(page):
-        # Для domru mobile сначала пробуем city trigger внутри burger-меню.
-        city_button_selectors = DOMRU_MOBILE_CITY_TRIGGER_SELECTORS + city_button_selectors
+        city_button_selectors = DOMRU_MOBILE_CITY_TRIGGER_SELECTORS + [
+            sel for sel in city_button_selectors
+            if sel not in {"[class*='header'][class*='city']", "a.header__city", "a.header__city.city"}
+        ]
 
     city_btn = None
     city_btn_sel = None
