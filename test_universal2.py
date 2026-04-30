@@ -476,7 +476,6 @@ DOMRU_MOBILE_CITY_HOSTS = {
 DOMRU_MOBILE_CITY_TRIGGER_SELECTORS = [
     "nav.burger-nav__menu .header__city--mobile .city-bold",
     "nav.burger-nav__menu .header__city--mobile a.city",
-    "nav.burger-nav__menu .header__city--mobile a",
     ".header__city--mobile .city-bold",
     ".header__city--mobile a.city",
 ]
@@ -2739,27 +2738,52 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
         "input[type='search']",
     ]
 
-    city_input_filled = False
-    for sel in CITY_INPUT_SELECTORS:
-        if city_input_filled:
-            break
-        try:
-            inputs = page.locator(sel)
-            for i in range(inputs.count()):
-                inp = inputs.nth(i)
-                try:
-                    if not inp.is_visible():
-                        continue
-                    inp.click(force=True)
-                    inp.fill(city_name)
-                    page.wait_for_timeout(500)
-                    print(f"  [CITY] Введено '{city_name}' в поле поиска ({sel}, idx={i})")
-                    city_input_filled = True
+    def fill_city_input_once() -> bool:
+        for sel in CITY_INPUT_SELECTORS:
+            try:
+                inputs = page.locator(sel)
+                for i in range(inputs.count()):
+                    inp = inputs.nth(i)
+                    try:
+                        if not inp.is_visible():
+                            continue
+                        inp.click(force=True)
+                        inp.fill(city_name)
+                        page.wait_for_timeout(500)
+                        print(f"  [CITY] Search input filled ({sel}, idx={i})")
+                        return True
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        return False
+
+    city_input_filled = fill_city_input_once()
+
+    if not city_input_filled and (domru_mobile_burger_opened or is_domru_mobile_city_context(page)):
+        open_domru_mobile_city_burger(page)
+        for sel in DOMRU_MOBILE_CITY_TRIGGER_SELECTORS:
+            try:
+                loc = page.locator(sel)
+                for i in range(loc.count()):
+                    trigger = loc.nth(i)
+                    try:
+                        if not trigger.is_visible():
+                            continue
+                        text = (trigger.inner_text() or "").strip()
+                        if not text and "city-bold" in sel:
+                            continue
+                        trigger.click(force=True)
+                        page.wait_for_timeout(450)
+                        if fill_city_input_once():
+                            city_input_filled = True
+                            break
+                    except Exception:
+                        pass
+                if city_input_filled:
                     break
-                except Exception:
-                    pass
-        except Exception:
-            pass
+            except Exception:
+                pass
 
     # Все известные варианты списка городов
     CITY_LINK_SELECTORS = [
