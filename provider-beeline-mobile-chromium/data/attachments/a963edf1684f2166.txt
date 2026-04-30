@@ -1,0 +1,1 @@
+[beelline-internet.ru] Шаг 4b: попапы /business города — неприменим (has_business=False)
