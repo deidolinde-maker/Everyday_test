@@ -5,4 +5,11 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","108495","Сайт: https://t2-ru.online [core] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","35676","Сайт: https://t2-ru.online [variants] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","108323","Сайт: https://t2-ru.online [core] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
