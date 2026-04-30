@@ -20,9 +20,25 @@ on:
         options:
           - none
           - adblock-mvp
+      mobile_rollout_enabled:
+        description: 'Emergency mobile rollout switch (true=run mobile tests, false=skip workflow)'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
+  mobile_rollout_disabled:
+    if: ${{ !inputs.mobile_rollout_enabled || vars.MOBILE_ROLLOUT_ENABLED == 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mobile rollout gate
+        run: |
+          echo "Mobile rollout is disabled by input or repository variable."
+          echo "input.mobile_rollout_enabled=${{ inputs.mobile_rollout_enabled }}"
+          echo "vars.MOBILE_ROLLOUT_ENABLED=${{ vars.MOBILE_ROLLOUT_ENABLED }}"
+
   provider_mobile_webkit_test:
+    if: ${{ inputs.mobile_rollout_enabled && vars.MOBILE_ROLLOUT_ENABLED != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     env:

@@ -197,11 +197,16 @@
   - `core` mobile: подтверждён green по провайдерам.
   - `variants` mobile: подтверждён green (включая нестабильные `domru`, `t2`).
   - `adblock-mvp` mobile: отложено по решению команды в отдельный follow-up.
-- `P4-R10`: выполнено частично (README обновлён по mobile provider workflows и запуску matrix).
+- `P4-R9`: выполнено.
+  - во все `provider-*-mobile*.yml` добавлен emergency feature-gate:
+    - input `mobile_rollout_enabled`,
+    - глобальный `vars.MOBILE_ROLLOUT_ENABLED`,
+    - отдельный `mobile_rollout_disabled` job для явного skip-сигнала.
+- `P4-R10`: выполнено частично (README обновлён по mobile provider workflows, запуску matrix и rollback-процедуре).
 
 Принятое решение:
 - Не блокировать rollout mobile-контуром `adblock-mvp`.
 - Вернуться к mobile adblock после stability-soak текущего clean-контура.
 
 Следующий шаг:
-- `P4-R9` (release guardrails и rollback-механика) + финальная фиксация `P4-R10`.
+- финальная фиксация `P4-R10` и формализация follow-up по mobile `adblock-mvp`.

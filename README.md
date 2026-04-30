@@ -266,6 +266,23 @@ Run: <RUN_URL>    # если задан
 2. Расширение матрицы (`P4-R8`): `run_place_variants=true`.
 3. Проверка adblock на mobile: `blocking_profile=adblock-mvp` (+ при необходимости `run_place_variants=true`).
 
+### 5.6 Mobile rollback и guardrails
+
+Во всех `provider-*-mobile*.yml` включён feature-gate:
+- input `mobile_rollout_enabled` (уровень одного запуска workflow),
+- repository variable `MOBILE_ROLLOUT_ENABLED` (глобальный gate для всех mobile provider workflow).
+
+Быстрый rollback без изменения desktop:
+1. Global stop:
+   - GitHub -> `Settings` -> `Secrets and variables` -> `Actions` -> `Variables`.
+   - Установить `MOBILE_ROLLOUT_ENABLED=false`.
+   - После этого mobile provider workflow будут переходить в `mobile_rollout_disabled` job и пропускать тестовый job.
+2. Точечный stop для одного запуска:
+   - при `Run workflow` выставить `mobile_rollout_enabled=false`.
+3. Возврат к normal mode:
+   - вернуть `MOBILE_ROLLOUT_ENABLED=true` (или удалить переменную),
+   - запускать workflow с `mobile_rollout_enabled=true`.
+
 ## 6. Как добавить новый URL (подробно)
 
 ### 6.1 Добавить сайт в Suite A (формы)
