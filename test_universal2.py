@@ -467,6 +467,20 @@ MTS_MOBILE_BURGER_OPEN_SELECTORS = [
     "ul.burger-nav__list",
 ]
 
+DOMRU_MOBILE_CITY_HOSTS = {
+    "dom-provider.online",
+    "providerdom.ru",
+    "moskva.dom-provider.online",
+    "moskva.providerdom.ru",
+}
+DOMRU_MOBILE_CITY_TRIGGER_SELECTORS = [
+    "nav.burger-nav__menu .header__city--mobile .city-bold",
+    "nav.burger-nav__menu .header__city--mobile a.city",
+    "nav.burger-nav__menu .header__city--mobile a",
+    ".header__city--mobile .city-bold",
+    ".header__city--mobile a.city",
+]
+
 THANKS_RETURN_SELECTORS = [
     "a:has-text('На главную')",
     "button:has-text('На главную')",
@@ -797,6 +811,87 @@ def close_mobile_burger_menu(page: Page):
         page.wait_for_timeout(120)
     except Exception:
         pass
+
+
+def is_domru_mobile_city_context(page: Page) -> bool:
+    if not is_mobile_execution_profile():
+        return False
+
+    try:
+        vp = page.viewport_size or {}
+        width = int(vp.get("width") or 0)
+        if not (0 < width <= 480):
+            return False
+    except Exception:
+        return False
+
+    try:
+        host = (urlsplit(page.url).netloc or "").lower()
+    except Exception:
+        host = ""
+    return any(host.endswith(h) for h in DOMRU_MOBILE_CITY_HOSTS)
+
+
+def open_domru_mobile_city_burger(page: Page) -> bool:
+    """
+    Для mobile Domru город выбирается из burger-меню.
+    Возвращает True, если mobile-меню с city trigger видно.
+    """
+    if not is_domru_mobile_city_context(page):
+        return False
+
+    def city_trigger_visible() -> bool:
+        for sel in DOMRU_MOBILE_CITY_TRIGGER_SELECTORS:
+            try:
+                loc = page.locator(sel).first
+                if loc.count() > 0 and loc.is_visible():
+                    return True
+            except Exception:
+                pass
+        return False
+
+    if city_trigger_visible():
+        return True
+
+    toggle = page.locator("input#burger-nav").first
+    if toggle.count() == 0:
+        return False
+
+    # 1) Предпочитаем label-триггер (классический burger UX).
+    for open_sel in ["label[for='burger-nav']", "input#burger-nav"]:
+        try:
+            opener = page.locator(open_sel).first
+            if opener.count() > 0 and opener.is_visible():
+                opener.click(force=True)
+                page.wait_for_timeout(180)
+                if city_trigger_visible():
+                    print("  [MOBILE][CITY] Burger opened for city selector")
+                    return True
+        except Exception:
+            pass
+
+    # 2) Fallback: программно открыть checkbox burger.
+    try:
+        changed = page.evaluate(
+            """
+            () => {
+              const el = document.querySelector('input#burger-nav');
+              if (!el) return false;
+              el.checked = true;
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+              return true;
+            }
+            """
+        )
+        if changed:
+            page.wait_for_timeout(220)
+            if city_trigger_visible():
+                print("  [MOBILE][CITY] Burger opened via JS fallback")
+                return True
+    except Exception:
+        pass
+
+    return False
 
 
 def close_popup_or_page(page: Page):
@@ -1508,11 +1603,20 @@ def fill_form(page: Page, container, form_type: str,
         if not is_mobile_execution_profile():
             return False
 
-        # Mobile fallback for checkaddress: some layouts keep the house input
-        # visually usable but it does not flip to "enabled" in time.
-        if form_type != "checkaddress":
+        execution_profile = get_execution_profile_name()
+
+        # Baseline mobile fallback is kept for checkaddress.
+        # For mobile-webkit pilot we also allow the same tap/input fallback
+        # in connection forms (observed flake: house stays disabled in city popup).
+        allow_mobile_house_fallback = form_type == "checkaddress" or (
+            execution_profile == "mobile-webkit" and form_type == "connection"
+        )
+        if not allow_mobile_house_fallback:
             return False
-        print("  [FORM] House activation fallback: tap/input for checkaddress")
+        print(
+            "  [FORM] House activation fallback: tap/input "
+            f"(profile={execution_profile}, form={form_type})"
+        )
 
         try:
             house_field.scroll_into_view_if_needed()
@@ -2513,6 +2617,7 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
                   extra=nav_reason[:180])
         return None, None
     close_overlays(page)
+    domru_mobile_burger_opened = open_domru_mobile_city_burger(page)
 
     # Все известные варианты кнопки открытия попапа города
     CITY_BUTTON_SELECTORS = [
@@ -2539,10 +2644,15 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
         "xpath=//div[@class='footer__city']//a",
     ]
 
+    city_button_selectors = list(CITY_BUTTON_SELECTORS)
+    if domru_mobile_burger_opened or is_domru_mobile_city_context(page):
+        # Для domru mobile сначала пробуем city trigger внутри burger-меню.
+        city_button_selectors = DOMRU_MOBILE_CITY_TRIGGER_SELECTORS + city_button_selectors
+
     city_btn = None
     city_btn_sel = None
     city_btn_idx = None
-    for sel in CITY_BUTTON_SELECTORS:
+    for sel in city_button_selectors:
         try:
             loc = page.locator(sel)
             for i in range(loc.count()):
