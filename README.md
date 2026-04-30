@@ -246,6 +246,26 @@ Run: <RUN_URL>    # если задан
 - Основной запуск Suite A выполняется вручную через `provider-orchestrator.yml` (или точечно через `provider-<name>.yml`).
 - Legacy `allure.yml` и `mobile-tariffs.yml` запускаются только вручную (`workflow_dispatch`).
 
+### 5.5 Mobile provider workflows (`provider-*-mobile-*.yml`)
+
+Триггеры:
+- `workflow_dispatch` (входные параметры `site`, `run_place_variants`, `blocking_profile`).
+
+Что делает:
+1. Запускает `core` в mobile execution profile:
+   - `provider-<name>-mobile-chromium.yml` -> `--browser=chromium --execution-profile=mobile-chromium`;
+   - `provider-<name>-mobile-webkit.yml` -> `--browser=webkit --execution-profile=mobile-webkit`.
+2. Опционально запускает `variants` (если `run_place_variants=true`).
+3. Поддерживает blocking-профиль через `blocking_profile`:
+   - `none` (clean),
+   - `adblock-mvp`.
+4. Публикует отдельный Allure report в `gh-pages/provider-<name>-mobile-<browser>/`.
+
+Практический режим запуска:
+1. Стабилизация mobile `core`: `run_place_variants=false`, `blocking_profile=none`.
+2. Расширение матрицы (`P4-R8`): `run_place_variants=true`.
+3. Проверка adblock на mobile: `blocking_profile=adblock-mvp` (+ при необходимости `run_place_variants=true`).
+
 ## 6. Как добавить новый URL (подробно)
 
 ### 6.1 Добавить сайт в Suite A (формы)
@@ -368,6 +388,29 @@ python -m pytest
 
 ```bash
 python -m pytest -k "MTS mts-home.online"
+```
+
+### 7.3 Suite A в mobile execution profile
+
+Core (provider full):
+
+```bash
+python -m pytest test_universal2.py -s --alluredir=allure-results-core-mobile-chromium --timeout=600 --service-mode=core --browser=chromium --execution-profile=mobile-chromium --blocking-profile=none --provider=domru
+python -m pytest test_universal2.py -s --alluredir=allure-results-core-mobile-webkit --timeout=600 --service-mode=core --browser=webkit --execution-profile=mobile-webkit --blocking-profile=none --provider=domru
+```
+
+Variants (provider full):
+
+```bash
+python -m pytest test_universal2.py -s --alluredir=allure-results-variants-mobile-chromium --timeout=600 --service-mode=variants --browser=chromium --execution-profile=mobile-chromium --blocking-profile=none --provider=domru
+python -m pytest test_universal2.py -s --alluredir=allure-results-variants-mobile-webkit --timeout=600 --service-mode=variants --browser=webkit --execution-profile=mobile-webkit --blocking-profile=none --provider=domru
+```
+
+Adblock MVP (mobile):
+
+```bash
+python -m pytest test_universal2.py -s --alluredir=allure-results-core-mobile-chromium-adblock --timeout=600 --service-mode=core --browser=chromium --execution-profile=mobile-chromium --blocking-profile=adblock-mvp --provider=domru
+python -m pytest test_universal2.py -s --alluredir=allure-results-core-mobile-webkit-adblock --timeout=600 --service-mode=core --browser=webkit --execution-profile=mobile-webkit --blocking-profile=adblock-mvp --provider=domru
 ```
 
 ## 8. Переменные окружения
