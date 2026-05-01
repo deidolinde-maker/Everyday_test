@@ -5,81 +5,291 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","176914","Сайт: https://providerdom.ru/ [variants] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
+    ","228710","Сайт: https://beelline-internet.ru/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","191733","Сайт: https://dom-provider.online/ [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","203015","Сайт: https://mts-home.online/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","124743","Сайт: https://t2-ru.online [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","160830","Сайт: https://providerdom.ru/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","307630","Сайт: https://providerdom.ru/ [variants] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
+    ","185601","Сайт: https://internet-mts-home.online/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","150184","Сайт: https://dom-provider.online/ [core] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","309162","Сайт: https://rtk-home-internet.ru/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","164989","Сайт: https://dom-provider.online/ [variants] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
+    ","153338","Сайт: https://dom-provider.online/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","41291","Сайт: https://t2-ru.online [variants] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
+    ","115249","Сайт: https://t2-ru.online [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","112657","Сайт: https://t2-ru.online [core] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","203158","Сайт: https://rt-internet.online/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","194902","Сайт: https://providerdom.ru/ [core] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","300663","Сайт: https://rt-internet.online/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","37670","Сайт: https://t2-ru.online [variants] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
+    ","231931","Сайт: https://beeline-home.online/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","275787","Сайт: https://dom-provider.online/ [variants] [webkit] [none]","","2026-04-30","passed","2026-04-30","service-mode: variants","Формы провайдеров","",""
+    ","290731","Сайт: https://beeline-internet.online/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","156764","Сайт: https://providerdom.ru/ [core] [chromium] [none]","","2026-04-30","passed","2026-04-30","service-mode: core","Формы провайдеров","",""
+    ","202601","Сайт: https://rtk-home-internet.ru/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","199916","Сайт: https://beeline-home.online/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","182709","Сайт: https://providerdom.ru/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","283921","Сайт: http://rtk-home.ru/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","243947","Сайт: https://mts-home-online.ru/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","214876","Сайт: https://mega-premium.ru/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","278913","Сайт: https://rtk-ru.online/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","200868","Сайт: https://beeline-ru.pro/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","200352","Сайт: https://beelline-internet.ru/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","109606","Сайт: https://t2-ru.online [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","184656","Сайт: https://dom-provider.online/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","239531","Сайт: https://rtk-ru.online/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","294704","Сайт: https://beeline-internet.online/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","233196","Сайт: https://mega-home-internet.ru/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","177520","Сайт: https://mts-internet.online/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","234853","Сайт: https://mts-home.online/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","366869","Сайт: https://online-beeline.ru/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","301106","Сайт: https://rtk-internet.online/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","316864","Сайт: https://mts-home-gpon.ru/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","305077","Сайт: https://online-beeline.ru/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","206312","Сайт: https://mega-home-internet.ru/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","190805","Сайт: https://mega-premium.ru/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","404191","Сайт: http://rtk-home.ru/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","433797","Сайт: https://rtk-internet.online/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","306197","Сайт: https://mts-home-online.ru/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","278186","Сайт: https://beeline-ru.online/ [core] [chromium] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","341546","Сайт: https://beeline-ru.online/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","198666","Сайт: https://mts-internet.online/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","385482","Сайт: https://mts-home-gpon.ru/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","249693","Сайт: https://beeline-ru.pro/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""
+"
+    Запуск для одного сайта:
+        pytest -s --headed --site=mts-home-gpon.ru
+
+    Запуск для всех сайтов:
+        pytest -s --headed
+    ","202666","Сайт: https://internet-mts-home.online/ [core] [webkit] [none]","","2026-05-01","passed","2026-05-01","service-mode: core","Формы провайдеров","",""

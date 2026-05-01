@@ -1,0 +1,1 @@
+[beeline-ru.pro] Шаг 1: форма checkaddress — неприменим (has_checkaddress=False)
