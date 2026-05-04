@@ -127,7 +127,7 @@ mobile_tariffs_tests/
 
 ---
 
-## GitHub Actions (ежедневно после основного теста)
+## GitHub Actions
 
 Подготовлен workflow:
 
@@ -139,11 +139,14 @@ mobile_tariffs_tests/
 
 Он умеет:
 
-- запускаться **после завершения** workflow `Playwright Tests` (`workflow_run`)
 - запускаться вручную (`workflow_dispatch`)
 - отправлять step-alert во время падения шага
 - отправлять итоговый Telegram summary
 - сохранять `allure-results` и `allure-report` как артефакты
+
+Примечание:
+- автозапуск через `workflow_run`/cron в текущей конфигурации отключён;
+- для полного контроля прогон mobile tariffs запускается вручную из Actions.
 
 Для работы в репозитории добавьте Secrets:
 

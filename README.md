@@ -21,12 +21,12 @@
 - `mobile_tariffs_tests/utils/helpers.py` - шаговые алерты/утилиты mobile suite.
 - `mobile_tariffs_tests/notify_from_allure_mobile.py` - итоговый mobile summary в Telegram.
 - `.github/workflows/allure.yml` - legacy/fallback CI формы (ручной запуск).
-- `.github/workflows/provider-mts.yml` - ручной провайдерный прогон MTS.
-- `.github/workflows/provider-beeline.yml` - ручной провайдерный прогон Beeline.
-- `.github/workflows/provider-megafon.yml` - ручной провайдерный прогон Megafon.
-- `.github/workflows/provider-t2.yml` - ручной провайдерный прогон T2.
-- `.github/workflows/provider-rostelecom.yml` - ручной провайдерный прогон Rostelecom.
-- `.github/workflows/provider-domru.yml` - ручной провайдерный прогон Domru.
+- `.github/workflows/provider-mts.yml` - ручной провайдерный прогон MTS (desktop + mobile toggles).
+- `.github/workflows/provider-beeline.yml` - ручной провайдерный прогон Beeline (desktop + mobile toggles).
+- `.github/workflows/provider-megafon.yml` - ручной провайдерный прогон Megafon (desktop + mobile toggles).
+- `.github/workflows/provider-t2.yml` - ручной провайдерный прогон T2 (desktop + mobile toggles).
+- `.github/workflows/provider-rostelecom.yml` - ручной провайдерный прогон Rostelecom (desktop + mobile toggles).
+- `.github/workflows/provider-domru.yml` - ручной провайдерный прогон Domru (desktop + mobile toggles).
 - `.github/workflows/provider-orchestrator.yml` - последовательный оркестратор прогонов по провайдерам (MTS -> Beeline -> Megafon -> T2 -> Rostelecom -> Domru).
 - `.github/workflows/provider-mobile-orchestrator.yml` - оркестратор mobile прогонов (smoke/all, chromium/webkit, core/variants).
 - `.github/workflows/mobile-tariffs.yml` - CI mobile suite.
@@ -345,6 +345,14 @@ Mobile-оркестрация (новый путь):
 3. Держать `blocking_profile=none` как дефолтный стабильный режим.
 4. Включать `run_place_variants=true` только когда нужен полный matrix по Place.
 
+Provider workflow (быстрый ручной путь):
+1. Открыть нужный `provider-<name>.yml`.
+2. Включить mobile-флаги:
+   - `run_mobile_chromium=true` и/или
+   - `run_mobile_webkit=true`.
+3. По необходимости оставить desktop-флаги выключенными, чтобы прогнать только mobile.
+4. Для полного mobile Place добавить `run_place_variants=true`.
+
 ### 6.3 Добавить лендинг в Suite B (mobile)
 
 1. Открыть `mobile_tariffs_tests/config/landing_data.py`.
@@ -443,6 +451,13 @@ Adblock MVP (mobile):
 python -m pytest test_universal2.py -s --alluredir=allure-results-core-mobile-chromium-adblock --timeout=600 --service-mode=core --browser=chromium --execution-profile=mobile-chromium --blocking-profile=adblock-mvp --provider=domru
 python -m pytest test_universal2.py -s --alluredir=allure-results-core-mobile-webkit-adblock --timeout=600 --service-mode=core --browser=webkit --execution-profile=mobile-webkit --blocking-profile=adblock-mvp --provider=domru
 ```
+
+Актуальный статус mobile rollout (на 2026-05-04):
+- `domru`: core mobile chromium/webkit - green.
+- `t2`: core mobile chromium/webkit - green.
+- `domru`: variants mobile chromium - green.
+- `t2`: variants mobile chromium/webkit - green.
+- региональный выбор в mobile для `dom-provider.online`/`providerdom.ru` стабилизирован через открытие burger-меню и mobile city selector.
 
 ## 8. Переменные окружения
 

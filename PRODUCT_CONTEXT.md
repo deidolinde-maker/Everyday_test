@@ -1,5 +1,5 @@
 # PRODUCT_CONTEXT
-Обновлено: 2026-04-29
+Обновлено: 2026-05-04
 
 ## 1. Общее описание продукта
 - Продукт: репозиторий автотестов `Everyday_test` для проверки лендингов интернет-провайдеров.
@@ -113,7 +113,7 @@
   - кнопки CTA "Подключить".
 
 ## 8. Интеграции
-- Playwright (browser automation, Chromium + Firefox).
+- Playwright (browser automation, Chromium + Firefox + WebKit).
 - Pytest + плагины (`pytest-playwright`, `pytest-timeout`, `allure-pytest`).
 - Allure (локально и в CI).
 - Telegram Bot API:
@@ -164,6 +164,7 @@
   - `a9d1a58`: отключен `/business` для `rt-internet.online` и `rtk-home-internet.ru`.
 - CI:
   - основной контур Suite A: `provider-orchestrator.yml` + ручные `provider-<name>.yml` (MTS/Beeline/Megafon/T2/Rostelecom/Domru), запуск через `workflow_dispatch`;
+  - каждый `provider-<name>.yml` поддерживает desktop и mobile флаги запуска в одном workflow (`run_chromium`, `run_firefox`, `run_webkit`, `run_mobile_chromium`, `run_mobile_webkit`);
   - `allure.yml` (формы): legacy/fallback workflow, только `workflow_dispatch` (без cron и без автозапуска по push).
   - `allure.yml` выполняет clean multi-browser запуск:
     - для ручного запуска поддержаны флаги `run_chromium` / `run_firefox` (можно прогонять только выбранные браузеры);
@@ -173,6 +174,8 @@
   - adblock-профиль вынесен в отдельный ручной workflow `allure-adblock.yml` (`firefox` + `blocking_profile=adblock-mvp`).
   - `allure.yml` сохраняет state агрегированных алертов в `notify_state.json` (публикуется в `gh-pages`) для детекции восстановления между прогонами.
   - `mobile-tariffs.yml`: только `workflow_dispatch`, публикация Allure в `gh-pages/mobile-tariffs`.
+  - `provider-mobile-orchestrator.yml`: основной mobile matrix-контур (`smoke/all`, `core/variants`, `chromium/webkit`) с публикацией в `gh-pages/provider-mobile-orchestrator/`.
+  - временные provider-specific mobile pilot workflows удалены как дублирующие, mobile rollout централизован через orchestrator и mobile-тумблеры в provider workflow.
 - Количество конфигов на 2026-04-13:
   - Suite A: 23 сайта,
   - Suite B: 10 лендингов.

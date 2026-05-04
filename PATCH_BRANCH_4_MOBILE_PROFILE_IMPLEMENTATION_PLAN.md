@@ -220,3 +220,15 @@
 Следующий шаг:
 - stability-soak mobile orchestrator в clean-режиме (`blocking_profile=none`).
 - отдельный follow-up по `adblock-mvp` для mobile (неблокирующий текущий rollout).
+
+## Обновление статуса на 2026-05-04
+- Mobile orchestrator подтверждён на полном скоупе провайдеров (`provider_scope=all`) в clean-режиме.
+- Дополнительно подтверждены быстрые нестабильные mobile-кейсы:
+  - `domru` (`core` и `variants`);
+  - `t2` (`core` и `variants`);
+  - браузеры `chromium` и `webkit` по целевым прогонам.
+- Выполнена финальная унификация запуска:
+  - во все `provider-<name>.yml` добавлены мобильные переключатели `run_mobile_chromium` / `run_mobile_webkit`;
+  - добавлены mobile-шаги `core` и `variants` в тех же workflow;
+  - mobile артефакты объединяются в провайдерный Allure вместе с desktop.
+- Коммит фиксации унификации: `c36b2dd`.
