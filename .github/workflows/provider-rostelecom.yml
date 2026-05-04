@@ -27,6 +27,16 @@ on:
         required: false
         default: false
         type: boolean
+      run_mobile_chromium:
+        description: 'Run mobile profile in Chromium'
+        required: false
+        default: false
+        type: boolean
+      run_mobile_webkit:
+        description: 'Run mobile profile in WebKit'
+        required: false
+        default: false
+        type: boolean
       blocking_profile:
         description: 'Blocking profile'
         required: false
@@ -78,6 +88,14 @@ on:
         required: false
         type: boolean
         default: false
+      run_mobile_chromium:
+        required: false
+        type: boolean
+        default: false
+      run_mobile_webkit:
+        required: false
+        type: boolean
+        default: false
       blocking_profile:
         required: false
         type: string
@@ -113,6 +131,8 @@ jobs:
       RUN_CHROMIUM: ${{ inputs.run_chromium && 'true' || 'false' }}
       RUN_FIREFOX: ${{ inputs.run_firefox && 'true' || 'false' }}
       RUN_WEBKIT: ${{ inputs.run_webkit && 'true' || 'false' }}
+      RUN_MOBILE_CHROMIUM: ${{ inputs.run_mobile_chromium && 'true' || 'false' }}
+      RUN_MOBILE_WEBKIT: ${{ inputs.run_mobile_webkit && 'true' || 'false' }}
       BLOCKING_PROFILE: ${{ inputs.blocking_profile || 'none' }}
       RUN_PLACE_VARIANTS: ${{ inputs.run_place_variants && 'true' || 'false' }}
       ALERT_ERRORS_ENABLED: ${{ inputs.alert_errors && 'true' || 'false' }}
@@ -141,16 +161,18 @@ jobs:
           echo "RUN_CHROMIUM=${RUN_CHROMIUM}"
           echo "RUN_FIREFOX=${RUN_FIREFOX}"
           echo "RUN_WEBKIT=${RUN_WEBKIT}"
+          echo "RUN_MOBILE_CHROMIUM=${RUN_MOBILE_CHROMIUM}"
+          echo "RUN_MOBILE_WEBKIT=${RUN_MOBILE_WEBKIT}"
           echo "BLOCKING_PROFILE=${BLOCKING_PROFILE}"
-          if [ "${RUN_CHROMIUM}" != "true" ] && [ "${RUN_FIREFOX}" != "true" ] && [ "${RUN_WEBKIT}" != "true" ]; then
-            echo "::error::Select at least one browser (run_chromium/run_firefox/run_webkit)."
+          if [ "${RUN_CHROMIUM}" != "true" ] && [ "${RUN_FIREFOX}" != "true" ] && [ "${RUN_WEBKIT}" != "true" ] && [ "${RUN_MOBILE_CHROMIUM}" != "true" ] && [ "${RUN_MOBILE_WEBKIT}" != "true" ]; then
+            echo "::error::Select at least one browser (run_chromium/run_firefox/run_webkit/run_mobile_chromium/run_mobile_webkit)."
             exit 1
           fi
 
       - name: Install Playwright browsers
         run: |
           set -e
-          if [ "${RUN_CHROMIUM}" = "true" ]; then
+          if [ "${RUN_CHROMIUM}" = "true" ] || [ "${RUN_MOBILE_CHROMIUM}" = "true" ]; then
             python -m playwright install chromium
             python -m playwright install-deps chromium
           fi
@@ -158,7 +180,7 @@ jobs:
             python -m playwright install firefox
             python -m playwright install-deps firefox
           fi
-          if [ "${RUN_WEBKIT}" = "true" ]; then
+          if [ "${RUN_WEBKIT}" = "true" ] || [ "${RUN_MOBILE_WEBKIT}" = "true" ]; then
             python -m playwright install webkit
             python -m playwright install-deps webkit
           fi
@@ -250,6 +272,65 @@ jobs:
           SITE_INPUT: ${{ inputs.site }}
         continue-on-error: true
 
+      - name: Run Core Mobile tests (chromium)
+        id: run_core_mobile_chromium
+        if: ${{ always() && env.RUN_MOBILE_CHROMIUM == 'true' }}
+        timeout-minutes: 90
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-core-mobile-chromium
+            --timeout=600
+            -s
+            --service-mode=core
+            --browser=chromium
+            --execution-profile=mobile-chromium
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running CORE MOBILE: provider=${PROVIDER_NAME}, browser=chromium, profile=mobile-chromium"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ inputs.site }}
+        continue-on-error: true
+
+      - name: Run Core Mobile tests (webkit)
+        id: run_core_mobile_webkit
+        if: ${{ always() && env.RUN_MOBILE_WEBKIT == 'true' }}
+        timeout-minutes: 90
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-core-mobile-webkit
+            --timeout=600
+            -s
+            --service-mode=core
+            --browser=webkit
+            --execution-profile=mobile-webkit
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running CORE MOBILE: provider=${PROVIDER_NAME}, browser=webkit, profile=mobile-webkit"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ inputs.site }}
+        continue-on-error: true
       - name: Run Place Variants tests (chromium)
         id: run_variants_chromium
         if: ${{ always() && env.RUN_CHROMIUM == 'true' && env.RUN_PLACE_VARIANTS == 'true' }}
@@ -337,6 +418,65 @@ jobs:
           SITE_INPUT: ${{ inputs.site }}
         continue-on-error: true
 
+      - name: Run Place Variants Mobile tests (chromium)
+        id: run_variants_mobile_chromium
+        if: ${{ always() && env.RUN_MOBILE_CHROMIUM == 'true' && env.RUN_PLACE_VARIANTS == 'true' }}
+        timeout-minutes: 90
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-variants-mobile-chromium
+            --timeout=600
+            -s
+            --service-mode=variants
+            --browser=chromium
+            --execution-profile=mobile-chromium
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running VARIANTS MOBILE: provider=${PROVIDER_NAME}, browser=chromium, profile=mobile-chromium"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ inputs.site }}
+        continue-on-error: true
+
+      - name: Run Place Variants Mobile tests (webkit)
+        id: run_variants_mobile_webkit
+        if: ${{ always() && env.RUN_MOBILE_WEBKIT == 'true' && env.RUN_PLACE_VARIANTS == 'true' }}
+        timeout-minutes: 90
+        run: |
+          set -e
+          PYTEST_ARGS=(
+            test_universal2.py
+            --alluredir=allure-results-variants-mobile-webkit
+            --timeout=600
+            -s
+            --service-mode=variants
+            --browser=webkit
+            --execution-profile=mobile-webkit
+            --blocking-profile="${BLOCKING_PROFILE}"
+            --provider="${PROVIDER_NAME}"
+          )
+          if [ -n "${SITE_INPUT}" ]; then
+            PYTEST_ARGS+=(--site="${SITE_INPUT}")
+          fi
+          echo "Running VARIANTS MOBILE: provider=${PROVIDER_NAME}, browser=webkit, profile=mobile-webkit"
+          echo "Pytest args: ${PYTEST_ARGS[*]}"
+          python -m pytest "${PYTEST_ARGS[@]}"
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SITE_INPUT: ${{ inputs.site }}
+        continue-on-error: true
       - name: Merge Allure results
         if: always()
         run: |
@@ -358,6 +498,18 @@ jobs:
           fi
           if [ -d allure-results-variants-webkit ]; then
             cp -R allure-results-variants-webkit/. allure-results/
+          fi
+          if [ -d allure-results-core-mobile-chromium ]; then
+            cp -R allure-results-core-mobile-chromium/. allure-results/
+          fi
+          if [ -d allure-results-core-mobile-webkit ]; then
+            cp -R allure-results-core-mobile-webkit/. allure-results/
+          fi
+          if [ -d allure-results-variants-mobile-chromium ]; then
+            cp -R allure-results-variants-mobile-chromium/. allure-results/
+          fi
+          if [ -d allure-results-variants-mobile-webkit ]; then
+            cp -R allure-results-variants-mobile-webkit/. allure-results/
           fi
 
       - name: Upload Allure results artifact
