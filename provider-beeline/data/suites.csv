@@ -5,39 +5,39 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","224703","Сайт: https://beelline-internet.ru/ [core] [chromium] [none]","","Thu Apr 30 06:53:20 UTC 2026","passed","Thu Apr 30 06:57:04 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","216237","Сайт: https://beeline-ru.pro/ [core] [chromium] [none]","","Mon May 04 06:48:24 UTC 2026","passed","Mon May 04 06:52:00 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","227534","Сайт: https://beeline-home.online/ [core] [chromium] [none]","","Thu Apr 30 06:49:32 UTC 2026","passed","Thu Apr 30 06:53:20 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","221579","Сайт: https://beelline-internet.ru/ [core] [chromium] [none]","","Mon May 04 06:55:37 UTC 2026","passed","Mon May 04 06:59:19 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","312571","Сайт: https://online-beeline.ru/ [core] [chromium] [none]","","Thu Apr 30 06:40:27 UTC 2026","passed","Thu Apr 30 06:45:40 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","295873","Сайт: https://online-beeline.ru/ [core] [chromium] [none]","","Mon May 04 06:43:28 UTC 2026","passed","Mon May 04 06:48:24 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","272379","Сайт: https://beeline-ru.online/ [core] [chromium] [none]","","Thu Apr 30 06:35:55 UTC 2026","passed","Thu Apr 30 06:40:27 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","217139","Сайт: https://beeline-home.online/ [core] [chromium] [none]","","Mon May 04 06:52:00 UTC 2026","passed","Mon May 04 06:55:37 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","232061","Сайт: https://beeline-ru.pro/ [core] [chromium] [none]","","Thu Apr 30 06:45:40 UTC 2026","passed","Thu Apr 30 06:49:32 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","289009","Сайт: https://beeline-internet.online/ [core] [chromium] [none]","","Mon May 04 06:34:06 UTC 2026","passed","Mon May 04 06:38:55 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","307310","Сайт: https://beeline-internet.online/ [core] [chromium] [none]","","Thu Apr 30 06:30:47 UTC 2026","passed","Thu Apr 30 06:35:55 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","272062","Сайт: https://beeline-ru.online/ [core] [chromium] [none]","","Mon May 04 06:38:56 UTC 2026","passed","Mon May 04 06:43:28 UTC 2026","service-mode: core","Формы провайдеров","",""
