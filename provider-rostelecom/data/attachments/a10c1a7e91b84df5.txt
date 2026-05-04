@@ -1,0 +1,1 @@
+POPUP 3/6 text='подключить' hint=None code=no_confirmation url=https://rtk-internet.online/moskva | service=без выбора варианта
