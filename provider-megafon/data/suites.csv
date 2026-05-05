@@ -5,11 +5,11 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","211612","Сайт: https://mega-premium.ru/ [core] [chromium] [none]","","Mon May 04 07:00:20 UTC 2026","passed","Mon May 04 07:03:52 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","223397","Сайт: https://mega-home-internet.ru/ [core] [chromium] [none]","","Tue May 05 07:04:23 UTC 2026","passed","Tue May 05 07:08:07 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","222662","Сайт: https://mega-home-internet.ru/ [core] [chromium] [none]","","Mon May 04 07:03:52 UTC 2026","passed","Mon May 04 07:07:35 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","217493","Сайт: https://mega-premium.ru/ [core] [chromium] [none]","","Tue May 05 07:00:46 UTC 2026","passed","Tue May 05 07:04:23 UTC 2026","service-mode: core","Формы провайдеров","",""
