@@ -29,6 +29,8 @@ pipeline {
     PLAYWRIGHT_BROWSERS_PATH = '/var/lib/jenkins/cache/ms-playwright'
     PIP_DISABLE_PIP_VERSION_CHECK = '1'
     PYTHONUNBUFFERED = '1'
+    PYTHON_BIN = '.venv/bin/python'
+    PYTHON_BIN_FILE = '.python_bin'
     ALERT_ERRORS_ENABLED = "${params.ALERT_ERRORS}"
     ALERT_AGGREGATES_ENABLED = "${params.ALERT_AGGREGATES}"
     ALERT_SUMMARY_ENABLED = "${params.ALERT_SUMMARY}"
@@ -57,9 +59,32 @@ pipeline {
         sh '''
           set -e
           python3 --version
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -r requirements.txt
-          python3 -m pip install pytest-playwright allure-pytest pytest-timeout requests
+          pybin="${PYTHON_BIN}"
+
+          if [ ! -x "${pybin}" ]; then
+            python3 -m venv .venv || true
+          fi
+
+          if [ ! -x "${pybin}" ]; then
+            python3 -m ensurepip --upgrade || true
+            python3 -m venv .venv || true
+          fi
+
+          if [ ! -x "${pybin}" ]; then
+            if ! python3 -m pip --version >/dev/null 2>&1; then
+              if ! python3 -m ensurepip --upgrade >/dev/null 2>&1; then
+                curl -fsSL https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py
+                python3 /tmp/get-pip.py --user
+              fi
+            fi
+            pybin="python3"
+          fi
+
+          echo "${pybin}" > "${PYTHON_BIN_FILE}"
+          "${pybin}" --version
+          "${pybin}" -m pip install --upgrade pip
+          "${pybin}" -m pip install -r requirements.txt
+          "${pybin}" -m pip install pytest-playwright allure-pytest pytest-timeout requests
         '''
       }
     }
@@ -79,6 +104,7 @@ pipeline {
       steps {
         sh '''
           set -e
+          pybin="$(cat "${PYTHON_BIN_FILE}")"
           need_chromium=0
           need_firefox=0
           need_webkit=0
@@ -97,7 +123,7 @@ pipeline {
             if ls "${PLAYWRIGHT_BROWSERS_PATH}"/chromium-* >/dev/null 2>&1; then
               echo "Chromium already exists in shared cache."
             else
-              python3 -m playwright install chromium
+              "${pybin}" -m playwright install chromium
             fi
           fi
 
@@ -105,7 +131,7 @@ pipeline {
             if ls "${PLAYWRIGHT_BROWSERS_PATH}"/firefox-* >/dev/null 2>&1; then
               echo "Firefox already exists in shared cache."
             else
-              python3 -m playwright install firefox
+              "${pybin}" -m playwright install firefox
             fi
           fi
 
@@ -113,7 +139,7 @@ pipeline {
             if ls "${PLAYWRIGHT_BROWSERS_PATH}"/webkit-* >/dev/null 2>&1; then
               echo "WebKit already exists in shared cache."
             else
-              python3 -m playwright install webkit
+              "${pybin}" -m playwright install webkit
             fi
           fi
         '''
@@ -124,6 +150,7 @@ pipeline {
       steps {
         sh '''
           set -e
+          pybin="$(cat "${PYTHON_BIN_FILE}")"
 
           rm -rf allure-results allure-results-* || true
           mkdir -p allure-results
@@ -152,7 +179,7 @@ pipeline {
 
             echo "Running: provider=${provider} mode=${mode} browser=${browser} profile=${profile:-desktop}"
             echo "Pytest args: ${PYTEST_ARGS}"
-            python3 -m pytest ${PYTEST_ARGS}
+            "${pybin}" -m pytest ${PYTEST_ARGS}
           }
 
           for provider in ${providers}; do
