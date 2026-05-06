@@ -22,6 +22,7 @@ import os
 import requests
 import time
 import sys
+import json
 from urllib.parse import quote, urlsplit, urlunsplit
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
@@ -154,32 +155,77 @@ def _build_telegram_proxy_url() -> str:
 
 def send_telegram_alert(text: str, alert_type: str = "tech") -> bool:
     """Отправляет сообщение в Telegram и логирует результат отправки."""
-    token   = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    proxy_url = (os.getenv("TELEGRAM_PROXY_URL") or "").strip()
+    proxy_auth_secret = (os.getenv("TELEGRAM_PROXY_AUTH_SECRET") or "").strip()
+    proxy_creds = (os.getenv("TELEGRAM_PROXY_CREDS") or "").strip()
+
+    def _send_via_proxy_endpoint() -> bool:
+        if not (proxy_url and proxy_auth_secret and proxy_creds):
+            return False
+
+        print(f"[TELEGRAM][{alert_type}] Sending via proxy endpoint")
+        payload = {
+            "title": f"Everyday_test [{alert_type}]",
+            "text": text,
+            "creds": proxy_creds,
+            "parse_mode": "HTML",
+            "disable_notification": False,
+        }
+        try:
+            resp = requests.post(
+                proxy_url,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Authentication": proxy_auth_secret,
+                },
+                data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                timeout=15,
+            )
+            if resp.ok:
+                print(f"[TELEGRAM][{alert_type}] Sent via proxy endpoint (status={resp.status_code})")
+                return True
+            body = (resp.text or "").strip().replace("\n", " ")
+            print(f"[TELEGRAM][{alert_type}] Proxy endpoint failed (status={resp.status_code}): {body[:180]}")
+            return False
+        except Exception as e:
+            print(f"[TELEGRAM][{alert_type}] Proxy endpoint exception: {e}")
+            return False
+
+    # Primary path for Jenkins proxy-only setup.
     if not token or not chat_id:
-        print(f"[TELEGRAM][{alert_type}] Пропуск отправки: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID не заданы")
+        if _send_via_proxy_endpoint():
+            return True
+        print(
+            f"[TELEGRAM][{alert_type}] Skip send: TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID are missing "
+            "and proxy endpoint is not usable"
+        )
         return False
-    print(f"[TELEGRAM][{alert_type}] Попытка отправки")
+
+    print(f"[TELEGRAM][{alert_type}] Send attempt")
     try:
-        proxy_url = _build_telegram_proxy_url()
+        runtime_proxy_url = _build_telegram_proxy_url()
         request_kwargs = {"data": {"chat_id": chat_id, "text": text}, "timeout": 10}
-        if proxy_url:
-            request_kwargs["proxies"] = {"http": proxy_url, "https": proxy_url}
-            print(f"[TELEGRAM][{alert_type}] Proxy включён")
+        if runtime_proxy_url:
+            request_kwargs["proxies"] = {"http": runtime_proxy_url, "https": runtime_proxy_url}
+            print(f"[TELEGRAM][{alert_type}] HTTP proxy enabled")
 
         resp = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
             **request_kwargs,
         )
         if resp.ok:
-            print(f"[TELEGRAM][{alert_type}] Успешно отправлено (status={resp.status_code})")
+            print(f"[TELEGRAM][{alert_type}] Sent successfully (status={resp.status_code})")
             return True
         body = (resp.text or "").strip().replace("\n", " ")
-        print(f"[TELEGRAM][{alert_type}] Ошибка отправки (status={resp.status_code}): {body[:180]}")
-        return False
+        print(f"[TELEGRAM][{alert_type}] Send failed (status={resp.status_code}): {body[:180]}")
+
+        # If direct send failed and proxy endpoint is configured, try it as fallback.
+        return _send_via_proxy_endpoint()
     except Exception as e:
-        print(f"[TELEGRAM][{alert_type}] Исключение при отправке: {e}")
-        return False
+        print(f"[TELEGRAM][{alert_type}] Direct send exception: {e}")
+        return _send_via_proxy_endpoint()
 
 
 def mark_step_not_applicable(site_label: str, step_no: str, step_name: str, reason: str):
