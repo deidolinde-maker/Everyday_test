@@ -312,7 +312,7 @@ pipeline {
             withCredentials([
               string(credentialsId: 'telegram_proxy_url', variable: 'TELEGRAM_PROXY_URL'),
               string(credentialsId: 'telegram_proxy_auth_secret', variable: 'TELEGRAM_PROXY_AUTH_SECRET'),
-              usernamePassword(credentialsId: 'tg_proxy_creds_survarius', usernameVariable: 'TELEGRAM_PROXY_USER', passwordVariable: 'TELEGRAM_PROXY_PASS')
+              string(credentialsId: 'tg_proxy_creds_survarius', variable: 'TELEGRAM_PROXY_CREDS')
             ]) {
               echo 'Telegram proxy credentials loaded from Jenkins credentials store.'
               runMatrix()
@@ -336,14 +336,6 @@ pipeline {
           echo 'Allure report published in Jenkins UI.'
         } catch (Exception e) {
           echo "Allure publish skipped: ${e.getMessage()}"
-        }
-      }
-      script {
-        def junitFiles = findFiles(glob: '**/junit*.xml')
-        if (junitFiles && junitFiles.length > 0) {
-          junit testResults: '**/junit*.xml', allowEmptyResults: true
-        } else {
-          echo 'No JUnit XML files found, skip junit publisher.'
         }
       }
       echo "Build URL: ${env.BUILD_URL}"

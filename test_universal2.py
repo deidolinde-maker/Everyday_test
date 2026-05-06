@@ -132,6 +132,13 @@ def _build_telegram_proxy_url() -> str:
     proxy_user = (os.getenv("TELEGRAM_PROXY_USER") or "").strip()
     proxy_pass = (os.getenv("TELEGRAM_PROXY_PASS") or "").strip()
 
+    proxy_creds = (os.getenv("TELEGRAM_PROXY_CREDS") or "").strip()
+    if proxy_creds and not (proxy_user or proxy_pass):
+        if ":" in proxy_creds:
+            user_part, pass_part = proxy_creds.split(":", 1)
+            proxy_user = user_part.strip()
+            proxy_pass = pass_part.strip()
+
     auth_part = ""
     if proxy_user or proxy_pass:
         auth_part = f"{quote(proxy_user, safe='')}:{quote(proxy_pass, safe='')}"
