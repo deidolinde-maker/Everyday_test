@@ -23,6 +23,7 @@ pipeline {
     booleanParam(name: 'ALERT_AGGREGATES', defaultValue: true, description: 'Enable aggregate alerts in pytest runtime.')
     booleanParam(name: 'ALERT_SUMMARY', defaultValue: true, description: 'Enable summary alerts in pytest runtime.')
     booleanParam(name: 'ALERT_RECOVERED', defaultValue: true, description: 'Enable recovered alerts in pytest runtime.')
+    booleanParam(name: 'USE_TELEGRAM_PROXY', defaultValue: true, description: 'Use Jenkins proxy credentials for Telegram alerts.')
   }
 
   environment {
@@ -212,7 +213,9 @@ pipeline {
 
     stage('Run provider matrix') {
       steps {
-        sh '''
+        script {
+          def runMatrix = {
+            sh '''
           set -e
           pybin="$(cat "${PYTHON_BIN_FILE}")"
 
@@ -303,6 +306,22 @@ pipeline {
             fi
           done
         '''
+          }
+
+          if (params.USE_TELEGRAM_PROXY) {
+            withCredentials([
+              string(credentialsId: 'telegram_proxy_url', variable: 'TELEGRAM_PROXY_URL'),
+              string(credentialsId: 'telegram_proxy_auth_secret', variable: 'TELEGRAM_PROXY_AUTH_SECRET'),
+              usernamePassword(credentialsId: 'tg_proxy_creds_survarius', usernameVariable: 'TELEGRAM_PROXY_USER', passwordVariable: 'TELEGRAM_PROXY_PASS')
+            ]) {
+              echo 'Telegram proxy credentials loaded from Jenkins credentials store.'
+              runMatrix()
+            }
+          } else {
+            echo 'Telegram proxy disabled by parameter.'
+            runMatrix()
+          }
+        }
       }
     }
   }

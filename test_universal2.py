@@ -22,7 +22,7 @@ import os
 import requests
 import time
 import sys
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from site_configs import select_site_configs
@@ -109,6 +109,42 @@ def _build_form_alert_message(
     return "\n".join(lines)
 
 
+def _build_telegram_proxy_url() -> str:
+    raw_proxy_url = (os.getenv("TELEGRAM_PROXY_URL") or "").strip()
+    if not raw_proxy_url:
+        return ""
+
+    if not raw_proxy_url.startswith(("http://", "https://")):
+        raw_proxy_url = f"http://{raw_proxy_url}"
+
+    auth_secret = (os.getenv("TELEGRAM_PROXY_AUTH_SECRET") or "").strip()
+    if auth_secret.startswith(("http://", "https://")):
+        return auth_secret
+
+    parsed = urlsplit(raw_proxy_url)
+    if not parsed.netloc:
+        return ""
+
+    # URL already has creds: http://user:pass@host:port
+    if parsed.username or parsed.password:
+        return raw_proxy_url
+
+    proxy_user = (os.getenv("TELEGRAM_PROXY_USER") or "").strip()
+    proxy_pass = (os.getenv("TELEGRAM_PROXY_PASS") or "").strip()
+
+    auth_part = ""
+    if proxy_user or proxy_pass:
+        auth_part = f"{quote(proxy_user, safe='')}:{quote(proxy_pass, safe='')}"
+    elif auth_secret:
+        auth_part = auth_secret.strip().strip("@")
+
+    if not auth_part:
+        return raw_proxy_url
+
+    netloc = f"{auth_part}@{parsed.netloc}"
+    return urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
+
+
 def send_telegram_alert(text: str, alert_type: str = "tech") -> bool:
     """Отправляет сообщение в Telegram и логирует результат отправки."""
     token   = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
@@ -118,10 +154,15 @@ def send_telegram_alert(text: str, alert_type: str = "tech") -> bool:
         return False
     print(f"[TELEGRAM][{alert_type}] Попытка отправки")
     try:
+        proxy_url = _build_telegram_proxy_url()
+        request_kwargs = {"data": {"chat_id": chat_id, "text": text}, "timeout": 10}
+        if proxy_url:
+            request_kwargs["proxies"] = {"http": proxy_url, "https": proxy_url}
+            print(f"[TELEGRAM][{alert_type}] Proxy включён")
+
         resp = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            data={"chat_id": chat_id, "text": text},
-            timeout=10,
+            **request_kwargs,
         )
         if resp.ok:
             print(f"[TELEGRAM][{alert_type}] Успешно отправлено (status={resp.status_code})")
