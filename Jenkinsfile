@@ -56,6 +56,44 @@ pipeline {
       }
     }
 
+    stage('Cache diagnostics') {
+      steps {
+        sh '''
+          set -e
+          echo "=== Cache diagnostics ==="
+          echo "Workspace: $(pwd)"
+
+          if [ -x ".venv/bin/python" ]; then
+            echo "[VENV] Reused: .venv exists"
+            .venv/bin/python --version || true
+          else
+            echo "[VENV] Missing: .venv will be created"
+          fi
+
+          if [ -f ".requirements.sha256" ]; then
+            echo "[REQ_HASH] Found: $(cat .requirements.sha256)"
+          else
+            echo "[REQ_HASH] Missing: deps install expected"
+          fi
+
+          if [ -d "${PIP_CACHE_DIR}" ]; then
+            echo "[PIP_CACHE] Found: ${PIP_CACHE_DIR}"
+            du -sh "${PIP_CACHE_DIR}" || true
+          else
+            echo "[PIP_CACHE] Missing: ${PIP_CACHE_DIR}"
+          fi
+
+          if [ -d "${PLAYWRIGHT_BROWSERS_PATH}" ]; then
+            echo "[PW_CACHE] Found: ${PLAYWRIGHT_BROWSERS_PATH}"
+            ls -1 "${PLAYWRIGHT_BROWSERS_PATH}" || true
+          else
+            echo "[PW_CACHE] Missing: ${PLAYWRIGHT_BROWSERS_PATH}"
+          fi
+          echo "========================="
+        '''
+      }
+    }
+
     stage('Prepare Python') {
       steps {
         sh '''
