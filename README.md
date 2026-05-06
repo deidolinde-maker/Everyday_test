@@ -288,6 +288,24 @@ Run: <RUN_URL>    # если задан
    - вернуть `MOBILE_ROLLOUT_ENABLED=true` (или удалить переменную),
    - запускать workflow с `mobile_rollout_enabled=true`.
 
+### 5.7 Jenkins migration baseline
+
+В репозиторий добавлены артефакты для переноса в Jenkins:
+- `Jenkinsfile` - параметрический pipeline для provider run (desktop + mobile профили).
+- `JENKINS_MIGRATION_PLAN.md` - поэтапный план внедрения и критерии готовности.
+- `JENKINS_PHASE_A_CHECKLIST.md` - чеклист первого smoke запуска в Jenkins.
+
+Ключевые параметры Jenkins pipeline:
+- `PROVIDER_SCOPE`: `all|smoke|<provider>`
+- `SERVICE_MODE`: `core|variants|all`
+- браузерные флаги: desktop + mobile toggles
+- `BLOCKING_PROFILE`: `none|adblock-mvp`
+- `SITE`: точечный фильтр домена
+
+Кеш Playwright в Jenkins:
+- `PLAYWRIGHT_BROWSERS_PATH=/var/lib/jenkins/cache/ms-playwright`
+- браузеры ставятся только при отсутствии в кеше.
+
 ## 6. Как добавить новый URL (подробно)
 
 ### 6.1 Добавить сайт в Suite A (формы)
