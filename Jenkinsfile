@@ -27,10 +27,12 @@ pipeline {
 
   environment {
     PLAYWRIGHT_BROWSERS_PATH = '/var/lib/jenkins/cache/ms-playwright'
+    PIP_CACHE_DIR = '/var/lib/jenkins/cache/pip'
     PIP_DISABLE_PIP_VERSION_CHECK = '1'
     PYTHONUNBUFFERED = '1'
     PYTHON_BIN = '.venv/bin/python'
     PYTHON_BIN_FILE = '.python_bin'
+    REQ_HASH_FILE = '.requirements.sha256'
     ALERT_ERRORS_ENABLED = "${params.ALERT_ERRORS}"
     ALERT_AGGREGATES_ENABLED = "${params.ALERT_AGGREGATES}"
     ALERT_SUMMARY_ENABLED = "${params.ALERT_SUMMARY}"
@@ -59,6 +61,7 @@ pipeline {
         sh '''
           set -e
           python3 --version
+          mkdir -p "${PIP_CACHE_DIR}"
           pybin="${PYTHON_BIN}"
 
           if [ ! -x "${pybin}" ]; then
@@ -82,9 +85,32 @@ pipeline {
 
           echo "${pybin}" > "${PYTHON_BIN_FILE}"
           "${pybin}" --version
-          "${pybin}" -m pip install --upgrade pip
-          "${pybin}" -m pip install -r requirements.txt
-          "${pybin}" -m pip install pytest-playwright allure-pytest pytest-timeout requests
+
+          current_hash="$(sha256sum requirements.txt | awk '{print $1}')"
+          saved_hash=""
+          if [ -f "${REQ_HASH_FILE}" ]; then
+            saved_hash="$(cat "${REQ_HASH_FILE}")"
+          fi
+
+          need_install=0
+          if [ ! -f "${REQ_HASH_FILE}" ]; then
+            need_install=1
+          fi
+          if [ "${current_hash}" != "${saved_hash}" ]; then
+            need_install=1
+          fi
+          if ! "${pybin}" -m pytest --version >/dev/null 2>&1; then
+            need_install=1
+          fi
+
+          if [ "${need_install}" = "1" ]; then
+            echo "Installing Python dependencies (first run or requirements changed)..."
+            "${pybin}" -m pip install --upgrade pip
+            "${pybin}" -m pip install -r requirements.txt
+            echo "${current_hash}" > "${REQ_HASH_FILE}"
+          else
+            echo "Python dependencies already installed, skip pip install."
+          fi
         '''
       }
     }
