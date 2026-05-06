@@ -310,7 +310,23 @@ pipeline {
   post {
     always {
       archiveArtifacts artifacts: 'allure-results/**, allure-results-*/**, telegram_message.txt, notify_state.json', allowEmptyArchive: true
-      junit testResults: '**/junit*.xml', allowEmptyResults: true
+      script {
+        try {
+          // Requires Jenkins Allure plugin. If not installed, continue without failing the build.
+          allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
+          echo 'Allure report published in Jenkins UI.'
+        } catch (Exception e) {
+          echo "Allure publish skipped: ${e.getMessage()}"
+        }
+      }
+      script {
+        def junitFiles = findFiles(glob: '**/junit*.xml')
+        if (junitFiles && junitFiles.length > 0) {
+          junit testResults: '**/junit*.xml', allowEmptyResults: true
+        } else {
+          echo 'No JUnit XML files found, skip junit publisher.'
+        }
+      }
       echo "Build URL: ${env.BUILD_URL}"
     }
   }
