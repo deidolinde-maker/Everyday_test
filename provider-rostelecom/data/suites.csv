@@ -5,32 +5,32 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","223019","Сайт: https://rt-internet.online/ [core] [chromium] [none]","","Tue May 05 07:17:08 UTC 2026","passed","Tue May 05 07:20:51 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","225115","Сайт: https://rt-internet.online/ [core] [chromium] [none]","","Wed May 06 07:22:32 UTC 2026","passed","Wed May 06 07:26:17 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","261183","Сайт: https://rtk-ru.online/ [core] [chromium] [none]","","Tue May 05 07:12:47 UTC 2026","passed","Tue May 05 07:17:08 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","225674","Сайт: https://rtk-home-internet.ru/ [core] [chromium] [none]","","Wed May 06 07:26:17 UTC 2026","passed","Wed May 06 07:30:03 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","223848","Сайт: https://rtk-home-internet.ru/ [core] [chromium] [none]","","Tue May 05 07:20:51 UTC 2026","passed","Tue May 05 07:24:35 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","231531","Сайт: https://rtk-ru.online/ [core] [chromium] [none]","","Wed May 06 07:18:41 UTC 2026","passed","Wed May 06 07:22:32 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","307100","Сайт: https://rtk-internet.online/ [core] [chromium] [none]","","Tue May 05 07:24:35 UTC 2026","passed","Tue May 05 07:29:42 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","317327","Сайт: http://rtk-home.ru/ [core] [chromium] [none]","","Wed May 06 07:35:13 UTC 2026","passed","Wed May 06 07:40:30 UTC 2026","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","312214","Сайт: http://rtk-home.ru/ [core] [chromium] [none]","","Tue May 05 07:29:42 UTC 2026","passed","Tue May 05 07:34:54 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","309551","Сайт: https://rtk-internet.online/ [core] [chromium] [none]","","Wed May 06 07:30:03 UTC 2026","passed","Wed May 06 07:35:13 UTC 2026","service-mode: core","Формы провайдеров","",""
