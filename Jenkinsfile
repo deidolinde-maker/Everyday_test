@@ -328,7 +328,7 @@ pipeline {
 
   post {
     always {
-      archiveArtifacts artifacts: 'allure-results/**, allure-results-*/**, telegram_message.txt, notify_state.json', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'allure-results/**, allure-results-*/**, telegram_message.txt, telegram_should_send.txt, notify_state.json', allowEmptyArchive: true
       script {
         try {
           // Requires Jenkins Allure plugin. If not installed, continue without failing the build.
@@ -336,6 +336,71 @@ pipeline {
           echo 'Allure report published in Jenkins UI.'
         } catch (Exception e) {
           echo "Allure publish skipped: ${e.getMessage()}"
+        }
+      }
+      script {
+        def notifySummary = {
+          sh '''
+            set +e
+            pybin="python3"
+            if [ -f "${PYTHON_BIN_FILE}" ]; then
+              pybin="$(cat "${PYTHON_BIN_FILE}")"
+            fi
+            if [ ! -x "${pybin}" ] && [ "${pybin}" != "python3" ]; then
+              pybin="python3"
+            fi
+
+            export ALLURE_RESULTS_DIR="allure-results"
+            export RUN_URL="${BUILD_URL}"
+            export ALLURE_URL="${BUILD_URL}allure/"
+
+            "${pybin}" notify_from_allure.py || {
+              echo "notify_from_allure.py failed, skip summary alert."
+              exit 0
+            }
+
+            if [ ! -f telegram_should_send.txt ]; then
+              echo "telegram_should_send.txt missing, skip summary alert."
+              exit 0
+            fi
+            if [ "$(cat telegram_should_send.txt | tr -d '[:space:]')" != "1" ]; then
+              echo "Summary alert disabled by notify rules."
+              exit 0
+            fi
+            if [ ! -s telegram_message.txt ]; then
+              echo "telegram_message.txt is empty, skip summary alert."
+              exit 0
+            fi
+
+            "${pybin}" - <<'PY'
+from pathlib import Path
+from test_universal2 import send_telegram_alert
+
+text = Path("telegram_message.txt").read_text(encoding="utf-8").strip()
+if not text:
+    raise SystemExit(0)
+
+ok = send_telegram_alert(text, alert_type="summary")
+raise SystemExit(0 if ok else 2)
+PY
+            send_rc=$?
+            if [ "${send_rc}" -ne 0 ]; then
+              echo "Summary alert was not delivered (check TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID and proxy)."
+            fi
+            exit 0
+          '''
+        }
+
+        if (params.USE_TELEGRAM_PROXY) {
+          withCredentials([
+            string(credentialsId: 'telegram_proxy_url', variable: 'TELEGRAM_PROXY_URL'),
+            string(credentialsId: 'telegram_proxy_auth_secret', variable: 'TELEGRAM_PROXY_AUTH_SECRET'),
+            string(credentialsId: 'tg_proxy_creds_survarius', variable: 'TELEGRAM_PROXY_CREDS')
+          ]) {
+            notifySummary()
+          }
+        } else {
+          notifySummary()
         }
       }
       echo "Build URL: ${env.BUILD_URL}"
