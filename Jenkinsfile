@@ -184,28 +184,18 @@ pipeline {
             need_webkit=1
           fi
 
+          # Important: cache may contain a different revision than current Playwright package expects.
+          # Calling playwright install ensures required exact revision exists; if already present, it is reused.
           if [ "${need_chromium}" = "1" ]; then
-            if ls "${PLAYWRIGHT_BROWSERS_PATH}"/chromium-* >/dev/null 2>&1; then
-              echo "Chromium already exists in shared cache."
-            else
-              "${pybin}" -m playwright install chromium
-            fi
+            "${pybin}" -m playwright install chromium
           fi
 
           if [ "${need_firefox}" = "1" ]; then
-            if ls "${PLAYWRIGHT_BROWSERS_PATH}"/firefox-* >/dev/null 2>&1; then
-              echo "Firefox already exists in shared cache."
-            else
-              "${pybin}" -m playwright install firefox
-            fi
+            "${pybin}" -m playwright install firefox
           fi
 
           if [ "${need_webkit}" = "1" ]; then
-            if ls "${PLAYWRIGHT_BROWSERS_PATH}"/webkit-* >/dev/null 2>&1; then
-              echo "WebKit already exists in shared cache."
-            else
-              "${pybin}" -m playwright install webkit
-            fi
+            "${pybin}" -m playwright install webkit
           fi
         '''
       }
