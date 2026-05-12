@@ -219,6 +219,7 @@ pipeline {
             *) providers="${PROVIDER_SCOPE}" ;;
           esac
 
+          any_fail=0
           run_one() {
             provider="$1"
             mode="$2"
@@ -236,7 +237,14 @@ pipeline {
 
             echo "Running: provider=${provider} mode=${mode} browser=${browser} profile=${profile:-desktop}"
             echo "Pytest args: ${PYTEST_ARGS}"
+            set +e
             "${pybin}" -m pytest ${PYTEST_ARGS}
+            rc=$?
+            set -e
+            if [ "${rc}" -ne 0 ]; then
+              any_fail=1
+              echo "[RUN-FAIL] provider=${provider} mode=${mode} browser=${browser} profile=${profile:-desktop} exit_code=${rc}"
+            fi
           }
 
           for provider in ${providers}; do
@@ -295,6 +303,11 @@ pipeline {
               cp -R "${d}"/. allure-results/
             fi
           done
+
+          if [ "${any_fail}" -ne 0 ]; then
+            echo "One or more matrix runs failed. Marking build as failed after full matrix execution."
+            exit 1
+          fi
         '''
           }
 
