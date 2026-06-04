@@ -29,6 +29,14 @@ EXECUTION_PROFILE_DEVICE_PRESET = {
     "mobile-webkit": "iPhone 12",
 }
 
+NETWORK_PROFILE_ENV = "NETWORK_PROFILE"
+NETWORK_PROFILE_VPN = "vpn"
+NETWORK_PROXY_ENV_VARS = (
+    "PLAYWRIGHT_PROXY_SERVER",
+    "HTTPS_PROXY",
+    "HTTP_PROXY",
+)
+
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -93,6 +101,40 @@ def _should_block_request(url: str, resource_type: str) -> bool:
     return False
 
 
+def _normalize_proxy_server(proxy_server: str | None) -> str:
+    value = (proxy_server or "").strip()
+    if not value:
+        return ""
+    if value.startswith(("http://", "https://", "socks5://", "socks4://")):
+        return value
+    return f"http://{value}"
+
+
+def _resolve_network_proxy_settings() -> dict[str, str] | None:
+    profile = (os.getenv(NETWORK_PROFILE_ENV) or "off").strip().lower()
+    if profile != NETWORK_PROFILE_VPN:
+        return None
+
+    proxy_server = ""
+    for env_name in NETWORK_PROXY_ENV_VARS:
+        proxy_server = _normalize_proxy_server(os.getenv(env_name))
+        if proxy_server:
+            break
+
+    if not proxy_server:
+        print(
+            "[NETWORK] NETWORK_PROFILE=vpn selected, but no proxy env was found. "
+            "Proceeding without a Playwright proxy override."
+        )
+        return None
+
+    proxy_settings: dict[str, str] = {"server": proxy_server}
+    bypass = (os.getenv("NETWORK_PROXY_BYPASS") or os.getenv("NO_PROXY") or "").strip()
+    if bypass:
+        proxy_settings["bypass"] = bypass
+    return proxy_settings
+
+
 @pytest.fixture
 def blocking_profile(pytestconfig):
     return pytestconfig.getoption("--blocking-profile", default="none")
@@ -130,14 +172,17 @@ def validate_execution_profile(pytestconfig):
 @pytest.fixture(scope="session")
 def browser_context_args(browser_context_args, playwright, execution_profile):
     device_preset_name = EXECUTION_PROFILE_DEVICE_PRESET.get(execution_profile)
-    if not device_preset_name:
-        return browser_context_args
+    resolved_context_args = dict(browser_context_args)
 
-    device_preset = playwright.devices[device_preset_name]
-    return {
-        **browser_context_args,
-        **device_preset,
-    }
+    if device_preset_name:
+        device_preset = playwright.devices[device_preset_name]
+        resolved_context_args.update(device_preset)
+
+    proxy_settings = _resolve_network_proxy_settings()
+    if proxy_settings:
+        resolved_context_args["proxy"] = proxy_settings
+
+    return resolved_context_args
 
 
 @pytest.fixture(autouse=True)

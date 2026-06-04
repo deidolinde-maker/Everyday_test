@@ -19,6 +19,7 @@ pipeline {
     booleanParam(name: 'RUN_MOBILE_WEBKIT', defaultValue: false, description: 'Run mobile webkit profile.')
 
     choice(name: 'BLOCKING_PROFILE', choices: ['none', 'adblock-mvp'], description: 'Blocking profile.')
+    choice(name: 'NETWORK_PROFILE', choices: ['off', 'vpn'], description: 'Network profile for browser traffic. Use vpn to enable the agent-side network route/proxy profile.')
     booleanParam(name: 'ALERT_ERRORS', defaultValue: true, description: 'Enable single-site error alerts in pytest runtime.')
     booleanParam(name: 'ALERT_AGGREGATES', defaultValue: true, description: 'Enable aggregate alerts in pytest runtime.')
     booleanParam(name: 'ALERT_SUMMARY', defaultValue: true, description: 'Enable summary alerts in pytest runtime.')
@@ -38,6 +39,7 @@ pipeline {
     ALERT_AGGREGATES_ENABLED = "${params.ALERT_AGGREGATES}"
     ALERT_SUMMARY_ENABLED = "${params.ALERT_SUMMARY}"
     ALERT_RECOVERED_ENABLED = "${params.ALERT_RECOVERED}"
+    NETWORK_PROFILE = "${params.NETWORK_PROFILE}"
   }
 
   stages {
@@ -53,6 +55,7 @@ pipeline {
           if (!(params.RUN_CHROMIUM || params.RUN_FIREFOX || params.RUN_WEBKIT || params.RUN_MOBILE_CHROMIUM || params.RUN_MOBILE_WEBKIT)) {
             error('Select at least one browser/profile toggle.')
           }
+          echo "Selected network profile: ${params.NETWORK_PROFILE}"
         }
       }
     }
@@ -63,6 +66,13 @@ pipeline {
           set -e
           echo "=== Cache diagnostics ==="
           echo "Workspace: $(pwd)"
+          echo "NETWORK_PROFILE=${NETWORK_PROFILE}"
+          if [ "${NETWORK_PROFILE}" = "vpn" ]; then
+            echo "VPN network profile selected. Proxy env on agent:"
+            echo "  HTTP_PROXY=${HTTP_PROXY:-<empty>}"
+            echo "  HTTPS_PROXY=${HTTPS_PROXY:-<empty>}"
+            echo "  PLAYWRIGHT_PROXY_SERVER=${PLAYWRIGHT_PROXY_SERVER:-<empty>}"
+          fi
 
           if [ -x ".venv/bin/python" ]; then
             echo "[VENV] Reused: .venv exists"

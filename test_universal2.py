@@ -3192,4 +3192,5 @@ def test_site(
     allure.dynamic.parameter("browser", browser_name)
     allure.dynamic.parameter("blocking_profile", blocking_profile)
     allure.dynamic.parameter("execution_profile", execution_profile)
+    allure.dynamic.parameter("network_profile", (os.getenv("NETWORK_PROFILE") or "off").strip().lower())
     run_site_scenario(page, site_cfg)

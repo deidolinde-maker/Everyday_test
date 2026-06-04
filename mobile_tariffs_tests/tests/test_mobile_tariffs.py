@@ -16,6 +16,7 @@ UI-автотест проверки блока мобильных тарифо�
 from __future__ import annotations
 
 import allure
+import os
 import pytest
 from playwright.sync_api import Page, BrowserContext
 
@@ -468,6 +469,7 @@ def test_mobile_tariffs(landing: dict, browser_context: BrowserContext) -> None:
     Параметр landing — через pytest_generate_tests (conftest.py).
     """
     allure.dynamic.title(f"Мобильные тарифы: {landing['name']}")
+    allure.dynamic.parameter("network_profile", (os.getenv("NETWORK_PROFILE") or "off").strip().lower())
     allure.dynamic.description(
         f"URL      : {landing['url']}\n"
         f"Навигация: {landing['nav_selector']}\n"

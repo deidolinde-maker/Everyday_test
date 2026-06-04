@@ -1,4 +1,4 @@
-# Everyday_test
+﻿# Everyday_test
 
 Актуальная документация для ветки `master` репозитория:
 `https://github.com/deidolinde-maker/Everyday_test.git`.
@@ -300,12 +300,35 @@ Run: <RUN_URL>    # если задан
 - `SERVICE_MODE`: `core|variants|all`
 - браузерные флаги: desktop + mobile toggles
 - `BLOCKING_PROFILE`: `none|adblock-mvp`
+- `NETWORK_PROFILE`: `off|vpn`
 - `SITE`: точечный фильтр домена
 
 Кеш Playwright в Jenkins:
 - `PLAYWRIGHT_BROWSERS_PATH=/var/lib/jenkins/cache/ms-playwright`
 - браузеры ставятся только при отсутствии в кеше.
 
+### 5.8 Jenkins production setup (actual)
+
+Current behavior of `Jenkinsfile`:
+1. Python deps are reused from `.venv` and controlled by `.requirements.sha256` (no full reinstall on each run).
+2. Playwright browsers are reused from `/var/lib/jenkins/cache/ms-playwright`.
+3. Allure report is generated and published in Jenkins UI in `post { always { ... } }`.
+4. Final Telegram summary is built from `allure-results` by `notify_from_allure.py`.
+5. Telegram alerts support proxy-only mode in Jenkins (without mandatory `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`) when proxy credentials are configured.
+6. Network routing can be switched from the Jenkins UI with `NETWORK_PROFILE=off|vpn`; when `vpn` is selected, Playwright reads proxy settings from the agent environment (`PLAYWRIGHT_PROXY_SERVER`, `HTTPS_PROXY`, or `HTTP_PROXY`) and exposes the active profile to pytest as `NETWORK_PROFILE`.
+
+Required Jenkins credentials for proxy mode:
+- `telegram_proxy_url`
+- `telegram_proxy_auth_secret`
+- `tg_proxy_creds_survarius`
+
+Expected success log lines:
+- `[TELEGRAM][summary] Sent via proxy endpoint (status=200)`
+- Same pattern for `step` / `critical` alerts.
+
+Common errors:
+- `Bad Request: chat not found` -> proxy is reachable, but Telegram target/chat in creds is invalid or unavailable for bot.
+- `Skip send: ... bot/chat missing and proxy endpoint is not usable` -> no bot/chat creds and proxy creds are incomplete/invalid.
 ## 6. Как добавить новый URL (подробно)
 
 ### 6.1 Добавить сайт в Suite A (формы)
@@ -486,9 +509,15 @@ python -m pytest test_universal2.py -s --alluredir=allure-results-core-mobile-we
 - `RUN_URL`
 - `ALLURE_RESULTS_DIR`
 - `ALLURE_URL`
+- `NETWORK_PROFILE`
+- `PLAYWRIGHT_PROXY_SERVER`
+- `HTTPS_PROXY` / `HTTP_PROXY`
+- `NETWORK_PROXY_BYPASS`
 - `SITE_HINT` (только для suite форм)
 - `NOTIFY_STATE_FILE` (опционально, файл состояния для агрегированных/восстановленных алертов)
-- `NOTIFY_STATE_URL` (опционально, URL предыдущего состояния алертов)
+
+
+For Jenkins proxy-only mode, `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` may be omitted if `TELEGRAM_PROXY_URL` + `TELEGRAM_PROXY_AUTH_SECRET` + `TELEGRAM_PROXY_CREDS` are configured.
 
 ## 9. Быстрый разбор падения
 

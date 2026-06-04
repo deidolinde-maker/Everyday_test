@@ -68,6 +68,7 @@ Jenkins должен выполнять ту же логику, что и тек
 - `RUN_MOBILE_CHROMIUM`: bool
 - `RUN_MOBILE_WEBKIT`: bool
 - `BLOCKING_PROFILE`: `none | adblock-mvp`
+- `NETWORK_PROFILE`: `off | vpn`
 - флаги алертов (`ALERT_ERRORS`, `ALERT_AGGREGATES`, `ALERT_SUMMARY`, `ALERT_RECOVERED`)
 
 Guardrail:
