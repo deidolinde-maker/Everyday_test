@@ -1,7 +1,14 @@
 import os
 
-import pytest
 import allure
+import pytest
+
+from video_artifacts import (
+    attach_or_cleanup_videos,
+    build_recording_dir,
+    cleanup_recording_dir,
+    record_video_size_for_profile,
+)
 
 ADBLOCK_MVP_BLOCKLIST = (
     "doubleclick.net",
@@ -185,6 +192,41 @@ def browser_context_args(browser_context_args, playwright, execution_profile):
     return resolved_context_args
 
 
+@pytest.fixture
+def page(browser, browser_context_args, execution_profile, request):
+    recording_dir = build_recording_dir(request.node.nodeid, "suite-a")
+    context = browser.new_context(
+        **browser_context_args,
+        record_video_dir=str(recording_dir),
+        record_video_size=record_video_size_for_profile(execution_profile),
+    )
+    tracked_pages = []
+
+    def _track_page(new_page):
+        tracked_pages.append(new_page)
+
+    context.on("page", _track_page)
+    page = context.new_page()
+    tracked_pages.append(page)
+    try:
+        yield page
+    finally:
+        pages = []
+        seen_page_ids = set()
+        for current_page in tracked_pages:
+            page_id = id(current_page)
+            if page_id in seen_page_ids:
+                continue
+            seen_page_ids.add(page_id)
+            pages.append(current_page)
+        try:
+            context.close()
+        finally:
+            failed = bool(getattr(getattr(request.node, "rep_call", None), "failed", False))
+            attach_or_cleanup_videos(pages, attach=failed, prefix="video_on_failure")
+            cleanup_recording_dir(recording_dir)
+
+
 @pytest.fixture(autouse=True)
 def apply_blocking_profile(page, blocking_profile):
     if blocking_profile != "adblock-mvp":
@@ -209,6 +251,8 @@ def pytest_runtest_makereport(item, call):
     """
     outcome = yield
     report  = outcome.get_result()
+    if report.when == "call":
+        item.rep_call = report
 
     if report.when == "call" and report.failed:
         page = item.funcargs.get("page")
