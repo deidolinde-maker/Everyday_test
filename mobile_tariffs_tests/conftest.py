@@ -14,6 +14,11 @@ import pytest
 from playwright.sync_api import sync_playwright, BrowserContext
 
 from config.landing_data import LANDINGS
+from video_artifacts import (
+    attach_or_cleanup_videos,
+    build_recording_dir,
+    cleanup_recording_dir,
+)
 
 NETWORK_PROFILE_ENV = "NETWORK_PROFILE"
 NETWORK_PROFILE_VPN = "vpn"
@@ -70,11 +75,12 @@ def playwright_instance():
 
 
 @pytest.fixture(scope="function")
-def browser_context(playwright_instance):
+def browser_context(playwright_instance, request):
     """
     Новый изолированный browser-контекст для каждого теста.
     Позволяет отслеживать новые вкладки через context.pages.
     """
+    recording_dir = build_recording_dir(request.node.nodeid, "mobile-suite")
     proxy_settings = _resolve_network_proxy_settings()
     launch_kwargs = dict(
         headless=True,
@@ -92,11 +98,32 @@ def browser_context(playwright_instance):
             "Chrome/120.0.0.0 Safari/537.36"
         ),
         ignore_https_errors=True,
+        record_video_dir=str(recording_dir),
+        record_video_size={"width": 360, "height": 640},
     )
+    tracked_pages = []
+
+    def _track_page(new_page):
+        tracked_pages.append(new_page)
+
+    context.on("page", _track_page)
     context.set_default_timeout(30_000)  # 30 секунд на ожидание элементов
     yield context
-    context.close()
-    browser.close()
+    pages = []
+    seen_page_ids = set()
+    for current_page in tracked_pages:
+        page_id = id(current_page)
+        if page_id in seen_page_ids:
+            continue
+        seen_page_ids.add(page_id)
+        pages.append(current_page)
+    try:
+        context.close()
+    finally:
+        failed = bool(getattr(getattr(request.node, "rep_call", None), "failed", False))
+        attach_or_cleanup_videos(pages, attach=failed, prefix="video_on_failure")
+        cleanup_recording_dir(recording_dir)
+        browser.close()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
