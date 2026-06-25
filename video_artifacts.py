@@ -33,14 +33,13 @@ def record_video_size_for_profile(execution_profile: str | None) -> dict[str, in
     return {"width": 640, "height": 360}
 
 
-def _video_path(page) -> Path | None:
-    video = getattr(page, "video", None)
-    if video is None:
+def video_path(video_obj) -> Path | None:
+    if video_obj is None:
         return None
 
     for _ in range(10):
         try:
-            raw_path = video.path()
+            raw_path = video_obj.path()
         except Exception:
             time.sleep(0.2)
             continue
@@ -55,21 +54,41 @@ def _video_path(page) -> Path | None:
     return None
 
 
-def attach_or_cleanup_videos(pages: Sequence, *, attach: bool, prefix: str) -> int:
+def collect_video_objects(pages: Sequence) -> list:
+    seen_video_ids = set()
+    video_objects = []
+    for page in pages:
+        video_obj = getattr(page, "video", None)
+        if video_obj is None:
+            continue
+        video_id = id(video_obj)
+        if video_id in seen_video_ids:
+            continue
+        seen_video_ids.add(video_id)
+        video_objects.append(video_obj)
+    return video_objects
+
+
+def attach_or_cleanup_video_objects(video_objects: Sequence, *, attach: bool, prefix: str) -> int:
     handled = 0
-    for index, page in enumerate(pages, start=1):
-        path = _video_path(page)
+    for index, video_obj in enumerate(video_objects, start=1):
+        path = video_path(video_obj)
         if path is None:
             continue
 
         try:
             if attach:
-                attachment_name = prefix if index == 1 else f"{prefix}_{index}"
-                allure.attach(
-                    path.read_bytes(),
-                    name=attachment_name,
-                    attachment_type=VIDEO_ATTACHMENT_TYPE,
-                )
+                if path.exists() and path.stat().st_size > 0:
+                    attachment_name = prefix if index == 1 else f"{prefix}_{index}"
+                    allure.attach.file(
+                        str(path),
+                        name=attachment_name,
+                        attachment_type=VIDEO_ATTACHMENT_TYPE,
+                    )
+                    print(f"[VIDEO] Attached: {path}")
+                else:
+                    print(f"[VIDEO] File is missing or empty: {path}")
+                    continue
             handled += 1
         except Exception as exc:
             print(f"[VIDEO] Failed to attach {path.name}: {exc}")
@@ -83,6 +102,14 @@ def attach_or_cleanup_videos(pages: Sequence, *, attach: bool, prefix: str) -> i
         print("[VIDEO] No finalized video files were found for failed test")
 
     return handled
+
+
+def attach_or_cleanup_videos(pages: Sequence, *, attach: bool, prefix: str) -> int:
+    return attach_or_cleanup_video_objects(
+        collect_video_objects(pages),
+        attach=attach,
+        prefix=prefix,
+    )
 
 
 def cleanup_recording_dir(recording_dir: Path | str) -> None:

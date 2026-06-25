@@ -15,8 +15,9 @@ from playwright.sync_api import sync_playwright, BrowserContext
 
 from config.landing_data import LANDINGS
 from video_artifacts import (
-    attach_or_cleanup_videos,
+    attach_or_cleanup_video_objects,
     build_recording_dir,
+    collect_video_objects,
     cleanup_recording_dir,
 )
 
@@ -27,18 +28,6 @@ NETWORK_PROXY_ENV_VARS = (
     "HTTPS_PROXY",
     "HTTP_PROXY",
 )
-
-
-def _dedupe_pages(tracked_pages):
-    pages = []
-    seen_page_ids = set()
-    for current_page in tracked_pages:
-        page_id = id(current_page)
-        if page_id in seen_page_ids:
-            continue
-        seen_page_ids.add(page_id)
-        pages.append(current_page)
-    return pages
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -113,15 +102,8 @@ def browser_context(playwright_instance, request):
         record_video_dir=str(recording_dir),
         record_video_size={"width": 360, "height": 640},
     )
-    tracked_pages = []
-
-    def _track_page(new_page):
-        tracked_pages.append(new_page)
-
-    context.on("page", _track_page)
     context.set_default_timeout(30_000)  # 30 секунд на ожидание элементов
     yield context
-    request.node._video_pages = _dedupe_pages(tracked_pages)
     request.node._video_recording_dir = recording_dir
     try:
         context.close()
@@ -153,15 +135,27 @@ def pytest_runtest_makereport(item, call):
 
     if report.when == "call":
         item.rep_call = report
+        browser_context = item.funcargs.get("browser_context")
+        if browser_context is not None:
+            try:
+                item._video_objects = collect_video_objects(browser_context.pages)
+            except Exception:
+                item._video_objects = []
 
     if report.when == "teardown":
-        pages = getattr(item, "_video_pages", None)
+        video_objects = getattr(item, "_video_objects", None)
         recording_dir = getattr(item, "_video_recording_dir", None)
-        if pages is not None and recording_dir is not None:
+        if recording_dir is not None:
             try:
                 failed = bool(getattr(getattr(item, "rep_call", None), "failed", False))
-                attach_or_cleanup_videos(pages, attach=failed, prefix="video_on_failure")
+                if video_objects:
+                    attach_or_cleanup_video_objects(
+                        video_objects,
+                        attach=failed,
+                        prefix="video_on_failure",
+                    )
             finally:
                 cleanup_recording_dir(recording_dir)
-                delattr(item, "_video_pages")
                 delattr(item, "_video_recording_dir")
+                if hasattr(item, "_video_objects"):
+                    delattr(item, "_video_objects")
