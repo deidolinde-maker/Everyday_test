@@ -45,6 +45,18 @@ NETWORK_PROXY_ENV_VARS = (
 )
 
 
+def _dedupe_pages(tracked_pages):
+    pages = []
+    seen_page_ids = set()
+    for current_page in tracked_pages:
+        page_id = id(current_page)
+        if page_id in seen_page_ids:
+            continue
+        seen_page_ids.add(page_id)
+        pages.append(current_page)
+    return pages
+
+
 def pytest_addoption(parser):
     parser.addoption(
         "--provider",
@@ -211,20 +223,12 @@ def page(browser, browser_context_args, execution_profile, request):
     try:
         yield page
     finally:
-        pages = []
-        seen_page_ids = set()
-        for current_page in tracked_pages:
-            page_id = id(current_page)
-            if page_id in seen_page_ids:
-                continue
-            seen_page_ids.add(page_id)
-            pages.append(current_page)
+        request.node._video_pages = _dedupe_pages(tracked_pages)
+        request.node._video_recording_dir = recording_dir
         try:
             context.close()
         finally:
-            failed = bool(getattr(getattr(request.node, "rep_call", None), "failed", False))
-            attach_or_cleanup_videos(pages, attach=failed, prefix="video_on_failure")
-            cleanup_recording_dir(recording_dir)
+            pass
 
 
 @pytest.fixture(autouse=True)
@@ -253,6 +257,18 @@ def pytest_runtest_makereport(item, call):
     report  = outcome.get_result()
     if report.when == "call":
         item.rep_call = report
+
+    if report.when == "teardown":
+        pages = getattr(item, "_video_pages", None)
+        recording_dir = getattr(item, "_video_recording_dir", None)
+        if pages is not None and recording_dir is not None:
+            try:
+                failed = bool(getattr(getattr(item, "rep_call", None), "failed", False))
+                attach_or_cleanup_videos(pages, attach=failed, prefix="video_on_failure")
+            finally:
+                cleanup_recording_dir(recording_dir)
+                delattr(item, "_video_pages")
+                delattr(item, "_video_recording_dir")
 
     if report.when == "call" and report.failed:
         page = item.funcargs.get("page")

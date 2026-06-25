@@ -29,6 +29,18 @@ NETWORK_PROXY_ENV_VARS = (
 )
 
 
+def _dedupe_pages(tracked_pages):
+    pages = []
+    seen_page_ids = set()
+    for current_page in tracked_pages:
+        page_id = id(current_page)
+        if page_id in seen_page_ids:
+            continue
+        seen_page_ids.add(page_id)
+        pages.append(current_page)
+    return pages
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Playwright browser context
 # ─────────────────────────────────────────────────────────────────────────────
@@ -109,20 +121,11 @@ def browser_context(playwright_instance, request):
     context.on("page", _track_page)
     context.set_default_timeout(30_000)  # 30 секунд на ожидание элементов
     yield context
-    pages = []
-    seen_page_ids = set()
-    for current_page in tracked_pages:
-        page_id = id(current_page)
-        if page_id in seen_page_ids:
-            continue
-        seen_page_ids.add(page_id)
-        pages.append(current_page)
+    request.node._video_pages = _dedupe_pages(tracked_pages)
+    request.node._video_recording_dir = recording_dir
     try:
         context.close()
     finally:
-        failed = bool(getattr(getattr(request.node, "rep_call", None), "failed", False))
-        attach_or_cleanup_videos(pages, attach=failed, prefix="video_on_failure")
-        cleanup_recording_dir(recording_dir)
         browser.close()
 
 
@@ -141,3 +144,24 @@ def pytest_generate_tests(metafunc):
             LANDINGS,
             ids=[l["name"] for l in LANDINGS],
         )
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    report = outcome.get_result()
+
+    if report.when == "call":
+        item.rep_call = report
+
+    if report.when == "teardown":
+        pages = getattr(item, "_video_pages", None)
+        recording_dir = getattr(item, "_video_recording_dir", None)
+        if pages is not None and recording_dir is not None:
+            try:
+                failed = bool(getattr(getattr(item, "rep_call", None), "failed", False))
+                attach_or_cleanup_videos(pages, attach=failed, prefix="video_on_failure")
+            finally:
+                cleanup_recording_dir(recording_dir)
+                delattr(item, "_video_pages")
+                delattr(item, "_video_recording_dir")

@@ -79,6 +79,9 @@ def attach_or_cleanup_videos(pages: Sequence, *, attach: bool, prefix: str) -> i
             except Exception:
                 pass
 
+    if attach and handled == 0:
+        print("[VIDEO] No finalized video files were found for failed test")
+
     return handled
 
 
