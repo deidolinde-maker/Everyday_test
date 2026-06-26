@@ -507,6 +507,10 @@ FIREFOX_CHECKBOX_ACTION_TIMEOUT_MS = 1_800
 FIREFOX_POPUP_CLICK_SETTLE_MS = 900
 FIREFOX_POPUP_WAIT_TIMEOUT_MS = 13_000
 FIREFOX_SUBMIT_TIMEOUT_BONUS_MS = 7_000
+AUTO_PROFIT_WAIT_TIMEOUT_MS = 12_000
+FIREFOX_AUTO_PROFIT_WAIT_TIMEOUT_MS = 16_000
+AUTO_PROFIT_OPTIONAL_WAIT_TIMEOUT_MS = 4_000
+FIREFOX_AUTO_PROFIT_OPTIONAL_WAIT_TIMEOUT_MS = 5_500
 
 POPUP_CONTAINER_SELECTORS = [
     "div#popup", "div.popup",
@@ -2179,6 +2183,7 @@ def process_auto_profit_popup(
     has_name_field: bool = False,
     service_mode: str = SERVICE_MODE_ALL,
     allow_root_return_after_thanks: bool = False,
+    auto_profit_optional: bool = False,
 ) -> tuple[int, int, str | None, bool]:
     """
     Проверяет автопоявляющийся profit-попап как полноценную форму:
@@ -2211,7 +2216,11 @@ def process_auto_profit_popup(
     close_mobile_burger_menu(page)
 
     form_type, container = wait_for_popup_with_fields(
-        timeout_ms=browser_timeout(page, 12_000, 16_000),
+        timeout_ms=browser_timeout(
+            page,
+            AUTO_PROFIT_OPTIONAL_WAIT_TIMEOUT_MS if auto_profit_optional else AUTO_PROFIT_WAIT_TIMEOUT_MS,
+            FIREFOX_AUTO_PROFIT_OPTIONAL_WAIT_TIMEOUT_MS if auto_profit_optional else FIREFOX_AUTO_PROFIT_WAIT_TIMEOUT_MS,
+        ),
         page=page,
         form_hint="profit",
     )
@@ -2622,15 +2631,17 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
 
 
 def process_all_popups(page: Page, base_url: str,
-                        has_name_field: bool = False,
-                        service_mode: str = SERVICE_MODE_ALL,
-                        allow_root_return_after_thanks: bool = False) -> tuple[int, int, str | None]:
+                       has_name_field: bool = False,
+                       service_mode: str = SERVICE_MODE_ALL,
+                       allow_root_return_after_thanks: bool = False,
+                       auto_profit_optional: bool = False) -> tuple[int, int, str | None]:
     auto_success, auto_failed, auto_first_fail, _auto_tested = process_auto_profit_popup(
         page,
         base_url,
         has_name_field=has_name_field,
         service_mode=service_mode,
         allow_root_return_after_thanks=allow_root_return_after_thanks,
+        auto_profit_optional=auto_profit_optional,
     )
 
     # После auto-profit возвращаемся на базовый URL, чтобы сбор кнопок шёл
@@ -2980,6 +2991,7 @@ def run_site_scenario(page: Page, cfg: dict):
     """
     base_url       = cfg["base_url"]
     has_name_field = cfg.get("has_name_field", False)
+    auto_profit_optional = cfg.get("auto_profit_optional", False)
     sep            = "=" * 55
     site_label     = base_url.replace("https://", "").replace("http://", "").strip("/")
     city_name      = cfg.get("city_name")
@@ -3048,7 +3060,11 @@ def run_site_scenario(page: Page, cfg: dict):
         close_overlays(page)
         try:
             s, f, first_fail = process_all_popups(
-                page, base_url, has_name_field=has_name_field, service_mode=service_mode
+                page,
+                base_url,
+                has_name_field=has_name_field,
+                service_mode=service_mode,
+                auto_profit_optional=auto_profit_optional,
             )
         except SiteUnavailableError as e:
             skip_site_due_unavailability(site_label, "2", "попапы главной", str(e), page)
@@ -3120,6 +3136,7 @@ def run_site_scenario(page: Page, cfg: dict):
                     has_name_field=has_name_field,
                     service_mode=service_mode,
                     allow_root_return_after_thanks=True,
+                    auto_profit_optional=auto_profit_optional,
                 )
             except SiteUnavailableError as e:
                 skip_site_due_unavailability(site_label, "4a", "попапы главной города", str(e), page)

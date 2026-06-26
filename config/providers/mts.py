@@ -19,6 +19,7 @@ SITES = [
         "has_checkaddress": False,
         "has_business": True,
         "has_name_field": True,
+        "auto_profit_optional": True,
         "cities": ["Москва"],
     },
     {
@@ -34,4 +35,3 @@ SITES = [
         "cities": ["Москва"],
     },
 ]
-

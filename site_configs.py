@@ -33,7 +33,13 @@ from config.loader import available_providers, load_site_configs, select_site_co
 SITE_CONFIGS = load_site_configs()
 
 _REQUIRED_KEYS = ("base_url", "has_checkaddress", "has_business", "city_name")
-_BOOL_KEYS = ("has_checkaddress", "has_business", "has_name_field", "has_region_popup")
+_BOOL_KEYS = (
+    "has_checkaddress",
+    "has_business",
+    "has_name_field",
+    "has_region_popup",
+    "auto_profit_optional",
+)
 
 
 def validate_site_configs(site_configs: dict[str, dict]) -> None:
