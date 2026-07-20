@@ -486,7 +486,10 @@ SITE_UNAVAILABLE_THRESHOLD_MS = 60_000
 NAV_GOTO_TIMEOUT_MS = 20_000
 NAV_RETRIES = 3
 SUBMIT_CONFIRM_TIMEOUT_MS = 25_000
+RETRY_SUBMIT_CONFIRM_TIMEOUT_MS = 8_000
+FIREFOX_RETRY_SUBMIT_CONFIRM_TIMEOUT_MS = 12_000
 SUBMIT_CONFIRM_GRACE_MS = 2_000
+SITE_TIME_BUDGET_MS = int(os.getenv("SITE_TIME_BUDGET_MS", "300000"))
 CITY_LOADSTATE_TIMEOUT_MS = 7_000
 HOUSE_ENABLE_TIMEOUT_MS = 3_500
 FIREFOX_HOUSE_ENABLE_TIMEOUT_MS = 5_000
@@ -511,6 +514,13 @@ AUTO_PROFIT_WAIT_TIMEOUT_MS = 12_000
 FIREFOX_AUTO_PROFIT_WAIT_TIMEOUT_MS = 16_000
 AUTO_PROFIT_OPTIONAL_WAIT_TIMEOUT_MS = 4_000
 FIREFOX_AUTO_PROFIT_OPTIONAL_WAIT_TIMEOUT_MS = 5_500
+NEGATIVE_CF7_STATUSES = {
+    "validation_failed",
+    "acceptance_missing",
+    "invalid_required",
+    "spam",
+    "aborted",
+}
 
 POPUP_CONTAINER_SELECTORS = [
     "div#popup", "div.popup",
@@ -1920,7 +1930,19 @@ def submit_with_confirmation(
             listener_attached = False
 
         for attempt in range(1, attempts + 1):
+            is_retry_attempt = attempt > 1
+            attempt_timeout_ms = timeout_ms
+            if is_retry_attempt:
+                attempt_timeout_ms = min(
+                    timeout_ms,
+                    browser_timeout(
+                        page,
+                        RETRY_SUBMIT_CONFIRM_TIMEOUT_MS,
+                        FIREFOX_RETRY_SUBMIT_CONFIRM_TIMEOUT_MS,
+                    ),
+                )
             cf7_status = ""
+            listener_status_count_before = len(cf7_seen_statuses)
             network_before = _snapshot_submit_network(page)
             try:
                 last_submit.scroll_into_view_if_needed()
@@ -1935,7 +1957,7 @@ def submit_with_confirmation(
 
             cf7_timeout = browser_timeout(page, 1_200, 2_500)
             cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=cf7_timeout)
-            if not cf7_status and cf7_seen_statuses:
+            if not cf7_status and len(cf7_seen_statuses) > listener_status_count_before:
                 cf7_status = cf7_seen_statuses[-1]
                 print(f"  [SUBMIT] CF7 feedback status='{cf7_status}' (listener)")
             elif cf7_status:
@@ -1953,7 +1975,22 @@ def submit_with_confirmation(
                         network_before = _snapshot_submit_network(page)
                         cf7_status = wait_for_cf7_feedback_status(page, timeout_ms=2_000) or cf7_status
 
-            ok = wait_for_success_url(page, timeout_ms=timeout_ms)
+            if cf7_status in NEGATIVE_CF7_STATUSES:
+                print(f"  [SUBMIT] Ошибка формы '{cf7_status}' — ускоряем retry")
+                if attempt < attempts:
+                    print(f"  [SUBMIT] Повторная попытка {attempt + 1}/{attempts}")
+                    try:
+                        print("  [SUBMIT] Стабилизация формы перед retry")
+                        retry_notes = _stabilize_form_before_retry(page, container, form_type)
+                        if retry_notes:
+                            print(f"  [SUBMIT] Retry diagnostics: {retry_notes}")
+                    except Exception:
+                        pass
+                    page.wait_for_timeout(400)
+                    continue
+                return False
+
+            ok = wait_for_success_url(page, timeout_ms=attempt_timeout_ms)
             if ok:
                 return True
             if cf7_status == "mail_sent":
@@ -2332,7 +2369,9 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                      btn_locator_fn, label: str = "POPUP",
                      has_name_field: bool = False,
                      service_mode: str = SERVICE_MODE_ALL,
-                     allow_root_return_after_thanks: bool = False) -> tuple[int, int, str | None]:
+                     allow_root_return_after_thanks: bool = False,
+                     site_deadline_monotonic: float | None = None,
+                     successful_submits_before_cycle: int = 0) -> tuple[int, int, str | None]:
     success    = 0
     failed     = 0
     first_fail = None
@@ -2340,7 +2379,29 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
     site_label = base_url.replace("https://", "").replace("http://", "").strip("/")
     no_confirmation_by_text = {}
 
+    def should_stop_due_site_budget(context: str) -> bool:
+        nonlocal failed, first_fail
+        if site_deadline_monotonic is None or time.monotonic() < site_deadline_monotonic:
+            return False
+        total_success_for_site = successful_submits_before_cycle + success
+        if total_success_for_site > 0:
+            print(
+                f"  [{label}] SITE budget reached during {context} — "
+                f"останавливаем лендинг после успешных submit ({total_success_for_site})"
+            )
+            return True
+
+        detail = f"site_time_budget_exceeded | context={context}"
+        failed += 1
+        if first_fail is None:
+            first_fail = detail[:220]
+        fail_details.append(detail[:600])
+        print(f"  [FAIL-DETAIL] {detail}")
+        return True
+
     for num, entry in enumerate(buttons, 1):
+        if should_stop_due_site_budget(f"button {num}/{len(buttons)}"):
+            break
         text      = entry.get("text", "")
         form_hint = entry.get("form_hint")
         text_key = (form_hint or "generic", (text or "").strip().lower())
@@ -2509,6 +2570,10 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
             continue
 
         for service_idx, service_value in enumerate(service_values, start=1):
+            if should_stop_due_site_budget(
+                f"button {num}/{len(buttons)} service {service_idx}/{len(service_values)}"
+            ):
+                break
             service_label = service_value if service_value else "без выбора варианта"
             print(
                 f"  [{label}] Вариант submit {service_idx}/{len(service_values)}: {service_label}"
@@ -2634,7 +2699,9 @@ def process_all_popups(page: Page, base_url: str,
                        has_name_field: bool = False,
                        service_mode: str = SERVICE_MODE_ALL,
                        allow_root_return_after_thanks: bool = False,
-                       auto_profit_optional: bool = False) -> tuple[int, int, str | None]:
+                       auto_profit_optional: bool = False,
+                       site_deadline_monotonic: float | None = None,
+                       successful_submits_before_cycle: int = 0) -> tuple[int, int, str | None]:
     auto_success, auto_failed, auto_first_fail, _auto_tested = process_auto_profit_popup(
         page,
         base_url,
@@ -2698,6 +2765,8 @@ def process_all_popups(page: Page, base_url: str,
         has_name_field=has_name_field,
         service_mode=service_mode,
         allow_root_return_after_thanks=allow_root_return_after_thanks,
+        site_deadline_monotonic=site_deadline_monotonic,
+        successful_submits_before_cycle=successful_submits_before_cycle + auto_success,
     )
     total_success = auto_success + success
     total_failed = auto_failed + failed
@@ -2707,7 +2776,9 @@ def process_all_popups(page: Page, base_url: str,
 
 def process_business_popups(page: Page, base_url: str,
                              has_name_field: bool = False,
-                             service_mode: str = SERVICE_MODE_ALL) -> tuple[int, int, str | None]:
+                             service_mode: str = SERVICE_MODE_ALL,
+                             site_deadline_monotonic: float | None = None,
+                             successful_submits_before_cycle: int = 0) -> tuple[int, int, str | None]:
     if normalize_service_mode(service_mode) == SERVICE_MODE_VARIANTS:
         print("[BUSINESS] VARIANTS-режим: шаг /business пропущен")
         return 0, 0, None
@@ -2724,6 +2795,8 @@ def process_business_popups(page: Page, base_url: str,
         page, buttons, base_url, locate, label="BUSINESS",
         has_name_field=has_name_field, service_mode=service_mode,
         allow_root_return_after_thanks=True,
+        site_deadline_monotonic=site_deadline_monotonic,
+        successful_submits_before_cycle=successful_submits_before_cycle,
     )
 
 
@@ -3000,6 +3073,35 @@ def run_site_scenario(page: Page, cfg: dict):
     service_mode   = normalize_service_mode(cfg.get("_service_mode", SERVICE_MODE_ALL))
     total_success_submits = 0
     deferred_checkaddress_reason: str | None = None
+    site_started_monotonic = time.monotonic()
+    site_deadline_monotonic = (
+        site_started_monotonic + (SITE_TIME_BUDGET_MS / 1000)
+        if SITE_TIME_BUDGET_MS > 0 else None
+    )
+
+    def maybe_stop_due_site_budget(step_no: str, step_name: str) -> bool:
+        if site_deadline_monotonic is None or time.monotonic() < site_deadline_monotonic:
+            return False
+
+        elapsed_s = int(time.monotonic() - site_started_monotonic)
+        reason = (
+            f"достигнут лимит времени на лендинг ({elapsed_s}с из "
+            f"{SITE_TIME_BUDGET_MS // 1000}с)"
+        )
+        if total_success_submits > 0:
+            print(
+                "  [SITE-BUDGET] ℹ️ "
+                f"{reason} — останавливаем лендинг после успешных submit ({total_success_submits})"
+            )
+            allure.attach(
+                reason,
+                name=f"SITE budget stop ({site_label})",
+                attachment_type=allure.attachment_type.TEXT,
+            )
+            return True
+
+        send_step_alert(site_label, step_no, step_name, reason, page)
+        assert False, f"[{site_label}] {step_name}: {reason}"
 
     print(f"\n{'#'*55}\n# САЙТ: {site_label} | MODE: {service_mode}\n{'#'*55}")
 
@@ -3061,6 +3163,8 @@ def run_site_scenario(page: Page, cfg: dict):
 
     # ── 2. Попапы главной ─────────────────────────────────────────────────
     with allure.step("Шаг 2: попапы главной"):
+        if maybe_stop_due_site_budget("2", "попапы главной"):
+            return
         print(f"\n{sep}\n[{site_label}] Шаг 2: попапы главной\n{sep}")
         goto_or_handle_step(page, base_url, site_label, "2", "попапы главной")
         close_overlays(page)
@@ -3071,6 +3175,8 @@ def run_site_scenario(page: Page, cfg: dict):
                 has_name_field=has_name_field,
                 service_mode=service_mode,
                 auto_profit_optional=auto_profit_optional,
+                site_deadline_monotonic=site_deadline_monotonic,
+                successful_submits_before_cycle=total_success_submits,
             )
         except SiteUnavailableError as e:
             skip_site_due_unavailability(site_label, "2", "попапы главной", str(e), page)
@@ -3095,6 +3201,8 @@ def run_site_scenario(page: Page, cfg: dict):
 
     # ── 3. Попапы /business ───────────────────────────────────────────────
     with allure.step("Шаг 3: попапы /business"):
+        if maybe_stop_due_site_budget("3", "попапы /business"):
+            return
         if service_mode == SERVICE_MODE_VARIANTS:
             mark_step_not_applicable(site_label, "3", "попапы /business", "service_mode=variants")
         elif cfg.get("has_business"):
@@ -3104,7 +3212,12 @@ def run_site_scenario(page: Page, cfg: dict):
             # close_overlays is already handled inside goto_business_or_handle_step
             try:
                 s, f, first_fail = process_business_popups(
-                    page, business_url, has_name_field=has_name_field, service_mode=service_mode
+                    page,
+                    business_url,
+                    has_name_field=has_name_field,
+                    service_mode=service_mode,
+                    site_deadline_monotonic=site_deadline_monotonic,
+                    successful_submits_before_cycle=total_success_submits,
                 )
             except SiteUnavailableError as e:
                 skip_site_due_unavailability(site_label, "3", "попапы /business", str(e), page)
@@ -3131,6 +3244,8 @@ def run_site_scenario(page: Page, cfg: dict):
 
     # ── 4. Сценарий города ────────────────────────────────────────────────
     with allure.step("Шаг 4: выбор города"):
+        if maybe_stop_due_site_budget("4", "выбор города"):
+            return
         if city_name:
             print(f"\n{sep}\n[{site_label}] Шаг 4: город '{city_name}'\n{sep}")
             try:
@@ -3146,6 +3261,8 @@ def run_site_scenario(page: Page, cfg: dict):
 
     # ── 4a. Попапы главной города ─────────────────────────────────────────
     with allure.step("Шаг 4a: попапы главной города"):
+        if maybe_stop_due_site_budget("4a", "попапы главной города"):
+            return
         if city_name is None:
             mark_step_not_applicable(site_label, "4a", "попапы главной города", "city_name=None")
         elif city_base is None:
@@ -3161,6 +3278,8 @@ def run_site_scenario(page: Page, cfg: dict):
                     service_mode=service_mode,
                     allow_root_return_after_thanks=True,
                     auto_profit_optional=auto_profit_optional,
+                    site_deadline_monotonic=site_deadline_monotonic,
+                    successful_submits_before_cycle=total_success_submits,
                 )
             except SiteUnavailableError as e:
                 skip_site_due_unavailability(site_label, "4a", "попапы главной города", str(e), page)
@@ -3185,6 +3304,8 @@ def run_site_scenario(page: Page, cfg: dict):
 
     # ── 4b. Попапы /business города ───────────────────────────────────────
     with allure.step("Шаг 4b: попапы /business города"):
+        if maybe_stop_due_site_budget("4b", "попапы /business города"):
+            return
         if city_name is None:
             mark_step_not_applicable(site_label, "4b", "попапы /business города", "city_name=None")
         elif service_mode == SERVICE_MODE_VARIANTS:
@@ -3198,7 +3319,12 @@ def run_site_scenario(page: Page, cfg: dict):
             # close_overlays is already handled inside goto_business_or_handle_step
             try:
                 s, f, first_fail = process_business_popups(
-                    page, city_biz, has_name_field=has_name_field, service_mode=service_mode
+                    page,
+                    city_biz,
+                    has_name_field=has_name_field,
+                    service_mode=service_mode,
+                    site_deadline_monotonic=site_deadline_monotonic,
+                    successful_submits_before_cycle=total_success_submits,
                 )
             except SiteUnavailableError as e:
                 skip_site_due_unavailability(site_label, "4b", "попапы /business города", str(e), page)
