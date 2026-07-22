@@ -40,6 +40,7 @@ REALLY_SUBMIT = True # True — реально отправлять заявки
 ARTIFACTS_DIR = Path(__file__).resolve().parent / "artifacts"
 SUBMITTED_LEADS_DIR = ARTIFACTS_DIR / "submitted_leads"
 SUBMITTED_LEADS_FILE = SUBMITTED_LEADS_DIR / "submitted_leads.json"
+SUBMITTED_LEADS_SOURCE_ITERATION = "everyday_test_submitted_leads"
 
 # ---------------------------------------------------------------------------
 # Таблица ошибок → причин для Telegram-алертов
@@ -90,6 +91,12 @@ def _now_msk_iso() -> str:
 def _compact_or_none(value: str) -> str | None:
     normalized = " ".join((value or "").split()).strip()
     return normalized or None
+
+
+def _stringify_or_none(value) -> str | None:
+    if value is None:
+        return None
+    return _compact_or_none(str(value))
 
 
 def _read_locator_value(locator) -> str:
@@ -232,24 +239,75 @@ def _build_submitted_lead_record(
     }
 
 
-def _load_submitted_lead_records() -> list[dict]:
+def _resolve_submitted_leads_build_number() -> str:
+    return (
+        _stringify_or_none(os.getenv("BUILD_NUMBER"))
+        or _stringify_or_none(os.getenv("RUN_NUMBER"))
+        or f"local-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    )
+
+
+def _resolve_submitted_leads_run_id(build_number: str | None = None) -> str:
+    return (
+        _stringify_or_none(os.getenv("RUN_ID"))
+        or _stringify_or_none(os.getenv("BUILD_TAG"))
+        or _stringify_or_none(os.getenv("BUILD_ID"))
+        or _stringify_or_none(os.getenv("BUILD_URL"))
+        or _stringify_or_none(build_number)
+        or f"local-run-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    )
+
+
+def _build_empty_submitted_leads_payload() -> dict:
+    build_number = _resolve_submitted_leads_build_number()
+    return {
+        "run_id": _resolve_submitted_leads_run_id(build_number),
+        "build_number": build_number,
+        "created_at": _now_msk_iso(),
+        "source_iteration": SUBMITTED_LEADS_SOURCE_ITERATION,
+        "applications": [],
+    }
+
+
+def _normalize_submitted_leads_payload(data) -> dict:
+    payload = _build_empty_submitted_leads_payload()
+
+    if isinstance(data, list):
+        payload["applications"] = data
+        return payload
+
+    if not isinstance(data, dict):
+        return payload
+
+    applications = data.get("applications")
+    payload["applications"] = applications if isinstance(applications, list) else []
+    payload["run_id"] = _stringify_or_none(data.get("run_id")) or payload["run_id"]
+    payload["build_number"] = _stringify_or_none(data.get("build_number")) or payload["build_number"]
+    payload["created_at"] = _stringify_or_none(data.get("created_at")) or payload["created_at"]
+    payload["source_iteration"] = (
+        _stringify_or_none(data.get("source_iteration")) or SUBMITTED_LEADS_SOURCE_ITERATION
+    )
+    return payload
+
+
+def _load_submitted_leads_payload() -> dict:
     if not SUBMITTED_LEADS_FILE.exists():
-        return []
+        return _build_empty_submitted_leads_payload()
     try:
         data = json.loads(SUBMITTED_LEADS_FILE.read_text(encoding="utf-8"))
     except Exception as exc:
         print(f"[LEADS] Не удалось прочитать {SUBMITTED_LEADS_FILE}: {exc}")
-        return []
-    return data if isinstance(data, list) else []
+        return _build_empty_submitted_leads_payload()
+    return _normalize_submitted_leads_payload(data)
 
 
 def _append_submitted_lead_record(record: dict) -> None:
     try:
         SUBMITTED_LEADS_DIR.mkdir(parents=True, exist_ok=True)
-        records = _load_submitted_lead_records()
-        records.append(record)
+        payload = _load_submitted_leads_payload()
+        payload["applications"].append(record)
         SUBMITTED_LEADS_FILE.write_text(
-            json.dumps(records, ensure_ascii=False, indent=2),
+            json.dumps(payload, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
         print(f"[LEADS] Сохранена заявка в {SUBMITTED_LEADS_FILE}")
