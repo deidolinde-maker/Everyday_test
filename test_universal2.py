@@ -23,6 +23,7 @@ import requests
 import time
 import sys
 import json
+from pathlib import Path
 from urllib.parse import quote, urlsplit, urlunsplit
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
@@ -36,6 +37,9 @@ except Exception:
     pass
 
 REALLY_SUBMIT = True # True — реально отправлять заявки
+ARTIFACTS_DIR = Path(__file__).resolve().parent / "artifacts"
+SUBMITTED_LEADS_DIR = ARTIFACTS_DIR / "submitted_leads"
+SUBMITTED_LEADS_FILE = SUBMITTED_LEADS_DIR / "submitted_leads.json"
 
 # ---------------------------------------------------------------------------
 # Таблица ошибок → причин для Telegram-алертов
@@ -73,6 +77,184 @@ def _now_msk_str() -> str:
         # Windows-среды без tzdata: fallback к фиксированному UTC+3.
         dt = datetime.now(timezone(timedelta(hours=3)))
     return dt.strftime("%Y-%m-%d %H:%M:%S (MSK)")
+
+
+def _now_msk_iso() -> str:
+    try:
+        dt = datetime.now(ZoneInfo("Europe/Moscow"))
+    except Exception:
+        dt = datetime.now(timezone(timedelta(hours=3)))
+    return dt.isoformat(timespec="seconds")
+
+
+def _compact_or_none(value: str) -> str | None:
+    normalized = " ".join((value or "").split()).strip()
+    return normalized or None
+
+
+def _read_locator_value(locator) -> str:
+    try:
+        if locator.count() == 0:
+            return ""
+    except Exception:
+        return ""
+
+    readers = (
+        lambda: locator.input_value(),
+        lambda: locator.get_attribute("value"),
+        lambda: locator.text_content(),
+        lambda: locator.inner_text(),
+    )
+    for reader in readers:
+        try:
+            value = reader()
+        except Exception:
+            continue
+        if value is None:
+            continue
+        normalized = " ".join(str(value).split()).strip()
+        if normalized:
+            return normalized
+    return ""
+
+
+def _read_first_value(roots: list, selectors: list[str]) -> str:
+    for root in roots:
+        if root is None:
+            continue
+        for selector in selectors:
+            if not selector:
+                continue
+            try:
+                value = _read_locator_value(root.locator(selector).first)
+            except Exception:
+                value = ""
+            if value:
+                return value
+    return ""
+
+
+def _extract_ya_client_cookie(page: Page) -> tuple[str | None, str | None]:
+    try:
+        cookies = page.context.cookies()
+    except Exception:
+        return None, None
+
+    cookies_by_name = {}
+    for cookie in cookies:
+        name = (cookie.get("name") or "").strip()
+        value = (cookie.get("value") or "").strip()
+        if name and value:
+            cookies_by_name[name.lower()] = value
+
+    preferred_names = (
+        "ya_client_id",
+        "new_ya_client_id",
+        "_ym_uid",
+        "yandexuid",
+        "ym_uid",
+    )
+    for name in preferred_names:
+        value = cookies_by_name.get(name)
+        if value:
+            return value, name
+
+    for name, value in cookies_by_name.items():
+        if "yandex" in name or name.startswith("_ym_") or name.startswith("ym_"):
+            return value, name
+
+    return None, None
+
+
+def _build_submitted_lead_record(
+    page: Page,
+    container,
+    form_type: str,
+    *,
+    base_url: str,
+    scenario_name: str,
+    service_value: str | None = None,
+    provider_name: str | None = None,
+) -> dict:
+    cfg = FORM_CONFIGS.get(form_type, {})
+    roots = [container, page]
+    ya_client_id, ya_cookie_name = _extract_ya_client_cookie(page)
+
+    street_text = _read_first_value(roots, [cfg.get("street", "")])
+    house_text = _read_first_value(roots, [cfg.get("house", "")])
+    phone_text = _read_first_value(roots, [cfg.get("phone", "")])
+    street_id = _read_first_value(
+        roots,
+        [
+            "input[name='street_id']",
+            "input[name='IStreet']",
+            "input[name='id_street']",
+            "input#id_street",
+            "input[name='streetId']",
+        ],
+    )
+    house_id = _read_first_value(
+        roots,
+        [
+            "input[name='house_id']",
+            "input[name='IHouse']",
+            "input[name='houseId']",
+        ],
+    )
+    address_id = _read_first_value(
+        roots,
+        [
+            "input[name='address_id']",
+            "input[name='addressId']",
+            "input#house",
+        ],
+    )
+
+    return {
+        "submit_time": _now_msk_iso(),
+        "domain": _compact_or_none(urlsplit(base_url).netloc) or _compact_or_none(
+            base_url.replace("https://", "").replace("http://", "").strip("/")
+        ),
+        "base_url": _compact_or_none(base_url),
+        "page_url": _compact_or_none(getattr(page, "url", "")),
+        "scenario": _compact_or_none(scenario_name),
+        "form_type": _compact_or_none(form_type),
+        "provider": _compact_or_none(provider_name or ""),
+        "service_value": _compact_or_none(service_value or ""),
+        "street": _compact_or_none(street_text),
+        "street_id": _compact_or_none(street_id),
+        "house": _compact_or_none(house_text),
+        "house_id": _compact_or_none(house_id),
+        "address_id": _compact_or_none(address_id),
+        "phone": _compact_or_none(phone_text),
+        "ya_client_id": _compact_or_none(ya_client_id or ""),
+        "ya_cookie_name": _compact_or_none(ya_cookie_name or ""),
+    }
+
+
+def _load_submitted_lead_records() -> list[dict]:
+    if not SUBMITTED_LEADS_FILE.exists():
+        return []
+    try:
+        data = json.loads(SUBMITTED_LEADS_FILE.read_text(encoding="utf-8"))
+    except Exception as exc:
+        print(f"[LEADS] Не удалось прочитать {SUBMITTED_LEADS_FILE}: {exc}")
+        return []
+    return data if isinstance(data, list) else []
+
+
+def _append_submitted_lead_record(record: dict) -> None:
+    try:
+        SUBMITTED_LEADS_DIR.mkdir(parents=True, exist_ok=True)
+        records = _load_submitted_lead_records()
+        records.append(record)
+        SUBMITTED_LEADS_FILE.write_text(
+            json.dumps(records, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        print(f"[LEADS] Сохранена заявка в {SUBMITTED_LEADS_FILE}")
+    except Exception as exc:
+        print(f"[LEADS] Не удалось сохранить заявку: {exc}")
 
 
 def _normalize_alert_text(text: str, max_len: int = 900) -> str:
@@ -2282,6 +2464,13 @@ def process_auto_profit_popup(
 
     if REALLY_SUBMIT:
         return_url_before_submit = page.url or base_url
+        lead_record = _build_submitted_lead_record(
+            page,
+            container,
+            form_type,
+            base_url=base_url,
+            scenario_name="auto_profit_popup",
+        )
         ok = submit_with_confirmation(
             page,
             container,
@@ -2291,6 +2480,7 @@ def process_auto_profit_popup(
         )
         if ok:
             print("  [AUTO-PROFIT] ✅ Заявка принята")
+            _append_submitted_lead_record(lead_record)
             thanks_ok, thanks_reason = verify_thanks_close_and_return(
                 page,
                 return_url_before_submit,
@@ -2344,6 +2534,13 @@ def process_unexpected_auto_profit_popup(
 
     if REALLY_SUBMIT:
         return_url_before_submit = page.url or base_url
+        lead_record = _build_submitted_lead_record(
+            page,
+            container,
+            form_type,
+            base_url=base_url,
+            scenario_name=f"unexpected_auto_profit:{context}",
+        )
         ok = submit_with_confirmation(
             page, container, form_type,
             timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS, attempts=2
@@ -2351,6 +2548,7 @@ def process_unexpected_auto_profit_popup(
         if not ok:
             log_error("no_confirmation", page, site_label, extra=f"auto profit during {context}")
             return True, False, "no_confirmation"
+        _append_submitted_lead_record(lead_record)
         thanks_ok, thanks_reason = verify_thanks_close_and_return(
             page,
             return_url_before_submit,
@@ -2641,12 +2839,21 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
 
             if REALLY_SUBMIT:
                 return_url_before_submit = page.url or base_url
+                lead_record = _build_submitted_lead_record(
+                    page,
+                    container,
+                    form_type,
+                    base_url=base_url,
+                    scenario_name=label.lower(),
+                    service_value=service_value,
+                )
                 ok = submit_with_confirmation(
                     page, container, form_type,
                     timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS, attempts=2
                 )
                 if ok:
                     print(f"  [{label}] ✅ Заявка принята ({service_label})")
+                    _append_submitted_lead_record(lead_record)
                     thanks_ok, thanks_reason = verify_thanks_close_and_return(
                         page,
                         return_url_before_submit,
@@ -3128,11 +3335,20 @@ def run_site_scenario(page: Page, cfg: dict):
                     print(f"  ✅ checkaddress готова")
                     if REALLY_SUBMIT:
                         return_url_before_submit = page.url or base_url
+                        lead_record = _build_submitted_lead_record(
+                            page,
+                            container,
+                            "checkaddress",
+                            base_url=base_url,
+                            scenario_name="checkaddress",
+                            provider_name=cfg.get("_provider"),
+                        )
                         ok = submit_with_confirmation(
                             page, container, "checkaddress",
                             timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS, attempts=2
                         )
                         if ok:
+                            _append_submitted_lead_record(lead_record)
                             thanks_ok, thanks_reason = verify_thanks_close_and_return(
                                 page, return_url_before_submit
                             )

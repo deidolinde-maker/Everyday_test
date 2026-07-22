@@ -219,8 +219,8 @@ pipeline {
           set -e
           pybin="$(cat "${PYTHON_BIN_FILE}")"
 
-          rm -rf allure-results allure-results-* || true
-          mkdir -p allure-results
+          rm -rf allure-results allure-results-* artifacts/submitted_leads || true
+          mkdir -p allure-results artifacts/submitted_leads
 
           providers=""
           case "${PROVIDER_SCOPE}" in
@@ -341,7 +341,7 @@ pipeline {
 
   post {
     always {
-      archiveArtifacts artifacts: 'allure-results/**, allure-results-*/**, telegram_message.txt, telegram_should_send.txt, notify_state.json', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'allure-results/**, allure-results-*/**, artifacts/**, telegram_message.txt, telegram_should_send.txt, notify_state.json', allowEmptyArchive: true
       script {
         try {
           // Requires Jenkins Allure plugin. If not installed, continue without failing the build.
