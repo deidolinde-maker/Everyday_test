@@ -341,6 +341,20 @@ pipeline {
 
   post {
     always {
+      sh '''
+        set +e
+        SHARED_SUBMITTED_LEADS_DIR="/var/lib/jenkins/shared/Everyday_test"
+        SHARED_SUBMITTED_LEADS_FILE="${SHARED_SUBMITTED_LEADS_DIR}/submitted_leads.json"
+        LOCAL_SUBMITTED_LEADS_FILE="artifacts/submitted_leads/submitted_leads.json"
+
+        if [ -f "${LOCAL_SUBMITTED_LEADS_FILE}" ]; then
+          mkdir -p "${SHARED_SUBMITTED_LEADS_DIR}"
+          cp -f "${LOCAL_SUBMITTED_LEADS_FILE}" "${SHARED_SUBMITTED_LEADS_FILE}"
+          echo "Submitted leads JSON copied to ${SHARED_SUBMITTED_LEADS_FILE}"
+        else
+          echo "Submitted leads JSON not found at ${LOCAL_SUBMITTED_LEADS_FILE}; shared copy skipped."
+        fi
+      '''
       archiveArtifacts artifacts: 'allure-results/**, allure-results-*/**, artifacts/**, telegram_message.txt, telegram_should_send.txt, notify_state.json', allowEmptyArchive: true
       script {
         try {
