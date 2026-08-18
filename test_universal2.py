@@ -156,7 +156,6 @@ def _extract_ya_client_cookie(page: Page) -> tuple[str | None, str | None]:
 
     preferred_names = (
         "ya_client_id",
-        "new_ya_client_id",
         "_ym_uid",
         "yandexuid",
         "ym_uid",
