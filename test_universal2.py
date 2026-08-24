@@ -992,7 +992,11 @@ def dismiss_region_popup(page: Page):
     # Вариант 1b: текстовая кнопка "Выбрать город"
     try:
         choose_btn = page.get_by_role("button", name="Выбрать город").first
-        if choose_btn.count() > 0 and choose_btn.is_visible():
+        if (
+            choose_btn.count() > 0
+            and choose_btn.is_visible()
+            and not _is_form_city_change_button(choose_btn)
+        ):
             choose_btn.click(force=True)
             page.wait_for_timeout(400)
             print("  [REGION] Попап региона обработан (кнопка 'Выбрать город')")
@@ -1507,6 +1511,20 @@ def _trigger_native_form_submit(container) -> bool:
         return False
 
 
+def _is_form_city_change_button(locator) -> bool:
+    """Не считать штатную кнопку смены города в address-form региональным popup."""
+    try:
+        classes = (locator.get_attribute("class") or "").split()
+        required = {
+            "autocomplete-city-change",
+            "button-select-city",
+            "checkaddress_address_button_change_city",
+        }
+        return required.issubset(classes)
+    except Exception:
+        return False
+
+
 def detect_visible_region_popup(page: Page) -> str | None:
     for sel in REGION_POPUP_DETECT_SELECTORS:
         try:
@@ -1518,7 +1536,11 @@ def detect_visible_region_popup(page: Page) -> str | None:
 
     try:
         choose_btn = page.get_by_role("button", name="Выбрать город").first
-        if choose_btn.count() > 0 and choose_btn.is_visible():
+        if (
+            choose_btn.count() > 0
+            and choose_btn.is_visible()
+            and not _is_form_city_change_button(choose_btn)
+        ):
             return "button:has-text('Выбрать город')"
     except Exception:
         pass
