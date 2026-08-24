@@ -547,6 +547,12 @@ For Jenkins proxy-only mode, `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` may be 
    - случаи с медленной отрисовкой списка,
    - повторные попытки клика по кнопке города и по ссылке города.
 
+Подтверждённый результат после исправления ложного `region-popup`:
+- Jenkins build `#144` для `https://rtk-ru.online/` (`core + chromium + desktop + blocking_profile=none`) завершился `1 passed, 0 failed`.
+- После успешного перехода на `/tilda/form1/submitted` и возврата на главную штатная кнопка смены города формы больше не определяется как открытый региональный popup.
+- Исправление зафиксировано коммитом `e20cedd` (`Fix false region popup detection`).
+- Результат относится к точечному прогону `rtk-ru.online` и не означает полный green по всем доменам.
+
 ### 10.2 Mobile suite (`mobile_tariffs_tests`)
 
 1. Негативный сценарий: страница без блока мобильных тарифов (валидация понятной ошибки шага).
