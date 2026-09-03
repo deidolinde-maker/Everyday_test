@@ -1,0 +1,9 @@
+BUSINESS 1/9 text='подробнее' hint=None code=popup_not_found url=https://business.mts.ru/internet-v-ofis-corp?utm_source=agentsb2b&utm_medium=referral&utm_campaign=gaZnrN0CAc1NGpe3d2NI
+BUSINESS 2/9 text='подробнее' hint=None code=popup_not_found url=https://business.mts.ru/internet-v-ofis-corp?utm_source=agentsb2b&utm_medium=referral&utm_campaign=gaZnrN0CAc1NGpe3d2NI
+BUSINESS 3/9 text='подробнее' hint=None code=popup_not_found url=https://business.mts.ru/internet-v-ofis-corp?utm_source=agentsb2b&utm_medium=referral&utm_campaign=gaZnrN0CAc1NGpe3d2NI
+BUSINESS 4/9 text='подробнее' hint=None code=popup_not_found url=https://business.mts.ru/internet-v-ofis-corp?utm_source=agentsb2b&utm_medium=referral&utm_campaign=gaZnrN0CAc1NGpe3d2NI
+BUSINESS 5/9 text='подробнее' hint=None code=popup_not_found url=https://business.mts.ru/internet-v-ofis-corp?utm_source=agentsb2b&utm_medium=referral&utm_campaign=gaZnrN0CAc1NGpe3d2NI
+BUSINESS 6/9 text='подробнее' hint=None code=popup_not_found url=https://business.mts.ru/internet-v-ofis-corp?utm_source=agentsb2b&utm_medium=referral&utm_campaign=gaZnrN0CAc1NGpe3d2NI
+BUSINESS 7/9 text='подробнее' hint=None code=popup_not_found url=https://business.mts.ru/internet-v-ofis-corp?utm_source=agentsb2b&utm_medium=referral&utm_campaign=gaZnrN0CAc1NGpe3d2NI
+BUSINESS 8/9 text='подробнее' hint=None code=popup_not_found url=https://business.mts.ru/internet-v-ofis-corp?utm_source=agentsb2b&utm_medium=referral&utm_campaign=gaZnrN0CAc1NGpe3d2NI
+BUSINESS 9/9 text='подробнее' hint=None code=popup_not_found url=https://business.mts.ru/internet-v-ofis-corp?utm_source=agentsb2b&utm_medium=referral&utm_campaign=gaZnrN0CAc1NGpe3d2NI

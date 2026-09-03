@@ -5,32 +5,32 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","203809","Сайт: https://mts-home.online/ [core] [chromium] [none]","","Tue May 19 07:14:13 UTC 2026","passed","Tue May 19 07:17:37 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","221842","Сайт: https://mts-home-online.ru/ [core] [chromium] [none]","","2026-09-03","passed","2026-09-03","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","195098","Сайт: https://internet-mts-home.online/ [core] [chromium] [none]","","Tue May 19 07:21:57 UTC 2026","passed","Tue May 19 07:25:12 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","184208","Сайт: https://mts-internet.online/ [core] [chromium] [none]","","2026-09-03","passed","2026-09-03","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","259817","Сайт: https://mts-home-online.ru/ [core] [chromium] [none]","","Tue May 19 07:17:37 UTC 2026","passed","Tue May 19 07:21:57 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","313122","Сайт: https://mts-home-gpon.ru/ [core] [chromium] [none]","","2026-09-03","passed","2026-09-03","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","315080","Сайт: https://mts-home-gpon.ru/ [core] [chromium] [none]","","Tue May 19 07:08:58 UTC 2026","passed","Tue May 19 07:14:13 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","165925","Сайт: https://internet-mts-home.online/ [core] [chromium] [none]","","2026-09-03","passed","2026-09-03","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","182833","Сайт: https://mts-internet.online/ [core] [chromium] [none]","","Tue May 19 07:25:12 UTC 2026","passed","Tue May 19 07:28:15 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","194582","Сайт: https://mts-home.online/ [core] [chromium] [none]","","2026-09-03","passed","2026-09-03","service-mode: core","Формы провайдеров","",""
