@@ -5,4 +5,4 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","133021","Сайт: https://t2-ru.online [core] [chromium] [none]","","Tue May 19 08:04:38 UTC 2026","passed","Tue May 19 08:06:51 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","60307","Сайт: https://t2-ru.online [core] [chromium] [none]","","2026-09-03","passed","2026-09-03","service-mode: core","Формы провайдеров","",""
