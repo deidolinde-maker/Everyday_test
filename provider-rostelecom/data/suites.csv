@@ -5,32 +5,32 @@
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","214767","Сайт: https://rtk-ru.online/ [core] [chromium] [none]","","Tue May 19 08:08:19 UTC 2026","passed","Tue May 19 08:11:54 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","204806","Сайт: https://rtk-home-internet.ru/ [core] [chromium] [none]","","2026-09-03","passed","2026-09-03","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","190977","Сайт: https://rtk-home-internet.ru/ [core] [chromium] [none]","","Tue May 19 08:15:08 UTC 2026","passed","Tue May 19 08:18:19 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","301329","Сайт: http://rtk-home.ru/ [core] [chromium] [none]","","2026-09-03","passed","2026-09-03","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","267953","Сайт: https://rtk-internet.online/ [core] [chromium] [none]","","Tue May 19 08:18:19 UTC 2026","passed","Tue May 19 08:22:47 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","234219","Сайт: https://rtk-ru.online/ [core] [chromium] [none]","","2026-09-03","passed","2026-09-03","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","194046","Сайт: https://rt-internet.online/ [core] [chromium] [none]","","Tue May 19 08:11:54 UTC 2026","passed","Tue May 19 08:15:08 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","204769","Сайт: https://rt-internet.online/ [core] [chromium] [none]","","2026-09-03","passed","2026-09-03","service-mode: core","Формы провайдеров","",""
 "
     Запуск для одного сайта:
         pytest -s --headed --site=mts-home-gpon.ru
 
     Запуск для всех сайтов:
         pytest -s --headed
-    ","290195","Сайт: http://rtk-home.ru/ [core] [chromium] [none]","","Tue May 19 08:22:47 UTC 2026","passed","Tue May 19 08:27:37 UTC 2026","service-mode: core","Формы провайдеров","",""
+    ","300934","Сайт: https://rtk-internet.online/ [core] [chromium] [none]","","2026-09-03","passed","2026-09-03","service-mode: core","Формы провайдеров","",""
