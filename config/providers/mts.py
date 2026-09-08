@@ -5,7 +5,9 @@ SITES = [
     {
         "base_url": "https://mts-home-gpon.ru/",
         "has_checkaddress": True,
-        "has_business": True,
+        # Временно исключаем бизнес-страницу из прогона: форма недоступна
+        # для стабильной проверки до отдельного исправления лендинга.
+        "has_business": False,
         "cities": ["Москва"],
     },
     {

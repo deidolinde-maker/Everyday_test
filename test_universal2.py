@@ -1685,6 +1685,12 @@ def resolve_service_values_for_mode(
 ) -> list[str | None]:
     mode = normalize_service_mode(service_mode)
 
+    # Временно не отправляем бизнес-заявки. Остальные типы форм и сценарии
+    # продолжают работать без изменения.
+    if form_type == "business":
+        print("  [FORM] BUSINESS: submit временно пропущен")
+        return []
+
     if mode == SERVICE_MODE_VARIANTS:
         if form_type in ("profit", "business"):
             print("  [FORM] VARIANTS: тип формы без Place — пропускаем")
