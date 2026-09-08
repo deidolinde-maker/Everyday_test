@@ -34,6 +34,7 @@ SITES = [
         "base_url": "https://mts-internet.online/",
         "has_checkaddress": False,
         "has_business": False,
+        "site_time_budget_ms": 600000,
         "cities": ["Москва"],
     },
 ]

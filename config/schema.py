@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 
 REQUIRED_SITE_KEYS = ("base_url", "has_checkaddress", "has_business")
 BOOL_SITE_KEYS = ("has_checkaddress", "has_business", "has_name_field", "has_region_popup")
+INT_SITE_KEYS = ("site_time_budget_ms",)
 
 
 def derive_site_id(base_url: str) -> str:
@@ -69,6 +70,14 @@ def _validate_single_provider(
             if key in site and not isinstance(site.get(key), bool):
                 errors.append(f"{site_label}: {key} must be bool")
 
+        for key in INT_SITE_KEYS:
+            if key in site and (
+                isinstance(site.get(key), bool)
+                or not isinstance(site.get(key), int)
+                or site.get(key) <= 0
+            ):
+                errors.append(f"{site_label}: {key} must be a positive integer")
+
         city_name = site.get("city_name", "__missing__")
         if city_name != "__missing__" and city_name is not None and not isinstance(city_name, str):
             errors.append(f"{site_label}: city_name must be string or None")
@@ -108,4 +117,3 @@ def validate_provider_modules(provider_modules: dict[str, ModuleType]) -> None:
 
     if errors:
         raise ValueError("Invalid provider configs:\n- " + "\n- ".join(errors))
-
