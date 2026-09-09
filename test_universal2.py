@@ -3363,13 +3363,12 @@ def run_site_scenario(page: Page, cfg: dict):
     city_base      = None
     city_biz       = None
     service_mode   = normalize_service_mode(cfg.get("_service_mode", SERVICE_MODE_ALL))
-    site_time_budget_ms = int(cfg.get("site_time_budget_ms", SITE_TIME_BUDGET_MS))
     total_success_submits = 0
     deferred_checkaddress_reason: str | None = None
     site_started_monotonic = time.monotonic()
     site_deadline_monotonic = (
-        site_started_monotonic + (site_time_budget_ms / 1000)
-        if site_time_budget_ms > 0 else None
+        site_started_monotonic + (SITE_TIME_BUDGET_MS / 1000)
+        if SITE_TIME_BUDGET_MS > 0 else None
     )
 
     def maybe_stop_due_site_budget(step_no: str, step_name: str) -> bool:
@@ -3378,8 +3377,8 @@ def run_site_scenario(page: Page, cfg: dict):
 
         elapsed_s = int(time.monotonic() - site_started_monotonic)
         reason = (
-                f"достигнут лимит времени на лендинг ({elapsed_s}с из "
-                f"{site_time_budget_ms // 1000}с)"
+            f"достигнут лимит времени на лендинг ({elapsed_s}с из "
+            f"{SITE_TIME_BUDGET_MS // 1000}с)"
         )
         if total_success_submits > 0:
             print(
