@@ -65,6 +65,30 @@ class FaviconLinkParser(HTMLParser):
             self._in_head = False
 
 
+def _fallback_parse_favicon_links(html: str) -> list[dict[str, str]]:
+    """Recover favicon links from malformed HTML that HTMLParser treats as text/comment."""
+    head_match = re.search(r"<head\b[^>]*>(.*?)</head\s*>", html, flags=re.IGNORECASE | re.DOTALL)
+    if not head_match:
+        return []
+
+    links: list[dict[str, str]] = []
+    for tag in re.findall(r"<link\b[^>]*>", head_match.group(1), flags=re.IGNORECASE | re.DOTALL):
+        attributes = {
+            key.lower(): value.strip()
+            for key, _, value in re.findall(r"([\w:-]+)\s*=\s*([\"'])(.*?)\2", tag, flags=re.DOTALL)
+        }
+        rel_values = {value.lower() for value in attributes.get("rel", "").split()}
+        if rel_values.intersection(FAVICON_REL_VALUES) and attributes.get("href"):
+            links.append(
+                {
+                    "href": attributes["href"],
+                    "rel": attributes.get("rel", ""),
+                    "type": attributes.get("type", "").lower(),
+                }
+            )
+    return links
+
+
 def _site_inventory() -> list[dict[str, object]]:
     sites: list[dict[str, object]] = []
     seen: set[str] = set()
@@ -139,6 +163,8 @@ def _check_favicon(session: requests.Session, site: dict[str, object]) -> dict[s
             except Exception as exc:
                 result["reason"] = f"html_parse_failed: {exc.__class__.__name__}"
             else:
+                if not parser.links:
+                    parser.links = _fallback_parse_favicon_links(landing.text)
                 result["detected_favicon_links"] = [link["href"] for link in parser.links]
                 result["detected_favicon_rel_values"] = [link["rel"] for link in parser.links]
                 if parser.links:
