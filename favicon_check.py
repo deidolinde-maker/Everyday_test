@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import time
 import uuid
 from html.parser import HTMLParser
@@ -96,6 +98,8 @@ def _check_favicon(session: requests.Session, site: dict[str, object]) -> dict[s
         "landing_http_status": None,
         "landing_response_url": None,
         "landing_content_length": 0,
+        "landing_html_sha256": None,
+        "landing_head_preview": "",
         "landing_attempts": 0,
         "detected_favicon_links": [],
     }
@@ -121,6 +125,10 @@ def _check_favicon(session: requests.Session, site: dict[str, object]) -> dict[s
         result["landing_http_status"] = landing.status_code
         result["landing_response_url"] = landing.url
         result["landing_content_length"] = len(landing.content)
+        result["landing_html_sha256"] = hashlib.sha256(landing.content).hexdigest()
+        head_match = re.search(r"<head\\b[^>]*>(.*?)</head\\s*>", landing.text, flags=re.IGNORECASE | re.DOTALL)
+        if head_match:
+            result["landing_head_preview"] = re.sub(r"\\s+", " ", head_match.group(1)).strip()[:2000]
         if landing.status_code != 200:
             result["reason"] = f"landing_http_{landing.status_code}"
         else:
@@ -230,6 +238,8 @@ def _write_allure_results(results: list[dict[str, object]], results_dir: str) ->
                     "name": "detected_favicon_links",
                     "value": ", ".join(str(link) for link in item.get("detected_favicon_links", [])) or "none",
                 },
+                {"name": "landing_html_sha256", "value": str(item.get("landing_html_sha256") or "not available")},
+                {"name": "landing_head_preview", "value": str(item.get("landing_head_preview") or "not available")},
             ],
             "steps": [
                 {
