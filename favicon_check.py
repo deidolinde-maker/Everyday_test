@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
+import uuid
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit
@@ -163,9 +165,54 @@ def _check_favicon(session: requests.Session, site: dict[str, object]) -> dict[s
     return result
 
 
+def _write_allure_results(results: list[dict[str, object]], results_dir: str) -> None:
+    """Write one inspectable Allure test case for every checked landing."""
+    output_dir = Path(results_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    now_ms = int(time.time() * 1000)
+
+    for item in results:
+        test_uuid = str(uuid.uuid4())
+        status = str(item["status"])
+        site_id = str(item["site_id"])
+        base_url = str(item["base_url"])
+        favicon_url = item.get("favicon_url")
+        reason = item.get("reason")
+        links = [{"name": "Landing page", "url": base_url, "type": "custom"}]
+        if favicon_url:
+            links.append({"name": "Favicon resource", "url": str(favicon_url), "type": "custom"})
+
+        payload = {
+            "name": f"Favicon: {site_id}",
+            "fullName": f"favicon_check::{site_id}",
+            "status": status,
+            "statusDetails": {"message": str(reason)} if reason else {},
+            "start": now_ms,
+            "stop": int(time.time() * 1000),
+            "uuid": test_uuid,
+            "historyId": f"favicon::{site_id}",
+            "links": links,
+            "labels": [
+                {"name": "suite", "value": "Favicon checks"},
+                {"name": "package", "value": str(item["provider"])},
+                {"name": "feature", "value": "Landing favicon"},
+                {"name": "tag", "value": "enabled" if item["enabled"] else "disabled"},
+            ],
+            "parameters": [
+                {"name": "landing_url", "value": base_url},
+                {"name": "favicon_url", "value": str(favicon_url or "not found")},
+            ],
+        }
+        (output_dir / f"{test_uuid}-result.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", default="favicon_report.json")
+    parser.add_argument("--allure-results", default="allure-results")
     args = parser.parse_args()
 
     session = requests.Session()
@@ -185,6 +232,7 @@ def main() -> int:
         ),
         encoding="utf-8",
     )
+    _write_allure_results(results, args.allure_results)
 
     if failed:
         lines = ["🚨 Favicon check: проблемы на лендингах"]

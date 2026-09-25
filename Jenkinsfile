@@ -172,9 +172,11 @@ pipeline {
           def runFaviconCheck = {
             catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
               sh '''
+                rm -rf allure-results
+                mkdir -p allure-results
                 set +e
                 pybin="$(cat "${PYTHON_BIN_FILE}")"
-                "${pybin}" favicon_check.py --report favicon_report.json
+                "${pybin}" favicon_check.py --report favicon_report.json --allure-results allure-results
                 exit $?
               '''
             }
