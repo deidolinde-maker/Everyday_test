@@ -18,6 +18,8 @@ from test_universal2 import send_telegram_alert
 
 USER_AGENT = "Everyday_test/favicon-check"
 LANDING_TIMEOUT_SECONDS = 20
+LANDING_ATTEMPTS = 3
+LANDING_RETRY_DELAY_SECONDS = 1
 FAVICON_TIMEOUT_SECONDS = 15
 SUPPORTED_CONTENT_TYPES = {
     "image/bmp",
@@ -91,32 +93,52 @@ def _check_favicon(session: requests.Session, site: dict[str, object]) -> dict[s
         "status": "failed",
         "favicon_url": None,
         "reason": None,
+        "landing_http_status": None,
+        "landing_response_url": None,
+        "landing_content_length": 0,
+        "landing_attempts": 0,
+        "detected_favicon_links": [],
     }
 
-    try:
-        landing = session.get(
-            base_url,
-            headers={"User-Agent": USER_AGENT},
-            timeout=LANDING_TIMEOUT_SECONDS,
-            allow_redirects=True,
-        )
-    except requests.RequestException as exc:
-        result["reason"] = f"landing_request_failed: {exc.__class__.__name__}"
-        return result
+    landing = None
+    parser = None
+    for attempt in range(1, LANDING_ATTEMPTS + 1):
+        result["landing_attempts"] = attempt
+        try:
+            landing = session.get(
+                base_url,
+                headers={"User-Agent": USER_AGENT},
+                timeout=LANDING_TIMEOUT_SECONDS,
+                allow_redirects=True,
+            )
+        except requests.RequestException as exc:
+            result["reason"] = f"landing_request_failed: {exc.__class__.__name__}"
+            if attempt < LANDING_ATTEMPTS:
+                time.sleep(LANDING_RETRY_DELAY_SECONDS)
+                continue
+            return result
 
-    if landing.status_code != 200:
-        result["reason"] = f"landing_http_{landing.status_code}"
-        return result
+        result["landing_http_status"] = landing.status_code
+        result["landing_response_url"] = landing.url
+        result["landing_content_length"] = len(landing.content)
+        if landing.status_code != 200:
+            result["reason"] = f"landing_http_{landing.status_code}"
+        else:
+            parser = FaviconLinkParser()
+            try:
+                parser.feed(landing.text)
+            except Exception as exc:
+                result["reason"] = f"html_parse_failed: {exc.__class__.__name__}"
+            else:
+                result["detected_favicon_links"] = [link["href"] for link in parser.links]
+                if parser.links:
+                    break
+                result["reason"] = "favicon_link_missing_in_head"
 
-    parser = FaviconLinkParser()
-    try:
-        parser.feed(landing.text)
-    except Exception as exc:
-        result["reason"] = f"html_parse_failed: {exc.__class__.__name__}"
-        return result
+        if attempt < LANDING_ATTEMPTS:
+            time.sleep(LANDING_RETRY_DELAY_SECONDS)
 
-    if not parser.links:
-        result["reason"] = "favicon_link_missing_in_head"
+    if not parser or not parser.links or not landing or landing.status_code != 200:
         return result
 
     reasons: list[str] = []
@@ -201,6 +223,13 @@ def _write_allure_results(results: list[dict[str, object]], results_dir: str) ->
             "parameters": [
                 {"name": "landing_url", "value": base_url},
                 {"name": "favicon_url", "value": str(favicon_url or "not found")},
+                {"name": "landing_response_url", "value": str(item.get("landing_response_url") or "not available")},
+                {"name": "landing_http_status", "value": str(item.get("landing_http_status") or "not available")},
+                {"name": "landing_attempts", "value": str(item.get("landing_attempts", 0))},
+                {
+                    "name": "detected_favicon_links",
+                    "value": ", ".join(str(link) for link in item.get("detected_favicon_links", [])) or "none",
+                },
             ],
             "steps": [
                 {
