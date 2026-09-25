@@ -127,9 +127,9 @@ def _check_favicon(session: requests.Session, site: dict[str, object]) -> dict[s
         result["landing_response_url"] = landing.url
         result["landing_content_length"] = len(landing.content)
         result["landing_html_sha256"] = hashlib.sha256(landing.content).hexdigest()
-        head_match = re.search(r"<head\\b[^>]*>(.*?)</head\\s*>", landing.text, flags=re.IGNORECASE | re.DOTALL)
+        head_match = re.search(r"<head\b[^>]*>(.*?)</head\s*>", landing.text, flags=re.IGNORECASE | re.DOTALL)
         if head_match:
-            result["landing_head_preview"] = re.sub(r"\\s+", " ", head_match.group(1)).strip()[:2000]
+            result["landing_head_preview"] = re.sub(r"\s+", " ", head_match.group(1)).strip()[:2000]
         if landing.status_code != 200:
             result["reason"] = f"landing_http_{landing.status_code}"
         else:
