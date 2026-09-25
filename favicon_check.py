@@ -183,7 +183,7 @@ def _write_allure_results(results: list[dict[str, object]], results_dir: str) ->
             links.append({"name": "Favicon resource", "url": str(favicon_url), "type": "custom"})
 
         payload = {
-            "name": f"Favicon: {site_id}",
+            "name": f"Favicon: {base_url}",
             "fullName": f"favicon_check::{site_id}",
             "status": status,
             "statusDetails": {"message": str(reason)} if reason else {},
@@ -201,6 +201,21 @@ def _write_allure_results(results: list[dict[str, object]], results_dir: str) ->
             "parameters": [
                 {"name": "landing_url", "value": base_url},
                 {"name": "favicon_url", "value": str(favicon_url or "not found")},
+            ],
+            "steps": [
+                {
+                    "name": f"Landing URL: {base_url}",
+                    "status": "passed",
+                    "start": now_ms,
+                    "stop": now_ms,
+                },
+                {
+                    "name": f"Favicon URL: {favicon_url or 'not found'}",
+                    "status": status,
+                    "statusDetails": {"message": str(reason)} if reason else {},
+                    "start": now_ms,
+                    "stop": int(time.time() * 1000),
+                },
             ],
         }
         (output_dir / f"{test_uuid}-result.json").write_text(
