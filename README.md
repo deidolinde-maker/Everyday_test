@@ -329,6 +329,50 @@ Expected success log lines:
 Common errors:
 - `Bad Request: chat not found` -> proxy is reachable, but Telegram target/chat in creds is invalid or unavailable for bot.
 - `Skip send: ... bot/chat missing and proxy endpoint is not usable` -> no bot/chat creds and proxy creds are incomplete/invalid.
+### 5.9 Favicon check
+
+`favicon_check.py` выполняет независимую HTTP-проверку favicon для всех сайтов,
+описанных в `config/providers/*.py`. Проверка запускается в Jenkins до Playwright
+матрицы и не зависит от наличия UI-элементов на лендинге.
+
+Что проверяется для каждого сайта:
+
+1. HTML главной страницы отвечает с HTTP `200`.
+2. В `<head>` находится ссылка на favicon с одним из поддерживаемых `rel`:
+   `icon`, `shortcut`, `apple-touch-icon` или `apple-touch-icon-precomposed`.
+3. Ссылка разрешается относительно итогового URL страницы.
+4. Ресурс favicon отвечает HTTP `200`, содержит данные и имеет подходящий image
+   `Content-Type`.
+
+Запрос главной страницы повторяется до 3 раз с паузой 1 секунду. Сначала
+используется `HTMLParser`, затем fallback-разбор `<head>` и `<link>` для
+нестандартной или неидеальной HTML-разметки.
+
+В `favicon_report.json` сохраняются статус и причина, URL лендинга и favicon,
+HTTP-статус и итоговый URL ответа, размер HTML, SHA-256 ответа, количество
+попыток, preview `<head>`, найденные `href` и `rel` favicon-ссылок.
+
+Для каждого сайта создаётся отдельный Allure test case со статусом, ссылками на
+лендинг и favicon, параметрами ответа и шагами с URL. Сайты с `enabled=False`
+исключаются из UI-матрицы, но остаются в favicon-проверке.
+
+#### Jenkins режим только favicon
+
+Для отдельного запуска в Jenkins включить параметр `FAVICON_ONLY=true`. В этом
+режиме выполняется только `Check favicons`, Playwright-браузеры и UI-матрица не
+запускаются, а `favicon_report.json` и `allure-results/**` сохраняются как
+артефакты и публикуются в Allure.
+
+Локальный запуск:
+
+```bash
+python favicon_check.py --report favicon_report.json --allure-results allure-results
+```
+
+Код возврата `0` означает успешную проверку всех доменов. Код возврата `1`
+означает, что хотя бы один домен не прошёл проверку; Jenkins помечает этап как
+`UNSTABLE` и сохраняет результаты для анализа.
+
 ## 6. Как добавить новый URL (подробно)
 
 ### 6.1 Добавить сайт в Suite A (формы)
