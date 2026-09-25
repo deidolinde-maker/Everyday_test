@@ -102,6 +102,7 @@ def _check_favicon(session: requests.Session, site: dict[str, object]) -> dict[s
         "landing_head_preview": "",
         "landing_attempts": 0,
         "detected_favicon_links": [],
+        "detected_favicon_rel_values": [],
     }
 
     landing = None
@@ -139,6 +140,7 @@ def _check_favicon(session: requests.Session, site: dict[str, object]) -> dict[s
                 result["reason"] = f"html_parse_failed: {exc.__class__.__name__}"
             else:
                 result["detected_favicon_links"] = [link["href"] for link in parser.links]
+                result["detected_favicon_rel_values"] = [link["rel"] for link in parser.links]
                 if parser.links:
                     break
                 result["reason"] = "favicon_link_missing_in_head"
@@ -237,6 +239,10 @@ def _write_allure_results(results: list[dict[str, object]], results_dir: str) ->
                 {
                     "name": "detected_favicon_links",
                     "value": ", ".join(str(link) for link in item.get("detected_favicon_links", [])) or "none",
+                },
+                {
+                    "name": "detected_favicon_rel_values",
+                    "value": ", ".join(str(rel) for rel in item.get("detected_favicon_rel_values", [])) or "none",
                 },
                 {"name": "landing_html_sha256", "value": str(item.get("landing_html_sha256") or "not available")},
                 {"name": "landing_head_preview", "value": str(item.get("landing_head_preview") or "not available")},
