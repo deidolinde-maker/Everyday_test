@@ -37,6 +37,8 @@ def load_site_configs(provider: str | None = None) -> dict[str, dict]:
 
         default_city = module.DEFAULT_CITY
         for raw_site in module.SITES:
+            if raw_site.get("enabled", True) is False:
+                continue
             site = dict(raw_site)
             site_id = site.get("site_id") or derive_site_id(site["base_url"])
             city_name = _resolve_city_name(site, default_city)
@@ -70,4 +72,3 @@ def select_site_configs(
         raise ValueError(f"--site={site!r} не найден. Доступно: {available_all}")
 
     return {site: site_configs[site]}
-

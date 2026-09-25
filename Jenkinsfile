@@ -11,6 +11,7 @@ pipeline {
     choice(name: 'PROVIDER_SCOPE', choices: ['all', 'smoke', 'mts', 'beeline', 'megafon', 't2', 'rostelecom', 'domru'], description: 'Provider scope to run.')
     string(name: 'SITE', defaultValue: '', description: 'Optional site filter. Leave empty to run all provider sites.')
     choice(name: 'SERVICE_MODE', choices: ['core', 'variants', 'all'], description: 'Service mode to run.')
+    booleanParam(name: 'FAVICON_ONLY', defaultValue: false, description: 'Run only the favicon HTTP check without Playwright UI matrix.')
 
     booleanParam(name: 'RUN_CHROMIUM', defaultValue: true, description: 'Run desktop chromium profile.')
     booleanParam(name: 'RUN_FIREFOX', defaultValue: false, description: 'Run desktop firefox profile.')
@@ -52,10 +53,11 @@ pipeline {
     stage('Validate parameters') {
       steps {
         script {
-          if (!(params.RUN_CHROMIUM || params.RUN_FIREFOX || params.RUN_WEBKIT || params.RUN_MOBILE_CHROMIUM || params.RUN_MOBILE_WEBKIT)) {
+          if (!params.FAVICON_ONLY && !(params.RUN_CHROMIUM || params.RUN_FIREFOX || params.RUN_WEBKIT || params.RUN_MOBILE_CHROMIUM || params.RUN_MOBILE_WEBKIT)) {
             error('Select at least one browser/profile toggle.')
           }
           echo "Selected network profile: ${params.NETWORK_PROFILE}"
+          echo "Favicon-only mode: ${params.FAVICON_ONLY}"
         }
       }
     }
@@ -164,7 +166,39 @@ pipeline {
       }
     }
 
+    stage('Check favicons') {
+      steps {
+        script {
+          def runFaviconCheck = {
+            catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+              sh '''
+                set +e
+                pybin="$(cat "${PYTHON_BIN_FILE}")"
+                "${pybin}" favicon_check.py --report favicon_report.json
+                exit $?
+              '''
+            }
+          }
+
+          if (params.USE_TELEGRAM_PROXY) {
+            withCredentials([
+              string(credentialsId: 'telegram_proxy_url', variable: 'TELEGRAM_PROXY_URL'),
+              string(credentialsId: 'telegram_proxy_auth_secret', variable: 'TELEGRAM_PROXY_AUTH_SECRET'),
+              string(credentialsId: 'tg_proxy_creds_survarius', variable: 'TELEGRAM_PROXY_CREDS')
+            ]) {
+              runFaviconCheck()
+            }
+          } else {
+            runFaviconCheck()
+          }
+        }
+      }
+    }
+
     stage('Prepare Playwright cache') {
+      when {
+        expression { !params.FAVICON_ONLY }
+      }
       steps {
         sh '''
           set -e
@@ -176,6 +210,9 @@ pipeline {
     }
 
     stage('Install missing Playwright browsers') {
+      when {
+        expression { !params.FAVICON_ONLY }
+      }
       steps {
         sh '''
           set -e
@@ -212,6 +249,9 @@ pipeline {
     }
 
     stage('Run provider matrix') {
+      when {
+        expression { !params.FAVICON_ONLY }
+      }
       steps {
         script {
           def runMatrix = {
@@ -355,7 +395,7 @@ pipeline {
           echo "Submitted leads JSON not found at ${LOCAL_SUBMITTED_LEADS_FILE}; shared copy skipped."
         fi
       '''
-      archiveArtifacts artifacts: 'allure-results/**, allure-results-*/**, artifacts/**, telegram_message.txt, telegram_should_send.txt, notify_state.json', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'allure-results/**, allure-results-*/**, artifacts/**, favicon_report.json, telegram_message.txt, telegram_should_send.txt, notify_state.json', allowEmptyArchive: true
       script {
         try {
           // Requires Jenkins Allure plugin. If not installed, continue without failing the build.

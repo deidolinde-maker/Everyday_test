@@ -5,7 +5,13 @@ from urllib.parse import urlsplit
 
 
 REQUIRED_SITE_KEYS = ("base_url", "has_checkaddress", "has_business")
-BOOL_SITE_KEYS = ("has_checkaddress", "has_business", "has_name_field", "has_region_popup")
+BOOL_SITE_KEYS = (
+    "has_checkaddress",
+    "has_business",
+    "has_name_field",
+    "has_region_popup",
+    "enabled",
+)
 
 
 def derive_site_id(base_url: str) -> str:
