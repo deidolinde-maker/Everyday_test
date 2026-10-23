@@ -532,6 +532,7 @@ def goto_or_handle_step(
 ):
     ok, is_critical, nav_reason = safe_goto(page, url)
     if ok:
+        ensure_mts_home_gpon_session(page, url, site_label, step_no, step_name)
         return
 
     reason = f"не удалось открыть {url} | {nav_reason}"
@@ -724,6 +725,10 @@ SUCCESS_URL_MARKERS = ["/tilda/form1/submitted", "/thanks"]
 SITE_UNAVAILABLE_THRESHOLD_MS = 60_000
 NAV_GOTO_TIMEOUT_MS = 20_000
 NAV_RETRIES = 3
+MTS_HOME_GPON_HOST = "mts-home-gpon.ru"
+MTS_YANDEX_EVENTS_STORAGE_KEY = "landing-yandex-events:v1"
+MTS_YANDEX_EVENTS_MAX_REFRESHES = 5
+MTS_YANDEX_EVENTS_REFRESH_WAIT_MS = 1_000
 SUBMIT_CONFIRM_TIMEOUT_MS = 25_000
 RETRY_SUBMIT_CONFIRM_TIMEOUT_MS = 8_000
 FIREFOX_RETRY_SUBMIT_CONFIRM_TIMEOUT_MS = 12_000
@@ -1357,6 +1362,61 @@ def safe_goto(
         reason = f"nav_failed {elapsed_ms // 1000}с, last_error={last_error or 'n/a'}"
     print(f"  [NAV] ❌ Не удалось перейти на {url} | {reason}")
     return False, is_critical, reason
+
+
+def ensure_mts_home_gpon_session(
+    page: "Page",
+    url: str,
+    site_label: str,
+    step_no: str,
+    step_name: str,
+):
+    """Refresh the MTS GPON landing while its Yandex events key exists."""
+    parsed = urlsplit(url)
+    host = (parsed.hostname or "").lower().rstrip(".")
+    path = (parsed.path or "").rstrip("/")
+    if host != MTS_HOME_GPON_HOST or path:
+        return
+
+    for refresh_no in range(MTS_YANDEX_EVENTS_MAX_REFRESHES + 1):
+        try:
+            storage_key_present = page.evaluate(
+                "key => window.localStorage.getItem(key) !== null",
+                MTS_YANDEX_EVENTS_STORAGE_KEY,
+            )
+        except Exception as exc:
+            reason = f"не удалось прочитать localStorage {MTS_YANDEX_EVENTS_STORAGE_KEY}: {exc}"
+            send_step_alert(site_label, step_no, step_name, reason, page)
+            pytest.skip(f"[{site_label}] Шаг {step_no}: {step_name} | {reason}")
+
+        if not storage_key_present:
+            if refresh_no:
+                print(
+                    "  [SESSION] ✅ landing-yandex-events:v1 исчез после "
+                    f"{refresh_no} обновлений"
+                )
+            return
+
+        if refresh_no >= MTS_YANDEX_EVENTS_MAX_REFRESHES:
+            reason = (
+                f"localStorage {MTS_YANDEX_EVENTS_STORAGE_KEY} не исчез после "
+                f"{MTS_YANDEX_EVENTS_MAX_REFRESHES} обновлений страницы"
+            )
+            send_step_alert(site_label, step_no, step_name, reason, page)
+            pytest.skip(f"[{site_label}] Шаг {step_no}: {step_name} | {reason}")
+
+        print(
+            "  [SESSION] ⚠️ Обновляем страницу: найден localStorage "
+            f"{MTS_YANDEX_EVENTS_STORAGE_KEY} "
+            f"({refresh_no + 1}/{MTS_YANDEX_EVENTS_MAX_REFRESHES})"
+        )
+        try:
+            page.reload(wait_until="domcontentloaded", timeout=NAV_GOTO_TIMEOUT_MS)
+            page.wait_for_timeout(MTS_YANDEX_EVENTS_REFRESH_WAIT_MS)
+        except Exception as exc:
+            reason = f"не удалось обновить сессию страницы: {exc}"
+            send_step_alert(site_label, step_no, step_name, reason, page)
+            pytest.skip(f"[{site_label}] Шаг {step_no}: {step_name} | {reason}")
 
 
 def _is_success_url(url: str) -> bool:
