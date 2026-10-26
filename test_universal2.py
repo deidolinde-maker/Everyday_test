@@ -1340,6 +1340,32 @@ def close_popup_or_page(page: Page):
         pass
 
 
+def refresh_mts_home_gpon_version(page: Page, url: str) -> None:
+    """Refresh page-local MTS GPON locator mode after every navigation.
+
+    Popup cycles and retry paths use ``safe_goto`` directly, so relying only on
+    ``goto_or_handle_step`` leaves a newly opened page with the default (old)
+    locator set.  This helper deliberately only updates the in-memory mode;
+    user-facing region confirmation and alerts stay in the step wrapper.
+    """
+    parsed = urlsplit(url)
+    host = (parsed.hostname or "").lower().rstrip(".")
+    path = (parsed.path or "").rstrip("/")
+    if host != MTS_HOME_GPON_HOST or path:
+        return
+
+    try:
+        page._use_mts_next_locators = bool(page.evaluate(
+            "key => window.localStorage.getItem(key) !== null",
+            MTS_YANDEX_EVENTS_STORAGE_KEY,
+        ))
+        mode = "new data-testid" if page._use_mts_next_locators else "old CSS"
+        print(f"  [VERSION] safe_goto refreshed MTS GPON mode: {mode}")
+    except Exception as exc:
+        page._use_mts_next_locators = False
+        print(f"  [VERSION] ⚠️ Не удалось обновить режим MTS GPON: {exc}")
+
+
 def safe_goto(
     page: Page,
     url: str,
@@ -1366,6 +1392,7 @@ def safe_goto(
         try:
             response = page.goto(url, wait_until="domcontentloaded", timeout=goto_timeout_ms)
             page.wait_for_timeout(500)
+            refresh_mts_home_gpon_version(page, url)
 
             status = None
             try:
