@@ -182,7 +182,7 @@ def _build_submitted_lead_record(
     service_value: str | None = None,
     provider_name: str | None = None,
 ) -> dict:
-    cfg = FORM_CONFIGS.get(form_type, {})
+    cfg = form_config_for_page(page, form_type) if form_type in FORM_CONFIGS else {}
     roots = [container, page]
     ya_client_id, ya_cookie_name = _extract_ya_client_cookie(page)
 
@@ -532,7 +532,7 @@ def goto_or_handle_step(
 ):
     ok, is_critical, nav_reason = safe_goto(page, url)
     if ok:
-        ensure_mts_home_gpon_session(page, url, site_label, step_no, step_name)
+        detect_mts_home_gpon_version(page, url, site_label, step_no, step_name)
         return
 
     reason = f"не удалось открыть {url} | {nav_reason}"
@@ -708,6 +708,26 @@ FORM_CONFIGS = {
     },
 }
 
+MTS_NEXT_CHECKADDRESS_CONFIG = {
+    "street": "[data-testid='mts-address-street-input']",
+    "house": "[data-testid='mts-address-house-input']",
+    "phone": "[data-testid='mts-address-phone-input']",
+    "submit": "[data-testid='mts-address-submit']",
+    "no_house": False,
+    "no_suggest": False,
+}
+
+
+def form_config_for_page(page: Page | None, form_type: str) -> dict:
+    cfg = dict(FORM_CONFIGS[form_type])
+    if (
+        form_type == "checkaddress"
+        and page is not None
+        and getattr(page, "_use_mts_next_locators", False)
+    ):
+        cfg.update(MTS_NEXT_CHECKADDRESS_CONFIG)
+    return cfg
+
 # CSS-классы кнопок, открывающих попапы (по типу формы)
 POPUP_BUTTON_CLASSES = {
     "profit":             ".profit_address_button",
@@ -727,8 +747,6 @@ NAV_GOTO_TIMEOUT_MS = 20_000
 NAV_RETRIES = 3
 MTS_HOME_GPON_HOST = "mts-home-gpon.ru"
 MTS_YANDEX_EVENTS_STORAGE_KEY = "landing-yandex-events:v1"
-MTS_YANDEX_EVENTS_MAX_REFRESHES = 5
-MTS_YANDEX_EVENTS_REFRESH_WAIT_MS = 1_000
 SUBMIT_CONFIRM_TIMEOUT_MS = 25_000
 RETRY_SUBMIT_CONFIRM_TIMEOUT_MS = 8_000
 FIREFOX_RETRY_SUBMIT_CONFIRM_TIMEOUT_MS = 12_000
@@ -782,6 +800,8 @@ POPUP_OPEN_KEYWORDS = [
 POPUP_SKIP_KEYWORDS = ["проверить адрес", "сменить город"]
 
 SUGGESTION_SELECTORS = [
+    "[data-testid='mts-address-street-suggestion']",
+    "[data-testid='mts-address-house-suggestion']",
     "[role='option']", "[role='listbox'] li",
     ".suggestions__item", ".suggestion-item",
     ".autocomplete__item", ".ui-menu-item",
@@ -1364,59 +1384,40 @@ def safe_goto(
     return False, is_critical, reason
 
 
-def ensure_mts_home_gpon_session(
+def detect_mts_home_gpon_version(
     page: "Page",
     url: str,
     site_label: str,
     step_no: str,
     step_name: str,
 ):
-    """Refresh the MTS GPON landing while its Yandex events key exists."""
+    """Select locator set from the version marker stored by the landing."""
     parsed = urlsplit(url)
     host = (parsed.hostname or "").lower().rstrip(".")
     path = (parsed.path or "").rstrip("/")
     if host != MTS_HOME_GPON_HOST or path:
         return
 
-    for refresh_no in range(MTS_YANDEX_EVENTS_MAX_REFRESHES + 1):
-        try:
-            storage_key_present = page.evaluate(
-                "key => window.localStorage.getItem(key) !== null",
-                MTS_YANDEX_EVENTS_STORAGE_KEY,
-            )
-        except Exception as exc:
-            reason = f"не удалось прочитать localStorage {MTS_YANDEX_EVENTS_STORAGE_KEY}: {exc}"
-            send_step_alert(site_label, step_no, step_name, reason, page)
-            pytest.skip(f"[{site_label}] Шаг {step_no}: {step_name} | {reason}")
-
-        if not storage_key_present:
-            if refresh_no:
-                print(
-                    "  [SESSION] ✅ landing-yandex-events:v1 исчез после "
-                    f"{refresh_no} обновлений"
-                )
-            return
-
-        if refresh_no >= MTS_YANDEX_EVENTS_MAX_REFRESHES:
-            reason = (
-                f"localStorage {MTS_YANDEX_EVENTS_STORAGE_KEY} не исчез после "
-                f"{MTS_YANDEX_EVENTS_MAX_REFRESHES} обновлений страницы"
-            )
-            send_step_alert(site_label, step_no, step_name, reason, page)
-            pytest.skip(f"[{site_label}] Шаг {step_no}: {step_name} | {reason}")
-
-        print(
-            "  [SESSION] ⚠️ Обновляем страницу: найден localStorage "
-            f"{MTS_YANDEX_EVENTS_STORAGE_KEY} "
-            f"({refresh_no + 1}/{MTS_YANDEX_EVENTS_MAX_REFRESHES})"
+    try:
+        storage_key_present = page.evaluate(
+            "key => window.localStorage.getItem(key) !== null",
+            MTS_YANDEX_EVENTS_STORAGE_KEY,
         )
-        try:
-            page.reload(wait_until="domcontentloaded", timeout=NAV_GOTO_TIMEOUT_MS)
-            page.wait_for_timeout(MTS_YANDEX_EVENTS_REFRESH_WAIT_MS)
-        except Exception as exc:
-            reason = f"не удалось обновить сессию страницы: {exc}"
-            send_step_alert(site_label, step_no, step_name, reason, page)
-            pytest.skip(f"[{site_label}] Шаг {step_no}: {step_name} | {reason}")
+    except Exception as exc:
+        page._use_mts_next_locators = False
+        reason = f"не удалось прочитать localStorage {MTS_YANDEX_EVENTS_STORAGE_KEY}: {exc}"
+        send_step_alert(site_label, step_no, step_name, reason, page)
+        print("  [VERSION] ⚠️ Версия не определена, используем старые CSS-локаторы")
+        return
+
+    page._use_mts_next_locators = bool(storage_key_present)
+    if storage_key_present:
+        print(
+            f"  [VERSION] Найден {MTS_YANDEX_EVENTS_STORAGE_KEY}: "
+            "используем новую версию и data-testid"
+        )
+    else:
+        print("  [VERSION] Ключ версии не найден: используем старые CSS-локаторы")
 
 
 def _is_success_url(url: str) -> bool:
@@ -1984,7 +1985,7 @@ def _stabilize_form_before_retry(page: Page, container, form_type: str) -> str:
     except Exception:
         pass
 
-    cfg = FORM_CONFIGS.get(form_type, {})
+    cfg = form_config_for_page(page, form_type) if form_type in FORM_CONFIGS else {}
     phone_sel = cfg.get("phone")
     if phone_sel:
         phone = container.locator(phone_sel).first
@@ -2030,7 +2031,7 @@ def _stabilize_form_before_retry(page: Page, container, form_type: str) -> str:
 def fill_form(page: Page, container, form_type: str,
               has_name_field: bool = False,
               service_place_value: str | None = None) -> bool:
-    cfg        = FORM_CONFIGS[form_type]
+    cfg        = form_config_for_page(page, form_type)
     no_house   = cfg.get("no_house", False)
     no_suggest = cfg.get("no_suggest", False)
 
@@ -2208,8 +2209,8 @@ def fill_form(page: Page, container, form_type: str,
     return True
 
 
-def find_submit(container, form_type: str):
-    cfg    = FORM_CONFIGS[form_type]
+def find_submit(container, form_type: str, page: Page | None = None):
+    cfg    = form_config_for_page(page, form_type)
     submit = container.locator(cfg["submit"]).first
     try:
         if submit.count() > 0 and submit.is_visible() and submit.is_enabled():
@@ -2232,7 +2233,7 @@ def submit_with_confirmation(
     Пытается отправить форму и дождаться подтверждения.
     Делает повторную попытку submit при редких флаках no_confirmation.
     """
-    last_submit = find_submit(container, form_type)
+    last_submit = find_submit(container, form_type, page)
     if last_submit is None:
         return False
 
@@ -2276,7 +2277,7 @@ def submit_with_confirmation(
                 last_submit.click(force=True)
             except Exception:
                 # Форма могла перерендериться — пробуем найти submit снова
-                last_submit = find_submit(container, form_type)
+                last_submit = find_submit(container, form_type, page)
                 if last_submit is None:
                     return False
                 last_submit.scroll_into_view_if_needed()
@@ -2362,9 +2363,9 @@ def submit_with_confirmation(
 def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
                                 form_hint=None):
     form_types_to_check = (
-        [(form_hint, FORM_CONFIGS[form_hint])]
+        [(form_hint, form_config_for_page(page, form_hint))]
         if form_hint and form_hint in FORM_CONFIGS
-        else list(FORM_CONFIGS.items())
+        else [(name, form_config_for_page(page, name)) for name in FORM_CONFIGS]
     )
     poll_ms = 300
     elapsed = 0
@@ -2602,7 +2603,7 @@ def process_auto_profit_popup(
         log_error("form_not_filled", page, site_label, extra="auto profit popup")
         return 0, 1, "AUTO-PROFIT code=form_not_filled"[:220], True
 
-    submit = find_submit(container, form_type)
+    submit = find_submit(container, form_type, page)
     if submit is None:
         log_error("submit_not_found", page, site_label, extra="auto profit popup")
         return 0, 1, "AUTO-PROFIT code=submit_not_found"[:220], True
@@ -2672,7 +2673,7 @@ def process_unexpected_auto_profit_popup(
         log_error("form_not_filled", page, site_label, extra=f"auto profit during {context}")
         return True, False, "form_not_filled"
 
-    submit = find_submit(container, form_type)
+    submit = find_submit(container, form_type, page)
     if submit is None:
         log_error("submit_not_found", page, site_label, extra=f"auto profit during {context}")
         return True, False, "submit_not_found"
@@ -2957,7 +2958,7 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                     register_failure("form_not_filled", f"service={service_label}")
                     continue
 
-            submit = find_submit(container, form_type)
+            submit = find_submit(container, form_type, page)
             if submit is None:
                 recover_status = recover_from_unexpected_profit(
                     f"поиск submit в целевой форме ({service_label})"
@@ -2968,7 +2969,7 @@ def _run_popup_cycle(page: Page, buttons: list, base_url: str,
                         log_error("popup_not_found", page, site_label, extra="after auto-profit recovery")
                         register_failure("popup_not_found", f"after auto-profit recovery | service={service_label}")
                         continue
-                    submit = find_submit(container, form_type)
+                    submit = find_submit(container, form_type, page)
                     if submit is None:
                         log_error("submit_not_found", page, site_label, extra=f"service={service_label}")
                         register_failure("submit_not_found", f"service={service_label}")
@@ -3467,14 +3468,14 @@ def run_site_scenario(page: Page, cfg: dict):
             close_overlays(page)
 
             step_reason = None
-            fcfg      = FORM_CONFIGS["checkaddress"]
+            fcfg      = form_config_for_page(page, "checkaddress")
             container = page.locator("section, form, div").filter(
                 has=page.locator(fcfg["phone"])
             ).first
 
             if container.count() > 0:
                 filled = fill_form(page, container, "checkaddress")
-                submit = find_submit(container, "checkaddress") if filled else None
+                submit = find_submit(container, "checkaddress", page) if filled else None
                 if submit:
                     submit.scroll_into_view_if_needed()
                     print(f"  ✅ checkaddress готова")
