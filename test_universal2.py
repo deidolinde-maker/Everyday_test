@@ -731,6 +731,12 @@ def form_config_for_page(page: Page | None, form_type: str) -> dict:
     if form_type == MTS_NEXT_FORM_TYPE:
         return dict(MTS_NEXT_CHECKADDRESS_CONFIG)
 
+    if page is not None:
+        resolved_configs = getattr(page, "_resolved_form_configs", {})
+        resolved_cfg = resolved_configs.get(form_type)
+        if resolved_cfg is not None:
+            return dict(resolved_cfg)
+
     cfg = dict(FORM_CONFIGS[form_type])
     if (
         form_type in MTS_NEXT_ADDRESS_FORM_TYPES
@@ -2438,12 +2444,30 @@ def submit_with_confirmation(
 # ---------------------------------------------------------------------------
 
 def popup_form_types_for_page(page: Page, form_hint=None):
-    if getattr(page, "_use_mts_next_locators", False):
-        return [(MTS_NEXT_FORM_TYPE, form_config_for_page(page, MTS_NEXT_FORM_TYPE))]
+    old_types = list(FORM_CONFIGS)
 
-    if form_hint and form_hint in FORM_CONFIGS:
-        return [(form_hint, form_config_for_page(page, form_hint))]
-    return [(name, form_config_for_page(page, name)) for name in FORM_CONFIGS]
+    if form_hint == "business":
+        return [("business", dict(FORM_CONFIGS["business"]))]
+
+    if form_hint == MTS_NEXT_FORM_TYPE:
+        candidates = [MTS_NEXT_FORM_TYPE, *old_types]
+    elif form_hint in FORM_CONFIGS:
+        candidates = [form_hint, MTS_NEXT_FORM_TYPE]
+    elif getattr(page, "_use_mts_next_locators", False):
+        candidates = [MTS_NEXT_FORM_TYPE, *old_types]
+    else:
+        candidates = [*old_types, MTS_NEXT_FORM_TYPE]
+
+    result = []
+    for name in candidates:
+        if name == MTS_NEXT_FORM_TYPE:
+            cfg = dict(MTS_NEXT_CHECKADDRESS_CONFIG)
+        else:
+            # Keep the legacy config as a real fallback even when the page
+            # marker points to the new version. The popup DOM is authoritative.
+            cfg = dict(FORM_CONFIGS[name])
+        result.append((name, cfg))
+    return result
 
 
 def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
@@ -2463,6 +2487,9 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
                             continue
                         phone = container.locator(cfg["phone"]).first
                         if phone.count() > 0 and phone.is_visible():
+                            resolved_configs = getattr(page, "_resolved_form_configs", {})
+                            resolved_configs[form_type] = dict(cfg)
+                            page._resolved_form_configs = resolved_configs
                             print(f"  [POPUP] sel='{popup_sel}' type='{form_type}'")
                             return form_type, container
                     except Exception:
@@ -2480,10 +2507,16 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
                         "contains(@class,'modal') or contains(@id,'popup')]"
                     ).last
                     if parent.count() > 0 and parent.is_visible():
+                        resolved_configs = getattr(page, "_resolved_form_configs", {})
+                        resolved_configs[form_type] = dict(cfg)
+                        page._resolved_form_configs = resolved_configs
                         print(f"  [POPUP] ancestor type='{form_type}'")
                         return form_type, parent
                     form_parent = phone.locator("xpath=ancestor::form").last
                     if form_parent.count() > 0 and form_parent.is_visible():
+                        resolved_configs = getattr(page, "_resolved_form_configs", {})
+                        resolved_configs[form_type] = dict(cfg)
+                        page._resolved_form_configs = resolved_configs
                         print(f"  [POPUP] form-ancestor type='{form_type}'")
                         return form_type, form_parent
                 except Exception:
