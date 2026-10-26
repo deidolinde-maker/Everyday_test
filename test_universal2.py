@@ -797,6 +797,8 @@ NEGATIVE_CF7_STATUSES = {
 }
 
 POPUP_CONTAINER_SELECTORS = [
+    "[class*='MtsAddressSearch-module-scss-module__'][class*='__card']",
+    "[class*='MtsAddressSearch'][class*='card']",
     "div#popup", "div.popup",
     "[id*='popup']:not(script)",
     "[class*='popup']:not(script)",
@@ -1400,6 +1402,25 @@ def safe_goto(
     return False, is_critical, reason
 
 
+def confirm_mts_city_if_present(page: "Page") -> bool:
+    """Accept the mandatory detected-region confirmation when it is shown."""
+    selector = "[data-testid='mts-city-selector-accept']"
+    button = page.locator(selector).first
+    try:
+        if button.count() == 0 or not button.is_visible():
+            return True
+        button.click(force=True)
+        page.wait_for_timeout(400)
+        try:
+            button.wait_for(state="hidden", timeout=4000)
+        except Exception:
+            pass
+        return not button.is_visible()
+    except Exception as exc:
+        print(f"  [CITY] ❌ Не удалось подтвердить регион кнопкой {selector}: {exc}")
+        return False
+
+
 def detect_mts_home_gpon_version(
     page: "Page",
     url: str,
@@ -1434,6 +1455,11 @@ def detect_mts_home_gpon_version(
         )
     else:
         print("  [VERSION] Ключ версии не найден: используем старые CSS-локаторы")
+
+    if not confirm_mts_city_if_present(page):
+        reason = "не удалось подтвердить автоматически определённый регион"
+        send_step_alert(site_label, step_no, step_name, reason, page)
+        pytest.fail(f"[{site_label}] Шаг {step_no}: {step_name} | {reason}")
 
 
 def _is_success_url(url: str) -> bool:
@@ -1691,6 +1717,9 @@ def verify_thanks_close_and_return(
                 print(f"  [THANKS] Возврат на корень допустим для expected={expected_path}")
             else:
                 return False, f"возврат на другой путь ({current_path} вместо {expected_path})"
+
+        if not confirm_mts_city_if_present(page):
+            return False, "не удалось подтвердить автоматически определённый регион после Thanks"
 
         region_sel = detect_visible_region_popup(page)
         if region_sel:
