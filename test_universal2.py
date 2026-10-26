@@ -182,7 +182,9 @@ def _build_submitted_lead_record(
     service_value: str | None = None,
     provider_name: str | None = None,
 ) -> dict:
-    cfg = form_config_for_page(page, form_type) if form_type in FORM_CONFIGS else {}
+    cfg = form_config_for_page(page, form_type) if (
+        form_type in FORM_CONFIGS or form_type == MTS_NEXT_FORM_TYPE
+    ) else {}
     roots = [container, page]
     ya_client_id, ya_cookie_name = _extract_ya_client_cookie(page)
 
@@ -716,12 +718,22 @@ MTS_NEXT_CHECKADDRESS_CONFIG = {
     "no_house": False,
     "no_suggest": False,
 }
+MTS_NEXT_FORM_TYPE = "mts_address_search"
+MTS_NEXT_ADDRESS_FORM_TYPES = {
+    "checkaddress",
+    "connection",
+    "profit",
+    "express-connection",
+}
 
 
 def form_config_for_page(page: Page | None, form_type: str) -> dict:
+    if form_type == MTS_NEXT_FORM_TYPE:
+        return dict(MTS_NEXT_CHECKADDRESS_CONFIG)
+
     cfg = dict(FORM_CONFIGS[form_type])
     if (
-        form_type == "checkaddress"
+        form_type in MTS_NEXT_ADDRESS_FORM_TYPES
         and page is not None
         and getattr(page, "_use_mts_next_locators", False)
     ):
@@ -816,6 +828,9 @@ SERVICE_PLACE_VALUES = [
 ]
 
 REGION_POPUP_DETECT_SELECTORS = [
+    "[data-testid='mts-city-selector-accept']",
+    "[data-testid='mts-city-selector-decline']",
+    "[data-testid='mts-select-region-search']",
     "#yesButton",
     "#noButton",
     ".popup-select-region__button.city",
@@ -853,6 +868,7 @@ DOMRU_MOBILE_CITY_TRIGGER_SELECTORS = [
 ]
 
 THANKS_RETURN_SELECTORS = [
+    "[data-testid='mts-thanks-back-button']",
     "a:has-text('На главную')",
     "button:has-text('На главную')",
     "a:has-text('Вернуться')",
@@ -1725,7 +1741,10 @@ def choose_first_suggestion(page: Page, timeout_ms: int = SUGGEST_TIMEOUT_MS, fi
 
 
 def _service_place_locator(container, service_value: str):
-    return container.locator(f"input[name='Place'][value='{service_value}']")
+    return container.locator(
+        f"input[name='Place'][value='{service_value}'], "
+        f"[data-testid='mts-address-place-segment'][data-place='{service_value}']"
+    )
 
 
 def detect_service_place_values(container) -> list[str]:
@@ -1753,7 +1772,7 @@ def resolve_service_values_for_mode(
         return []
 
     if mode == SERVICE_MODE_VARIANTS:
-        if form_type in ("profit", "business"):
+        if form_type in ("profit", "business", MTS_NEXT_FORM_TYPE):
             print("  [FORM] VARIANTS: тип формы без Place — пропускаем")
             return []
         if detected_service_values:
@@ -1762,7 +1781,7 @@ def resolve_service_values_for_mode(
         print("  [FORM] VARIANTS: Place не найден — пропускаем")
         return []
 
-    if form_type in ("profit", "business"):
+    if form_type in ("profit", "business", MTS_NEXT_FORM_TYPE):
         return [None]
 
     if not detected_service_values:
@@ -1985,7 +2004,9 @@ def _stabilize_form_before_retry(page: Page, container, form_type: str) -> str:
     except Exception:
         pass
 
-    cfg = form_config_for_page(page, form_type) if form_type in FORM_CONFIGS else {}
+    cfg = form_config_for_page(page, form_type) if (
+        form_type in FORM_CONFIGS or form_type == MTS_NEXT_FORM_TYPE
+    ) else {}
     phone_sel = cfg.get("phone")
     if phone_sel:
         phone = container.locator(phone_sel).first
@@ -2360,13 +2381,18 @@ def submit_with_confirmation(
 # Ожидание попапа
 # ---------------------------------------------------------------------------
 
+def popup_form_types_for_page(page: Page, form_hint=None):
+    if getattr(page, "_use_mts_next_locators", False):
+        return [(MTS_NEXT_FORM_TYPE, form_config_for_page(page, MTS_NEXT_FORM_TYPE))]
+
+    if form_hint and form_hint in FORM_CONFIGS:
+        return [(form_hint, form_config_for_page(page, form_hint))]
+    return [(name, form_config_for_page(page, name)) for name in FORM_CONFIGS]
+
+
 def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
                                 form_hint=None):
-    form_types_to_check = (
-        [(form_hint, form_config_for_page(page, form_hint))]
-        if form_hint and form_hint in FORM_CONFIGS
-        else [(name, form_config_for_page(page, name)) for name in FORM_CONFIGS]
-    )
+    form_types_to_check = popup_form_types_for_page(page, form_hint)
     poll_ms = 300
     elapsed = 0
 
@@ -2454,6 +2480,43 @@ def collect_popup_buttons(page: Page) -> list:
         except Exception:
             pass
 
+    if getattr(page, "_use_mts_next_locators", False):
+        next_form_openers = [
+            "[data-testid='mts-tariffs-address-button']",
+            "[data-testid='mts-floating-quick-connect']",
+            "[data-testid='mts-footer-address-check']",
+            "[data-testid='mts-promo-cta'][data-cta-kind='button']",
+            "[data-testid='mts-tariff-card-connect']",
+        ]
+        for selector in next_form_openers:
+            locs = page.locator(selector)
+            for idx in range(locs.count()):
+                item = locs.nth(idx)
+                try:
+                    if not item.is_visible() or not item.is_enabled():
+                        continue
+                    global_idx = item.evaluate(
+                        "el => Array.from(document.querySelectorAll('button')).indexOf(el)"
+                    )
+                    if global_idx >= 0 and global_idx in seen_idx:
+                        continue
+                    if global_idx >= 0:
+                        seen_idx.add(global_idx)
+                    text = (item.inner_text() or selector).strip().lower()
+                    result.append({
+                        "index": -1,
+                        "text": text,
+                        "form_hint": MTS_NEXT_FORM_TYPE,
+                        "css": selector,
+                        "css_nth": idx,
+                    })
+                    print(
+                        f"  [COLLECT] #{len(result)} '{text}' "
+                        f"({MTS_NEXT_FORM_TYPE}, {selector}, idx={idx})"
+                    )
+                except Exception:
+                    pass
+
     # По CSS-классам (profit, express-connection)
     for form_hint, css_class in POPUP_BUTTON_CLASSES.items():
         if form_hint == "business":
@@ -2522,7 +2585,7 @@ def dismiss_profit_popup(page: Page):
     Не заполняет форму — просто закрывает. Безопасно вызывать в любой момент.
     """
     try:
-        phone = page.locator(FORM_CONFIGS["profit"]["phone"]).first
+        phone = page.locator(form_config_for_page(page, "profit")["phone"]).first
         if phone.count() == 0 or not phone.is_visible():
             return
         for close_sel in [
@@ -3101,6 +3164,11 @@ def process_all_popups(page: Page, base_url: str,
         if css:
             try:
                 css_btns = page.locator(css)
+                css_nth = entry.get("css_nth")
+                if isinstance(css_nth, int):
+                    candidate = css_btns.nth(css_nth)
+                    if candidate.count() > 0 and candidate.is_visible() and candidate.is_enabled():
+                        return candidate
                 for i in range(css_btns.count()):
                     candidate = css_btns.nth(i)
                     if candidate.count() > 0 and candidate.is_visible() and candidate.is_enabled():
@@ -3179,6 +3247,9 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
 
     # Все известные варианты кнопки открытия попапа города
     CITY_BUTTON_SELECTORS = [
+        "[data-testid='mts-tariffs-city-button']",
+        "[data-testid='mts-business-city-button']",
+        "[data-testid='mts-footer-city-button']",
         "xpath=(//span[@id='city'])[1]",
         "xpath=(//span[@id='city'])[2]",
         "xpath=(//span[@id='city'])[3]",
@@ -3259,6 +3330,7 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
 
     # Все известные варианты поля поиска города
     CITY_INPUT_SELECTORS = [
+        "[data-testid='mts-select-region-search']",
         "xpath=//input[@placeholder='Введите название города']",
         "xpath=//input[@id='city-input']",
         "xpath=//input[@placeholder='Поиск города']",
@@ -3318,6 +3390,7 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
 
     # Все известные варианты списка городов
     CITY_LINK_SELECTORS = [
+        "[data-testid='mts-select-region-option']",
         "xpath=(//a[@class='region_item region_link'])",
         "xpath=//a[@class='region_item']",
         "xpath=//div[@class='city-coverage__capital']//a",
@@ -3468,14 +3541,20 @@ def run_site_scenario(page: Page, cfg: dict):
             close_overlays(page)
 
             step_reason = None
-            fcfg      = form_config_for_page(page, "checkaddress")
+            checkaddress_form_type = (
+                MTS_NEXT_FORM_TYPE
+                if getattr(page, "_use_mts_next_locators", False)
+                else "checkaddress"
+            )
+            print(f"  [FORM] Основной тип формы: {checkaddress_form_type}")
+            fcfg      = form_config_for_page(page, checkaddress_form_type)
             container = page.locator("section, form, div").filter(
                 has=page.locator(fcfg["phone"])
             ).first
 
             if container.count() > 0:
-                filled = fill_form(page, container, "checkaddress")
-                submit = find_submit(container, "checkaddress", page) if filled else None
+                filled = fill_form(page, container, checkaddress_form_type)
+                submit = find_submit(container, checkaddress_form_type, page) if filled else None
                 if submit:
                     submit.scroll_into_view_if_needed()
                     print(f"  ✅ checkaddress готова")
@@ -3484,13 +3563,13 @@ def run_site_scenario(page: Page, cfg: dict):
                         lead_record = _build_submitted_lead_record(
                             page,
                             container,
-                            "checkaddress",
+                            checkaddress_form_type,
                             base_url=base_url,
-                            scenario_name="checkaddress",
+                            scenario_name=checkaddress_form_type,
                             provider_name=cfg.get("_provider"),
                         )
                         ok = submit_with_confirmation(
-                            page, container, "checkaddress",
+                                page, container, checkaddress_form_type,
                             timeout_ms=SUBMIT_CONFIRM_TIMEOUT_MS, attempts=2
                         )
                         if ok:
