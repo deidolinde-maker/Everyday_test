@@ -2170,7 +2170,12 @@ def fill_form(page: Page, container, form_type: str,
             page,
             timeout_ms=suggest_timeout,
             field=street_local,
-            expected_city=getattr(page, "_expected_city_name", None),
+            # The new MTS form includes the locality in the suggestion text.
+            # Legacy forms do not, so city matching would reject valid items.
+            expected_city=(
+                getattr(page, "_expected_city_name", None)
+                if form_type == MTS_NEXT_FORM_TYPE else None
+            ),
         )
         return street_selected
 
