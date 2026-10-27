@@ -1783,10 +1783,32 @@ def choose_first_suggestion(
         # city just because the street name matches.
         return expected_city_normalized in normalized
 
+    suggestion_selectors = list(SUGGESTION_SELECTORS)
+    controlled_list_ids = []
+    if field is not None:
+        for attribute in ("aria-controls", "aria-owns"):
+            try:
+                raw_ids = (field.get_attribute(attribute) or "").split()
+            except Exception:
+                raw_ids = []
+            controlled_list_ids.extend(item for item in raw_ids if item)
+
+    # The page may contain the main address form under an open popup. Prefer
+    # the listbox explicitly associated with this field, otherwise a click can
+    # select a suggestion from the underlying form and leave the popup house
+    # field disabled.
+    if controlled_list_ids:
+        scoped_selectors = []
+        for list_id in controlled_list_ids:
+            escaped_id = list_id.replace("\\", "\\\\").replace("'", "\\'")
+            for selector in SUGGESTION_SELECTORS:
+                scoped_selectors.append(f"[id='{escaped_id}'] {selector}")
+        suggestion_selectors = scoped_selectors
+
     poll_ms = 150
     elapsed = 0
     while elapsed < timeout_ms:
-        for sel in SUGGESTION_SELECTORS:
+        for sel in suggestion_selectors:
             loc = page.locator(sel)
             for i in range(loc.count()):
                 item = loc.nth(i)
@@ -2142,16 +2164,35 @@ def fill_form(page: Page, container, form_type: str,
     no_house   = cfg.get("no_house", False)
     no_suggest = cfg.get("no_suggest", False)
 
+    print(f"  [FORM 1/8] Закрываем региональный попап ({form_type})")
+    if not confirm_mts_city_if_present(page):
+        print("  [FORM] ❌ Региональный попап не закрыт")
+        return False
+
+    print("  [FORM 2/8] Проверяем cookie-баннер")
+    accept_cookie_banner(page)
+
+    print("  [FORM 3/8] Ищем контейнер формы")
+    try:
+        if container.count() == 0 or not container.is_visible():
+            print("  [FORM] ❌ Контейнер формы не найден или невидим")
+            return False
+    except Exception as exc:
+        print(f"  [FORM] ❌ Не удалось проверить контейнер формы: {exc}")
+        return False
+
     if service_place_value:
         if not select_service_place_value(container, service_place_value):
             return False
 
     def fill_street_and_pick() -> bool:
+        print("  [FORM 4/8] Ищем поле улицы")
         street_local = container.locator(cfg["street"]).first
         if street_local.count() == 0 or not street_local.is_visible():
             print(f"  [FORM] Address field not found ({cfg['street']})")
             return False
 
+        print("  [FORM 5/8] Вводим улицу: Ленина")
         street_local.scroll_into_view_if_needed()
         street_local.click(force=True)
         try:
@@ -2164,7 +2205,7 @@ def fill_form(page: Page, container, form_type: str,
             print("  [FORM] Address entered (no suggestion)")
             return True
 
-        print("  [FORM] Street entered, waiting suggestion...")
+        print("  [FORM 6/8] Выбираем улицу из подсказки")
         suggest_timeout = browser_timeout(page, SUGGEST_TIMEOUT_MS, FIREFOX_SUGGEST_TIMEOUT_MS)
         street_selected = choose_first_suggestion(
             page,
@@ -2248,6 +2289,7 @@ def fill_form(page: Page, container, form_type: str,
             house_ready = False
 
             for house_attempt in range(1, 3):
+                print(f"  [FORM 7/8] Ищем поле дома (попытка {house_attempt}/2)")
                 house = container.locator(house_sel).first
                 if house.count() == 0 or not house.is_visible():
                     print(f"  [FORM] House field not found/visible ({house_sel}) | attempt {house_attempt}/2")
@@ -2260,6 +2302,7 @@ def fill_form(page: Page, container, form_type: str,
                         expect(house).to_be_enabled(timeout=house_enable_timeout)
                         house.scroll_into_view_if_needed()
                         house.click(force=True)
+                        print("  [FORM 8/8] Вводим дом: 1")
                         house.fill("1")
                         print("  [FORM] House entered, waiting suggestion...")
                         suggest_timeout = browser_timeout(
