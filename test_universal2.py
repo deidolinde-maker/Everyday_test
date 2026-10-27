@@ -1704,6 +1704,16 @@ def detect_visible_region_popup(page: Page) -> str | None:
         except Exception:
             pass
 
+    # На новой MTS-версии кнопка «Выбрать город» может быть обычной
+    # кнопкой внутри address-form. Для MTS считаем региональным popup только
+    # явные region-селекторы выше, а не текстовый fallback.
+    try:
+        host = (urlsplit(page.url).hostname or "").lower().rstrip(".")
+        if host == MTS_HOME_GPON_HOST:
+            return None
+    except Exception:
+        pass
+
     try:
         choose_btn = page.get_by_role("button", name="Выбрать город").first
         if (
@@ -3784,9 +3794,39 @@ def run_site_scenario(page: Page, cfg: dict):
             )
             print(f"  [FORM] Основной тип формы: {checkaddress_form_type}")
             fcfg      = form_config_for_page(page, checkaddress_form_type)
-            container = page.locator("section, form, div").filter(
-                has=page.locator(fcfg["phone"])
-            ).first
+            container = None
+            if checkaddress_form_type == MTS_NEXT_FORM_TYPE:
+                # TASKDEV-2927 использует стабильную home-primary-область.
+                # Она точнее широкого поиска первого section/form/div и
+                # не смешивает основную форму с другими address-form.
+                for form_sel in (
+                    "[data-form-placement='home-primary']",
+                    "main [data-form-placement='home-primary']",
+                ):
+                    candidates = page.locator(form_sel)
+                    for index in range(candidates.count() - 1, -1, -1):
+                        candidate = candidates.nth(index)
+                        try:
+                            if (
+                                candidate.is_visible()
+                                and candidate.locator(fcfg["phone"]).count() > 0
+                                and candidate.locator(fcfg["street"]).count() > 0
+                            ):
+                                container = candidate
+                                print(
+                                    f"  [FORM] Active main container: {form_sel} "
+                                    f"idx={index}"
+                                )
+                                break
+                        except Exception:
+                            pass
+                    if container is not None:
+                        break
+
+            if container is None:
+                container = page.locator("section, form, div").filter(
+                    has=page.locator(fcfg["phone"])
+                ).first
 
             if container.count() > 0:
                 filled = fill_form(page, container, checkaddress_form_type)
