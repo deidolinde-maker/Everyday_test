@@ -1018,6 +1018,34 @@ def dismiss_region_popup(page: Page):
     # Ждём чуть — попап появляется с небольшой задержкой после загрузки
     page.wait_for_timeout(600)
 
+    # На MTS GPON этот popup подтверждает автоматически определённый город.
+    # Кнопка «Выбрать город» открывает другой сценарий и не является
+    # подтверждением, поэтому для этого лендинга не используем общий fallback.
+    try:
+        host = (urlsplit(page.url).hostname or "").lower().rstrip(".")
+    except Exception:
+        host = ""
+    if host == MTS_HOME_GPON_HOST:
+        for sel in ("[data-testid='mts-city-selector-accept']", "#yesButton"):
+            try:
+                btn = page.locator(sel).first
+                if btn.count() == 0 or not btn.is_visible():
+                    continue
+                btn.click(force=True)
+                page.wait_for_timeout(400)
+                try:
+                    btn.wait_for(state="hidden", timeout=4000)
+                except Exception:
+                    pass
+                if not btn.is_visible():
+                    print(f"  [REGION] MTS регион подтверждён ({sel}, кнопка 'Да')")
+                    return
+                print(f"  [REGION] ❌ MTS popup не закрылся после клика {sel}")
+                return
+            except Exception:
+                pass
+        return
+
     # Вариант 1: явные кнопки управления регионом (Да/Нет/Выбрать город)
     region_action_buttons = [
         ("#yesButton", "кнопка 'Да'"),
@@ -1437,21 +1465,27 @@ def safe_goto(
 
 def confirm_mts_city_if_present(page: "Page") -> bool:
     """Accept the mandatory detected-region confirmation when it is shown."""
-    selector = "[data-testid='mts-city-selector-accept']"
-    button = page.locator(selector).first
-    try:
-        if button.count() == 0 or not button.is_visible():
-            return True
-        button.click(force=True)
-        page.wait_for_timeout(400)
+    selectors = ("[data-testid='mts-city-selector-accept']", "#yesButton")
+    for selector in selectors:
+        button = page.locator(selector).first
         try:
-            button.wait_for(state="hidden", timeout=4000)
-        except Exception:
-            pass
-        return not button.is_visible()
-    except Exception as exc:
-        print(f"  [CITY] ❌ Не удалось подтвердить регион кнопкой {selector}: {exc}")
-        return False
+            if button.count() == 0 or not button.is_visible():
+                continue
+            button.click(force=True)
+            page.wait_for_timeout(400)
+            try:
+                button.wait_for(state="hidden", timeout=4000)
+            except Exception:
+                pass
+            if not button.is_visible():
+                print(f"  [CITY] MTS регион подтверждён ({selector}, кнопка 'Да')")
+                return True
+            print(f"  [CITY] ❌ MTS popup не закрылся после клика {selector}")
+            return False
+        except Exception as exc:
+            print(f"  [CITY] ❌ Не удалось подтвердить регион кнопкой {selector}: {exc}")
+            return False
+    return True
 
 
 def detect_mts_home_gpon_version(
@@ -2554,6 +2588,31 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
     elapsed = 0
 
     while elapsed < timeout_ms:
+        # Актуальная MTS-версия рендерит адресную форму в отдельном dialog.
+        # Сначала берём именно его, чтобы не спутать popup с формой на фоне.
+        if getattr(page, "_use_mts_next_locators", False):
+            try:
+                dialogs = page.get_by_role("dialog", name="Проверка адреса")
+                for dialog_index in range(dialogs.count() - 1, -1, -1):
+                    dialog = dialogs.nth(dialog_index)
+                    if not dialog.is_visible():
+                        continue
+                    for form_type, cfg in form_types_to_check:
+                        phone = dialog.locator(cfg["phone"]).first
+                        if phone.count() == 0 or not phone.is_visible():
+                            continue
+                        resolved_configs = getattr(page, "_resolved_form_configs", {})
+                        resolved_configs[form_type] = dict(cfg)
+                        page._resolved_form_configs = resolved_configs
+                        print(
+                            f"  [POPUP] active dialog='Проверка адреса' "
+                            f"type='{form_type}' dialog_idx={dialog_index}"
+                        )
+                        return form_type, dialog
+            except Exception:
+                pass
+
+        visible_candidates = []
         for popup_sel in POPUP_CONTAINER_SELECTORS:
             for form_type, cfg in form_types_to_check:
                 containers = page.locator(popup_sel)
@@ -2564,13 +2623,23 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
                             continue
                         phone = container.locator(cfg["phone"]).first
                         if phone.count() > 0 and phone.is_visible():
-                            resolved_configs = getattr(page, "_resolved_form_configs", {})
-                            resolved_configs[form_type] = dict(cfg)
-                            page._resolved_form_configs = resolved_configs
-                            print(f"  [POPUP] sel='{popup_sel}' type='{form_type}'")
-                            return form_type, container
+                            visible_candidates.append((popup_sel, form_type, cfg, container, i))
                     except Exception:
                         pass
+
+        if visible_candidates:
+            # При открытом popup на странице могут оставаться видимыми
+            # фоновые формы. Последний видимый контейнер соответствует
+            # верхнему слою, в котором и должны искаться поля.
+            popup_sel, form_type, cfg, container, index = visible_candidates[-1]
+            resolved_configs = getattr(page, "_resolved_form_configs", {})
+            resolved_configs[form_type] = dict(cfg)
+            page._resolved_form_configs = resolved_configs
+            print(
+                f"  [POPUP] active sel='{popup_sel}' type='{form_type}' "
+                f"container_idx={index} candidates={len(visible_candidates)}"
+            )
+            return form_type, container
 
         for form_type, cfg in form_types_to_check:
             phone_fields = page.locator(cfg["phone"])
