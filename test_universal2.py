@@ -1766,7 +1766,23 @@ def verify_thanks_close_and_return(
 # Подсказки
 # ---------------------------------------------------------------------------
 
-def choose_first_suggestion(page: Page, timeout_ms: int = SUGGEST_TIMEOUT_MS, field=None) -> bool:
+def choose_first_suggestion(
+    page: Page,
+    timeout_ms: int = SUGGEST_TIMEOUT_MS,
+    field=None,
+    expected_city: str | None = None,
+) -> bool:
+    expected_city_normalized = " ".join((expected_city or "").casefold().split()).strip()
+
+    def matches_expected_city(text: str) -> bool:
+        if not expected_city_normalized:
+            return True
+        normalized = " ".join((text or "").casefold().split())
+        # Suggestion subtitles may contain `г Москва`, `Москва` or a
+        # locality after a comma. Do not accept a first result from another
+        # city just because the street name matches.
+        return expected_city_normalized in normalized
+
     poll_ms = 150
     elapsed = 0
     while elapsed < timeout_ms:
@@ -1775,8 +1791,9 @@ def choose_first_suggestion(page: Page, timeout_ms: int = SUGGEST_TIMEOUT_MS, fi
             for i in range(loc.count()):
                 item = loc.nth(i)
                 try:
-                    if item.is_visible() and (item.inner_text() or "").strip():
-                        print(f"  [SUGGEST] '{item.inner_text().strip()[:50]}'")
+                    item_text = (item.inner_text() or "").strip()
+                    if item.is_visible() and item_text and matches_expected_city(item_text):
+                        print(f"  [SUGGEST] '{item_text[:80]}'")
                         item.click(timeout=3000, force=True)
                         page.wait_for_timeout(300)
                         return True
@@ -1784,6 +1801,13 @@ def choose_first_suggestion(page: Page, timeout_ms: int = SUGGEST_TIMEOUT_MS, fi
                     pass
         page.wait_for_timeout(poll_ms)
         elapsed += poll_ms
+
+    if expected_city_normalized:
+        print(
+            f"  [SUGGEST] ❌ Не найдена подсказка для города '{expected_city}' "
+            f"по улице; чужая подсказка отклонена"
+        )
+        return False
 
     print("  [SUGGEST FALLBACK] ArrowDown+Enter")
     try:
@@ -2142,8 +2166,13 @@ def fill_form(page: Page, container, form_type: str,
 
         print("  [FORM] Street entered, waiting suggestion...")
         suggest_timeout = browser_timeout(page, SUGGEST_TIMEOUT_MS, FIREFOX_SUGGEST_TIMEOUT_MS)
-        choose_first_suggestion(page, timeout_ms=suggest_timeout, field=street_local)
-        return True
+        street_selected = choose_first_suggestion(
+            page,
+            timeout_ms=suggest_timeout,
+            field=street_local,
+            expected_city=getattr(page, "_expected_city_name", None),
+        )
+        return street_selected
 
     def try_mobile_house_tap_and_fill(house_field) -> bool:
         if not is_mobile_execution_profile():
@@ -3583,6 +3612,7 @@ def run_site_scenario(page: Page, cfg: dict):
     sep            = "=" * 55
     site_label     = base_url.replace("https://", "").replace("http://", "").strip("/")
     city_name      = cfg.get("city_name")
+    page._expected_city_name = city_name
     city_base      = None
     city_biz       = None
     service_mode   = normalize_service_mode(cfg.get("_service_mode", SERVICE_MODE_ALL))

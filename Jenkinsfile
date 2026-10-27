@@ -270,6 +270,11 @@ pipeline {
             smoke) providers="domru t2" ;;
             *) providers="${PROVIDER_SCOPE}" ;;
           esac
+          if [ -n "${SITE}" ]; then
+            # A site filter is global. Do not run the same site once per
+            # provider, otherwise unrelated providers fail during collection.
+            providers="__site__"
+          fi
 
           any_fail=0
           run_one() {
@@ -279,7 +284,10 @@ pipeline {
             profile="$4"
             suffix="$5"
 
-            PYTEST_ARGS="test_universal2.py --alluredir=allure-results-${mode}-${suffix} --timeout=600 -s --service-mode=${mode} --browser=${browser} --blocking-profile=${BLOCKING_PROFILE} --provider=${provider}"
+            PYTEST_ARGS="test_universal2.py --alluredir=allure-results-${mode}-${suffix} --timeout=600 -s --service-mode=${mode} --browser=${browser} --blocking-profile=${BLOCKING_PROFILE}"
+            if [ "${provider}" != "__site__" ]; then
+              PYTEST_ARGS="${PYTEST_ARGS} --provider=${provider}"
+            fi
             if [ -n "${SITE}" ]; then
               PYTEST_ARGS="${PYTEST_ARGS} --site=${SITE}"
             fi
