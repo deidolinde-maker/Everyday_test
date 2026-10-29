@@ -3666,6 +3666,10 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
 
     # Все известные варианты кнопки открытия попапа города
     CITY_BUTTON_SELECTORS = [
+        "span.tariffs__city.city[role='button']",
+        "span.footer__city.city[role='button']",
+        ".tariffs__city.city",
+        ".footer__city.city",
         "[data-testid='mts-tariffs-city-button']",
         "[data-testid='mts-business-city-button']",
         "[data-testid='mts-footer-city-button']",
@@ -3749,6 +3753,7 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
 
     # Все известные варианты поля поиска города
     CITY_INPUT_SELECTORS = [
+        "#region-select-input",
         "[data-testid='mts-select-region-search']",
         "xpath=//input[@placeholder='Введите название города']",
         "xpath=//input[@id='city-input']",
@@ -3809,6 +3814,7 @@ def run_city_scenario(page: Page, base_url: str, city_name: str) -> tuple[str | 
 
     # Все известные варианты списка городов
     CITY_LINK_SELECTORS = [
+        ".popup-select-region__item",
         "[data-testid='mts-select-region-option']",
         "xpath=(//a[@class='region_item region_link'])",
         "xpath=//a[@class='region_item']",
