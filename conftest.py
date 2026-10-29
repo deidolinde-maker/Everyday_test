@@ -1,4 +1,6 @@
 import os
+import re
+import json
 
 import allure
 import pytest
@@ -201,6 +203,71 @@ def page(browser, browser_context_args, execution_profile, request):
         record_video_size=record_video_size_for_profile(execution_profile),
     )
     page = context.new_page()
+
+    def capture_mts_site_version(message):
+        """Capture Yandex debug site_version before the test starts using locators."""
+        try:
+            text = message.text or ""
+        except Exception:
+            return
+
+        patterns = (
+            r"[\"']site_version[\"']\s*:\s*[\"']([^\"']+)[\"']",
+            r"\bsite_version\b\s*[:=]\s*[\"']?([A-Za-z0-9_.-]+)",
+        )
+        version = None
+        for pattern in patterns:
+            match = re.search(pattern, text, flags=re.IGNORECASE)
+            if match:
+                version = match.group(1).strip()
+                break
+
+        def find_version(value):
+            if isinstance(value, dict):
+                for key, item in value.items():
+                    if str(key).strip().lower() == "site_version":
+                        return str(item).strip() if item is not None else None
+                    nested = find_version(item)
+                    if nested:
+                        return nested
+            elif isinstance(value, (list, tuple)):
+                for item in value:
+                    nested = find_version(item)
+                    if nested:
+                        return nested
+            elif isinstance(value, str) and "site_version" in value.lower():
+                try:
+                    return find_version(json.loads(value))
+                except Exception:
+                    match = re.search(
+                        r"[\"']site_version[\"']\s*:\s*[\"']([^\"']+)[\"']",
+                        value,
+                        flags=re.IGNORECASE,
+                    )
+                    return match.group(1).strip() if match else None
+            return None
+
+        if not version:
+            try:
+                for arg in message.args:
+                    try:
+                        version = find_version(arg.json_value())
+                    except Exception:
+                        continue
+                    if version:
+                        break
+            except Exception:
+                pass
+
+        if not version:
+            return
+
+        previous = getattr(page, "_mts_console_site_version", None)
+        page._mts_console_site_version = version
+        if previous != version:
+            print(f"  [VERSION] Console site_version: {version}")
+
+    page.on("console", capture_mts_site_version)
     try:
         yield page
     finally:
