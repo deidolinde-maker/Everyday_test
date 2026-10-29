@@ -2367,11 +2367,13 @@ def fill_form(page: Page, container, form_type: str,
             page,
             timeout_ms=suggest_timeout,
             field=street_local,
-            # The new MTS form includes the locality in the suggestion text.
-            # Legacy forms do not, so city matching would reject valid items.
+            # MTS GPON returns locality in the suggestion text and needs the
+            # city guard. MTS online already scopes the request by its city
+            # field, so requiring the literal city text rejects valid items
+            # such as "Москва, Внуково".
             expected_city=(
                 getattr(page, "_expected_city_name", None)
-                if form_type in (MTS_NEXT_FORM_TYPE, MTS_ONLINE_FORM_TYPE) else None
+                if form_type == MTS_NEXT_FORM_TYPE else None
             ),
         )
         return street_selected
