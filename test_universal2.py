@@ -809,7 +809,7 @@ FIREFOX_RETRY_SUBMIT_CONFIRM_TIMEOUT_MS = 12_000
 SUBMIT_CONFIRM_GRACE_MS = 2_000
 SITE_TIME_BUDGET_MS = int(os.getenv("SITE_TIME_BUDGET_MS", "300000"))
 CITY_LOADSTATE_TIMEOUT_MS = 7_000
-HOUSE_ENABLE_TIMEOUT_MS = 3_500
+HOUSE_ENABLE_TIMEOUT_MS = 7_000
 FIREFOX_HOUSE_ENABLE_TIMEOUT_MS = 5_000
 # Единый согласованный тестовый номер.
 PHONE_TEST_VALUE = "1111111111"
@@ -2680,15 +2680,29 @@ def submit_with_confirmation(
 
 def popup_form_types_for_page(page: Page, form_hint=None):
     old_types = list(FORM_CONFIGS)
+    try:
+        current_host = (urlsplit(page.url or "").hostname or "").lower().rstrip(".")
+    except Exception:
+        current_host = ""
+    is_mts_online_page = current_host == MTS_HOME_ONLINE_HOST
 
     if form_hint == "business":
         return [("business", dict(FORM_CONFIGS["business"]))]
 
     if form_hint == MTS_NEXT_FORM_TYPE:
         candidates = [MTS_NEXT_FORM_TYPE, *old_types]
+    elif form_hint == MTS_ONLINE_FORM_TYPE:
+        candidates = (
+            [MTS_ONLINE_FORM_TYPE, *old_types, MTS_NEXT_FORM_TYPE]
+            if is_mts_online_page
+            else [*old_types, MTS_NEXT_FORM_TYPE]
+        )
     elif form_hint in FORM_CONFIGS:
-        candidates = [form_hint, MTS_ONLINE_FORM_TYPE, MTS_NEXT_FORM_TYPE]
-    elif getattr(page, "_use_mts_online_locators", False):
+        candidates = [form_hint]
+        if is_mts_online_page:
+            candidates.append(MTS_ONLINE_FORM_TYPE)
+        candidates.append(MTS_NEXT_FORM_TYPE)
+    elif is_mts_online_page:
         candidates = [MTS_ONLINE_FORM_TYPE, *old_types, MTS_NEXT_FORM_TYPE]
     elif getattr(page, "_use_mts_next_locators", False):
         candidates = [MTS_NEXT_FORM_TYPE, *old_types]
@@ -2716,6 +2730,18 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
     elapsed = 0
 
     while elapsed < timeout_ms:
+        def has_required_address_fields(container, form_type, cfg) -> bool:
+            if form_type not in (MTS_NEXT_FORM_TYPE, MTS_ONLINE_FORM_TYPE):
+                return True
+            street = cfg.get("street")
+            if not street:
+                return False
+            try:
+                street_field = container.locator(street).first
+                return street_field.count() > 0 and street_field.is_visible()
+            except Exception:
+                return False
+
         # Актуальная MTS-версия рендерит адресную форму в отдельном dialog.
         # Сначала берём именно его, чтобы не спутать popup с формой на фоне.
         if getattr(page, "_use_mts_next_locators", False):
@@ -2729,6 +2755,8 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
                         phone = dialog.locator(cfg["phone"]).first
                         if phone.count() == 0 or not phone.is_visible():
                             continue
+                        if not has_required_address_fields(dialog, form_type, cfg):
+                            continue
                         resolved_configs = getattr(page, "_resolved_form_configs", {})
                         resolved_configs[form_type] = dict(cfg)
                         page._resolved_form_configs = resolved_configs
@@ -2740,7 +2768,7 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
             except Exception:
                 pass
 
-        if getattr(page, "_use_mts_online_locators", False):
+        if (urlsplit(page.url or "").hostname or "").lower().rstrip(".") == MTS_HOME_ONLINE_HOST:
             try:
                 modals = page.locator(
                     ".Modal.AddressModal, .Modal.FloatingLeadModal, "
@@ -2777,6 +2805,8 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
                             continue
                         phone = container.locator(cfg["phone"]).first
                         if phone.count() > 0 and phone.is_visible():
+                            if not has_required_address_fields(container, form_type, cfg):
+                                continue
                             visible_candidates.append((popup_sel, form_type, cfg, container, i))
                     except Exception:
                         pass
@@ -2807,6 +2837,8 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
                         "contains(@class,'modal') or contains(@id,'popup')]"
                     ).last
                     if parent.count() > 0 and parent.is_visible():
+                        if not has_required_address_fields(parent, form_type, cfg):
+                            continue
                         resolved_configs = getattr(page, "_resolved_form_configs", {})
                         resolved_configs[form_type] = dict(cfg)
                         page._resolved_form_configs = resolved_configs
@@ -2814,6 +2846,8 @@ def wait_for_popup_with_fields(page: Page, timeout_ms: int = 10_000,
                         return form_type, parent
                     form_parent = phone.locator("xpath=ancestor::form").last
                     if form_parent.count() > 0 and form_parent.is_visible():
+                        if not has_required_address_fields(form_parent, form_type, cfg):
+                            continue
                         resolved_configs = getattr(page, "_resolved_form_configs", {})
                         resolved_configs[form_type] = dict(cfg)
                         page._resolved_form_configs = resolved_configs
