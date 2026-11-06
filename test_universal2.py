@@ -2883,6 +2883,14 @@ def collect_popup_buttons(page: Page) -> list:
         try:
             if not btn.is_visible() or not btn.is_enabled():
                 continue
+            if getattr(page, "_use_mts_online_locators", False):
+                is_mts_banner = (
+                    btn.get_attribute("data-banner-connect") is not None
+                    and btn.get_attribute("data-modal-open") == "address"
+                )
+                if is_mts_banner:
+                    # Баннер собирается ниже с явным MTS WP New form_hint.
+                    continue
             text = (btn.inner_text() or "").strip().lower()
             if not any(kw in text for kw in POPUP_OPEN_KEYWORDS):
                 continue
@@ -2925,7 +2933,11 @@ def collect_popup_buttons(page: Page) -> list:
                         continue
                     if global_idx >= 0:
                         seen_idx.add(global_idx)
-                    text = (item.inner_text() or selector).strip().lower()
+                    text = (
+                        "Кнопка подключить на банере"
+                        if selector.startswith("[data-banner-connect]")
+                        else (item.inner_text() or selector).strip().lower()
+                    )
                     result.append({
                         "index": -1,
                         "text": text,
@@ -2941,7 +2953,13 @@ def collect_popup_buttons(page: Page) -> list:
                     pass
 
     if getattr(page, "_use_mts_online_locators", False):
-        for selector in (".tariffs__address",):
+        # WP New: баннерная CTA открывает тот же AddressModal, что и
+        # остальные address-кнопки, но раньше не попадала в обязательный
+        # цикл popup-сценариев.
+        for selector in (
+            "[data-banner-connect][data-modal-open='address']",
+            ".tariffs__address",
+        ):
             locs = page.locator(selector)
             for idx in range(locs.count()):
                 item = locs.nth(idx)
